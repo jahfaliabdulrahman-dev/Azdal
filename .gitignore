@@ -1,0 +1,63 @@
+# Azdal — .gitignore
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Flutter build artifacts
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# Secrets & Environment
+.env
+.env.*
+*.key
+*.pem
+secrets/
+android/key.properties
+ios/Runner/GoogleService-Info.plist
+
+# Isar local database
+*.isar
+*.isar.lock
+*.isar.json
+libisar.dylib
+libisar.so
+
+# Android
+android/.gradle/
+android/app/build/
+android/local.properties
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# Generated
+*.generated.dart
+
+# Test artifacts
+coverage/
+test/.test_runner.dart
+
+# Hermes
+.hermes/sessions/
+.hermes/workspace/

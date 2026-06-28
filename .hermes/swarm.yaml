@@ -1,0 +1,39 @@
+# Azdal — Hermes Swarm Configuration
+# Activated during Stage 1+ when the 8-agent swarm begins operation.
+# Template for project-specific overrides.
+
+profiles:
+  assigned:
+    - flutter-lead-architect       # 🜔 Orchestration & approvals
+    - flutter-product-steward      # 📋 PRD & scope
+    - flutter-ui-ux-designer       # 🎨 Screens & design tokens
+    - flutter-backend-db-architect # 🗄️ ERD, OpenAPI, ACID
+    - flutter-state-engineer       # 💻 Flutter code & widgets
+    - flutter-qa-tester            # 🧪 Tests & acceptance
+    - flutter-zero-trust-auditor   # 🔴 Hostile audit
+    - flutter-devops-release-engineer # 🚀 CI/CD & release
+
+project:
+  name: Azdal
+  type: flutter_mobile
+  repository: /Users/abdurrahmanjahfali/Azdal
+  app_spec_path: app-spec/
+
+kanban:
+  lanes:
+    - BACKLOG
+    - READY_FOR_ARCHITECT
+    - ARCHITECTURE_REVIEW
+    - PRODUCT_REVIEW
+    - UX_DESIGN
+    - BACKEND_DESIGN
+    - FLUTTER_IMPLEMENTATION
+    - QA_VALIDATION
+    - HOSTILE_AUDIT
+    - DEVOPS_RELEASE_REVIEW
+    - APPROVED
+    - DONE
+    - NEEDS_FIX
+    - BLOCKED
+
+source_of_truth: app-spec/

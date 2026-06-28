@@ -1,0 +1,67 @@
+name: azdal
+description: "أزدل — درعك المالي. First Arabic 3-tier financial rehabilitation program."
+version: 0.1.0+1
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+  flutter: '>=3.16.0'
+
+# ─── STUB — Pre-implementation pubspec ───
+# This is a hand-written declaration of approved packages.
+# flutter create will generate the full project scaffold in Stage 1.
+# No flutter create has been run. No code exists yet.
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── Pre-Approved Packages (00_project_overrides.md) ──
+  # AI
+  google_generative_ai: ^0.4.0          # Gemini API (Flash + Pro + Vision)
+  
+  # Backend
+  supabase_flutter: ^2.3.0              # Supabase PostgreSQL
+  
+  # State Management
+  flutter_riverpod: ^2.5.0              # Riverpod (recommended)
+  
+  # Input
+  receive_sharing_intent: ^1.6.0        # System share sheet (receipt images)
+  image_picker: ^1.0.0                  # Camera / gallery picker
+  
+  # UI / Font
+  google_fonts: ^6.1.0                  # Cairo font
+  
+  # Routing
+  go_router: ^14.0.0                    # Declarative routing (single route)
+  
+  # Local Storage
+  isar_flutter_libs: ^3.1.0             # Isar local cache
+  isar: ^3.1.0
+  path_provider: ^2.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  mocktail: ^1.0.0
+
+flutter:
+  uses-material-design: true
+
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: fonts/Cairo-Regular.ttf
+          weight: 400
+        - asset: fonts/Cairo-SemiBold.ttf
+          weight: 600
+        - asset: fonts/Cairo-Bold.ttf
+          weight: 700
+        - asset: fonts/Cairo-Black.ttf
+          weight: 900
+
+  assets:
+    - assets/branding/
+    - assets/fonts/

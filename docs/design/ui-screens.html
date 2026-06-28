@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Azdal — واجهة المحادثة</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   Azdal Design System — Single Screen
+   Colors: Navy #001F5E, Cyan #32C2FF
+   Font: Cairo
+   ═══════════════════════════════════════════ */
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --navy:    #001F5E;
+  --cyan:    #32C2FF;
+  --surface: #1B1B1F;
+  --bar:     #161B22;
+  --text:    #E6E1E5;
+  --muted:   #8B949E;
+  --success: #3FB950;
+  --warning: #D29922;
+  --danger:  #F85149;
+  --border:  #30363D;
+  --card:    #161B22;
+  --userBubble: #30363D;
+  --botBubble:  #001F5E;
+}
+
+body {
+  font-family: 'Cairo', sans-serif;
+  background: #0D1117;
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* ── App Shell ── */
+.app {
+  width: 100%;
+  max-width: 440px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Fixed Header ── */
+.header {
+  flex-shrink: 0;
+  background: var(--bar);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 20;
+}
+.header .brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+.header .brand .seal {
+  color: var(--cyan);
+  font-size: 22px;
+}
+.header .tag {
+  font-size: 10px;
+  color: var(--muted);
+  background: rgba(50,194,255,0.08);
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+
+/* ── Scrollable Chat Area ── */
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* always show scrollbar space for stability */
+  scrollbar-gutter: stable;
+}
+
+/* Scrollbar */
+.chat-area::-webkit-scrollbar { width: 4px; }
+.chat-area::-webkit-scrollbar-track { background: transparent; }
+.chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── Message Bubbles ── */
+.msg {
+  max-width: 82%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  animation: fadeIn .2s;
+  position: relative;
+  word-wrap: break-word;
+}
+@keyframes fadeIn {
+  from { opacity:0; transform:translateY(8px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.msg.bot {
+  background: var(--botBubble);
+  align-self: flex-end;
+  border-bottom-left-radius: 4px;
+  margin-right: 8px;
+}
+.msg.user {
+  background: var(--userBubble);
+  align-self: flex-start;
+  border-bottom-right-radius: 4px;
+  margin-left: 8px;
+}
+.msg .tm {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 4px;
+  display: block;
+}
+
+/* ── Fixed Input Bar ── */
+.input-bar {
+  flex-shrink: 0;
+  padding: 10px 16px 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: var(--bar);
+  border-top: 1px solid var(--border);
+  z-index: 20;
+}
+
+/* Camera button */
+.input-bar .cam {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--userBubble);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all .2s;
+}
+.input-bar .cam:hover {
+  background: var(--cyan);
+  color: var(--navy);
+  border-color: var(--cyan);
+  transform: scale(1.05);
+}
+
+/* Text input */
+.input-bar input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 11px 16px;
+  color: var(--text);
+  font-family: 'Cairo', sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: border-color .2s;
+  min-width: 0;
+}
+.input-bar input:focus {
+  border-color: var(--cyan);
+}
+.input-bar input::placeholder {
+  color: var(--muted);
+  font-family: 'Cairo', sans-serif;
+}
+
+/* Send button */
+.input-bar .send {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--cyan);
+  border: none;
+  color: var(--navy);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-weight: 700;
+  transition: all .2s;
+}
+.input-bar .send:hover {
+  filter: brightness(1.15);
+  transform: scale(1.05);
+}
+
+/* ── Card Widgets ── */
+.card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  margin: 2px 0;
+}
+.card.success { border-color: var(--success); background: rgba(63,185,80,0.06); }
+.card.warning { border-color: var(--warning); background: rgba(210,153,34,0.06); }
+.card.danger  { border-color: var(--danger);  background: rgba(248,81,73,0.06); }
+.card .cr {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  font-size: 13px;
+}
+.card .cr .cv { font-weight: 700; }
+.card .cr.divider { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 2px; }
+.card h3 { font-size: 15px; margin-bottom: 6px; }
+
+/* ── Bar Chart ── */
+.bars {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  height: 100px;
+  padding: 4px 0;
+}
+.bars .b {
+  flex: 1;
+  background: var(--cyan);
+  border-radius: 6px 6px 0 0;
+  position: relative;
+  min-width: 24px;
+  transition: height .4s ease;
+}
+.bars .b .lbl {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.bars .b .vl {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--text);
+  font-weight: 700;
+}
+.bars .b.danger { background: var(--danger); }
+
+/* ── Quick Buttons (action_buttons widget) ── */
+.qb-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.qb {
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--cyan);
+  background: rgba(50,194,255,0.08);
+  color: var(--cyan);
+  font-family: 'Cairo', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.qb:hover, .qb.sel {
+  background: var(--cyan);
+  color: var(--navy);
+  font-weight: 700;
+}
+
+/* ── Progress Bar ── */
+.progress-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  margin: 10px 0 6px;
+  overflow: hidden;
+}
+.progress-bar .fill {
+  height: 100%;
+  background: var(--cyan);
+  border-radius: 3px;
+  transition: width .5s ease;
+}
+
+/* ── OCR Preview ── */
+.ocr-preview {
+  background: var(--card);
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 28px 24px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  margin: 4px 0;
+  cursor: pointer;
+  transition: border-color .2s;
+}
+.ocr-preview:hover { border-color: var(--cyan); }
+.ocr-preview .ic { font-size: 40px; margin-bottom: 8px; display:block; }
+
+/* ── Compound Split ── */
+.split-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+.split-item .adj { display: flex; gap: 6px; align-items: center; }
+.split-item .adj button {
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  border: 1px solid var(--cyan);
+  background: transparent;
+  color: var(--cyan);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+}
+.split-item .adj button:hover {
+  background: var(--cyan);
+  color: var(--navy);
+}
+.split-item .adj .amt {
+  color: var(--cyan);
+  width: 44px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* ── Empty State ── */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding: 32px 24px;
+}
+.empty-state .seal {
+  font-size: 52px;
+  color: var(--cyan);
+  opacity: .8;
+  margin-bottom: 4px;
+}
+.empty-state h2 {
+  font-size: 20px;
+  color: var(--cyan);
+  font-weight: 700;
+}
+.empty-state p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.9;
+  max-width: 280px;
+}
+.empty-state .hint {
+  color: var(--cyan);
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* ── Confidence Badge ── */
+.conf {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  display: inline-block;
+  margin-top: 2px;
+}
+.conf.high { background: rgba(63,185,80,0.15); color: var(--success); }
+.conf.med  { background: rgba(210,153,34,0.15); color: var(--warning); }
+.conf.low  { background: rgba(139,148,158,0.15); color: var(--muted); }
+
+/* ── Stagger animation for cards ── */
+.stagger > * { animation: fadeIn .25s ease both; }
+.stagger > *:nth-child(1) { animation-delay: 0s; }
+.stagger > *:nth-child(2) { animation-delay: .05s; }
+.stagger > *:nth-child(3) { animation-delay: .1s; }
+.stagger > *:nth-child(4) { animation-delay: .15s; }
+.stagger > *:nth-child(5) { animation-delay: .2s; }
+
+/* ── Scenario Selector (Desktop) ── */
+.scenarios {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 92vh;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px;
+}
+.scenarios .lbl {
+  color: var(--cyan);
+  font-size: 10px;
+  padding: 4px 8px 2px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-align: center;
+}
+.scenarios button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-family: 'Cairo', sans-serif;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: right;
+  white-space: nowrap;
+  transition: all .15s;
+}
+.scenarios button:hover {
+  background: rgba(50,194,255,0.08);
+  border-color: var(--border);
+}
+.scenarios button.act {
+  background: var(--navy);
+  border-color: var(--cyan);
+  color: var(--cyan);
+  font-weight: 700;
+}
+
+/* ── Responsive ── */
+@media (max-width: 440px) {
+  .app { max-width: 100%; }
+  .scenarios { top: 4px; left: 4px; padding: 4px; gap: 2px; }
+  .scenarios button { font-size: 10px; padding: 4px 7px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ Scenario Selector ═══ -->
+<div class="scenarios" id="scenarios">
+  <span class="lbl">🎬 سيناريوهات</span>
+  <button class="act" onclick="loadScenario('empty')">🏠 بداية</button>
+  <button onclick="loadScenario('chat')">💬 محادثة</button>
+  <button onclick="loadScenario('ocr')">📸 فاتورة</button>
+  <button onclick="loadScenario('ocr-result')">✅ نتيجة OCR</button>
+  <button onclick="loadScenario('compound')">🛒 مركبة</button>
+  <button onclick="loadScenario('report')">📈 تقرير</button>
+  <button onclick="loadScenario('canibuy-cold')">❓ شراء (جديد)</button>
+  <button onclick="loadScenario('canibuy-full')">📊 شراء (قرار)</button>
+  <button onclick="loadScenario('goal')">🎯 هدف ادخار</button>
+</div>
+
+<!-- ═══ App Shell ═══ -->
+<div class="app" id="app">
+
+  <!-- Fixed Header -->
+  <div class="header">
+    <div class="brand">
+      <span class="seal">🜔</span>
+      <span>أزدل</span>
+    </div>
+    <span class="tag">درعك المالي</span>
+  </div>
+
+  <!-- Scrollable Chat Area -->
+  <div class="chat-area" id="chat"></div>
+
+  <!-- Fixed Input Bar — ALWAYS visible in every scenario -->
+  <div class="input-bar" id="inputBar">
+    <button class="cam" onclick="showOCR()" title="صوّر فاتورة">📷</button>
+    <input type="text" id="msgInput"
+           placeholder="اكتب مصروف... أو اسأل سؤال"
+           onkeydown="if(event.key==='Enter')sendMsg()">
+    <button class="send" onclick="sendMsg()" title="إرسال">↑</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   Azdal UI — Scenario Engine
+   ═══════════════════════════════════════════ */
+
+const chat  = document.getElementById('chat');
+const input = document.getElementById('msgInput');
+
+/* ── Helpers ── */
+
+function nowTS() {
+  return new Date().toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'});
+}
+
+function addMsg(text, cls) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + cls;
+  d.innerHTML = text + '<span class="tm">' + nowTS() + '</span>';
+  chat.appendChild(d);
+  scrollDown();
+}
+
+function addCard(html) {
+  const d = document.createElement('div');
+  d.className = 'msg bot stagger';
+  d.innerHTML = html + '<span class="tm">' + nowTS() + '</span>';
+  chat.appendChild(d);
+  scrollDown();
+}
+
+function scrollDown() {
+  // smooth scroll to bottom
+  requestAnimationFrame(() => {
+    chat.scrollTop = chat.scrollHeight;
+  });
+}
+
+/* ── Scenario Loader ── */
+
+function loadScenario(name) {
+  chat.innerHTML = '';
+  document.querySelectorAll('.scenarios button').forEach(b => b.classList.remove('act'));
+  if (event && event.target) event.target.classList.add('act');
+
+  switch (name) {
+
+    /* ═══ 1. EMPTY STATE ═══ */
+    case 'empty':
+      chat.innerHTML = `
+        <div class="empty-state">
+          <div class="seal">🜔</div>
+          <h2>أهلاً بك في أزدل</h2>
+          <p>وكيلك المالي الذكي. اكتب مصروف، صوّر فاتورة، أو اسأل: "هل أقدر أشتري؟"</p>
+          <p class="hint">✨ بدون تسجيل. ابدأ فوراً.</p>
+          <p style="font-size:11px;color:var(--muted);margin-top:8px;">
+            📷 اضغط على الكاميرا أدناه ← صوّر فاتورة<br>
+            ✍️ أو اكتب مصروفك في المربع أدناه
+          </p>
+        </div>`;
+      break;
+
+    /* ═══ 2. CHAT — Basic transaction ═══ */
+    case 'chat':
+      addMsg('صرفت ٥٠ ريال قهوة من بارنز', 'user');
+      addMsg('تم تسجيل ٥٠ ريال ضمن (قهوة) ✅<br>☕ بارنز — اليوم', 'bot');
+      addMsg('كيف صرفي هذا الشهر؟', 'user');
+      addCard(`
+        <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">📊 ملخص صرفك للشهر الحالي</div>
+        <div class="cr"><span>طعام</span><span class="cv">١,٢٥٠ ريال</span></div>
+        <div class="cr"><span>تسوق</span><span class="cv">٩٠٠ ريال</span></div>
+        <div class="cr"><span>مواصلات</span><span class="cv">٧٨٠ ريال</span></div>
+        <div class="cr"><span>قهوة</span><span class="cv">٣٢٠ ريال</span></div>
+        <div class="cr divider"><span>الإجمالي</span><span class="cv" style="color:var(--cyan)">٤,١٠٠ ريال</span></div>
+        <br><span class="conf high">الثقة: مرتفعة</span>`);
+      break;
+
+    /* ═══ 3. OCR — Camera trigger ═══ */
+    case 'ocr':
+      addMsg('📸 يبي يصوّر فاتورة...', 'user');
+      addCard(`
+        <div class="ocr-preview" onclick="loadScenario('ocr-result')">
+          <span class="ic">📸</span>
+          <span>اضغط لتصوير الفاتورة</span>
+          <br><span style="font-size:11px">أو اختر من المعرض</span>
+        </div>
+        <div class="qb-row" style="margin-top:10px;">
+          <span class="qb sel" onclick="loadScenario('ocr-result')">📷 التقط صورة</span>
+          <span class="qb">🖼 من المعرض</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:10px;">
+          📱 أو: من معرض الصور ← مشاركة ← اختيار أزدل
+        </div>`);
+      break;
+
+    /* ═══ 4. OCR RESULT — Extracted data ═══ */
+    case 'ocr-result':
+      addCard(`
+        <div class="card success">
+          <h3 style="color:var(--success)">✅ تم استخراج البيانات</h3>
+          <div class="cr"><span>المتجر</span><span class="cv">بنده</span></div>
+          <div class="cr"><span>التاريخ</span><span class="cv">١٩ مايو ٢٠٢٦</span></div>
+          <div class="cr"><span>المبلغ</span><span class="cv" style="color:var(--cyan)">٨٧.٥٠ ريال</span></div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin:10px 0 4px;">اختر الفئة:</div>
+        <div class="qb-row">
+          <span class="qb">🥬 طعام</span>
+          <span class="qb sel">🛒 تسوق</span>
+          <span class="qb">🏠 سكن</span>
+          <span class="qb">📌 أخرى</span>
+        </div>`);
+      break;
+
+    /* ═══ 5. COMPOUND — Multi-category split ═══ */
+    case 'compound':
+      addMsg('اشتريت بـ ٤٧٥ — قهوة وخضار ومطعم للعيال', 'user');
+      addCard(`
+        <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">👌 خلينا نفصل مشترياتك:</div>
+        <div class="split-item">
+          <span>☕ قهوة</span>
+          <div class="adj">
+            <button>−</button>
+            <span class="amt">25</span>
+            <button>+</button>
+          </div>
+        </div>
+        <div class="split-item">
+          <span>🥬 خضار</span>
+          <div class="adj">
+            <button>−</button>
+            <span class="amt">150</span>
+            <button>+</button>
+          </div>
+        </div>
+        <div class="split-item">
+          <span>🍔 مطعم</span>
+          <div class="adj">
+            <button>−</button>
+            <span class="amt">300</span>
+            <button>+</button>
+          </div>
+        </div>
+        <div class="cr divider" style="margin-top:8px;">
+          <span>الإجمالي</span>
+          <span class="cv" style="color:var(--cyan)">475 ✅</span>
+        </div>
+        <div class="qb-row" style="margin-top:12px;">
+          <span class="qb sel" style="flex:1;text-align:center;">✅ تأكيد وحفظ الكل</span>
+        </div>`);
+      break;
+
+    /* ═══ 6. REPORT — Monthly bar chart ═══ */
+    case 'report':
+      addMsg('كيف صرفي هذا الشهر؟', 'user');
+      addCard(`
+        <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">📊 توزيع المصروفات</div>
+        <div class="bars">
+          <div class="b" style="height:100px;"><span class="vl">١,٢٥٠</span><span class="lbl">طعام</span></div>
+          <div class="b" style="height:72px;"><span class="vl">٩٠٠</span><span class="lbl">تسوق</span></div>
+          <div class="b" style="height:62px;"><span class="vl">٧٨٠</span><span class="lbl">مواصلات</span></div>
+          <div class="b" style="height:26px;"><span class="vl">٣٢٠</span><span class="lbl">قهوة</span></div>
+          <div class="b" style="height:20px;"><span class="vl">٢٥٠</span><span class="lbl">فواتير</span></div>
+        </div>
+        <div class="card" style="margin-top:28px;">
+          <div class="cr"><span>إجمالي الصرف</span><span class="cv" style="color:var(--cyan)">٤,١٠٠ ريال</span></div>
+          <div class="cr"><span>الدخل الشهري</span><span class="cv">٩,٠٠٠ ريال</span></div>
+          <div class="cr"><span>الالتزامات</span><span class="cv">٣,٢٠٠ ريال</span></div>
+          <div class="cr divider"><span>المتبقي</span><span class="cv" style="color:var(--success)">١,٧٠٠ ريال</span></div>
+        </div>
+        <span class="conf high" style="margin-top:8px;">الثقة: مرتفعة</span>`);
+      break;
+
+    /* ═══ 7. CAN I BUY — Cold start (new user) ═══ */
+    case 'canibuy-cold':
+      addMsg('هل أقدر أشتري بلايستيشن بـ ٢٥٠٠؟', 'user');
+      addCard(`
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">👀 أقدر أساعدك — خلّني أدقّق التقدير بأسئلة سريعة:</div>
+
+        <div style="margin-bottom:12px;">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">نطاق دخلك الشهري:</div>
+          <div class="qb-row">
+            <span class="qb">أقل من ٥,٠٠٠</span>
+            <span class="qb sel">٥,٠٠٠ – ١٠,٠٠٠</span>
+            <span class="qb">أكثر من ١٠,٠٠٠</span>
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">نطاق التزاماتك الشهرية:</div>
+          <div class="qb-row">
+            <span class="qb">قليلة</span>
+            <span class="qb sel">متوسطة</span>
+            <span class="qb">عالية</span>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">كم باقي على الراتب؟</div>
+          <div class="qb-row">
+            <span class="qb">٣ أيام</span>
+            <span class="qb">٧ أيام</span>
+            <span class="qb sel">١٠ أيام</span>
+            <span class="qb">١٥ يوم</span>
+          </div>
+        </div>
+
+        <span class="conf low" style="margin-top:10px;">الثقة: منخفضة (تقدير أولي)</span>`);
+      break;
+
+    /* ═══ 8. CAN I BUY — Full decision ═══ */
+    case 'canibuy-full':
+      addMsg('هل أقدر أشتري آيفون بـ ٤٥٠٠؟', 'user');
+      addCard(`
+        <div class="card warning">
+          <h3 style="color:var(--warning)">⚠️ الأفضل تنتظر</h3>
+          <div class="cr"><span>المتبقي حتى الراتب</span><span class="cv">١,٨٠٠ ريال</span></div>
+          <div class="cr"><span>بعد الشراء</span><span class="cv" style="color:var(--danger)">-٢,٧٠٠ ريال</span></div>
+          <div class="cr"><span>حد يومي بعد الشراء</span><span class="cv">غير كافٍ</span></div>
+          <span class="conf high" style="margin-top:6px;">الثقة: مرتفعة</span>
+        </div>
+
+        <div style="font-size:12px;color:var(--muted);margin:12px 0 4px;">السيناريوهات:</div>
+        <div class="bars">
+          <div class="b" style="height:80px;">
+            <span class="vl">١,٨٠٠</span>
+            <span class="lbl">تنتظر ١٠ أيام</span>
+          </div>
+          <div class="b danger" style="height:0px;">
+            <span class="vl" style="color:var(--danger)">-٢,٧٠٠</span>
+            <span class="lbl">تشتري ❌</span>
+          </div>
+        </div>
+
+        <div style="font-size:12px;color:var(--muted);margin:12px 0 4px;">ماذا تريد أن تفعل؟</div>
+        <div class="qb-row" style="margin-top:30px;">
+          <span class="qb">📊 راجع صرفي</span>
+          <span class="qb sel">💰 عدّل الهدف</span>
+        </div>`);
+      break;
+
+    /* ═══ 9. GOAL — Savings goal ═══ */
+    case 'goal':
+      addMsg('أبغى أجمع ٢٠ ألف في ٣ سنوات', 'user');
+      addCard(`
+        <div class="card success">
+          <h3>🎯 تجميع ٢٠,٠٠٠ ريال</h3>
+          <div class="cr"><span>المدة</span><span class="cv">٣ سنوات (٣٦ شهر)</span></div>
+          <div class="cr"><span>القسط الشهري</span><span class="cv" style="color:var(--cyan)">٥٥٦ ريال</span></div>
+          <div class="cr"><span>تم تجميع</span><span class="cv">٣,٣٣٦ ريال</span></div>
+          <div class="progress-bar">
+            <div class="fill" style="width:16.7%"></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);">١٦.٧٪ — باقي ١٦,٦٦٤ ريال</div>
+          <div style="font-size:11px;color:var(--success);margin-top:2px;">✅ على المسار الصحيح</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px;">
+            📊 الهدف محمي — "هل أقدر أشتري؟" يراعي هدفك وما يخرب خطتك
+          </div>
+        </div>`);
+      break;
+  }
+}
+
+/* ── Send Message (simulated) ── */
+function sendMsg() {
+  const txt = input.value.trim();
+  if (!txt) return;
+  addMsg(txt, 'user');
+  input.value = '';
+
+  // Simulate bot typing indicator
+  const typing = document.createElement('div');
+  typing.className = 'msg bot';
+  typing.style.color = 'var(--muted)';
+  typing.style.fontStyle = 'italic';
+  typing.innerHTML = 'يكتب...';
+  chat.appendChild(typing);
+  scrollDown();
+
+  // Remove typing after delay
+  setTimeout(() => {
+    if (typing.parentNode) typing.remove();
+    addMsg('تم استلام رسالتك ✅ — هذا عرض توضيحي للواجهة', 'bot');
+  }, 800);
+}
+
+/* ── OCR Camera Simulation ── */
+function showOCR() {
+  addMsg('📸 يصور فاتورة...', 'user');
+  setTimeout(() => loadScenario('ocr-result'), 600);
+}
+
+/* ── Initial Load ── */
+loadScenario('empty');
+
+/* ── Expose for HTML onclick ── */
+window.loadScenario = loadScenario;
+window.showOCR = showOCR;
+window.sendMsg = sendMsg;
+</script>
+
+</body>
+</html>

@@ -1,0 +1,22 @@
+# Azdal — API Contract (OpenAPI)
+
+# Stage: Stage 0 — Template
+# Status: Empty — populated when Backend Agent designs APIs (Stage 1+)
+# 
+# Will include:
+# - Chat API (Gemini proxy)
+# - Transaction CRUD
+# - Purchase Decision endpoint
+# - Integrity Score endpoint
+# - Behavioral Credit Score B2B API (Phase 2)
+
+openapi: "3.0.3"
+info:
+  title: Azdal API
+  version: "0.1.0"
+  description: Financial transformation platform API
+servers:
+  - url: https://api.azdal.app/v1
+    description: Production
+paths: {}
+# Populated during Stage 1-2
