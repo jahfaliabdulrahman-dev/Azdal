@@ -21,6 +21,19 @@
 
 ---
 
+## Human Team (4 Members)
+
+| # | Name | Role | Linked Agents |
+|---|------|------|--------------|
+| 1 | Abdulrahman Jahfali | AI / Backend / Flutter | Lead Architect, State Engineer |
+| 2 | Saja | Business / SWOT / Pitch | Product Steward |
+| 3 | Deema | UI / UX Design | UI/UX Designer |
+| 4 | Hala | Presentations & AMAD Form | QA Tester (presentation review) |
+
+**Note:** Hermes agents (#1-8 above) are AI profiles that execute technical work. Human members review agent outputs, provide strategy, and prepare presentations.
+
+---
+
 ## Stage 0 (Planning) — Active Profiles
 
 Only the Lead Architect is active during Stage 0:

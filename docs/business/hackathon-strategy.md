@@ -34,11 +34,12 @@ Why this fits perfectly:
 
 ## Team (Finalized)
 
-| Role | Who | Responsibility |
-|------|-----|----------------|
-| AI/Backend/Flutter | Abdulrahman Jahfali | Technical architecture, AI integration, Flutter app, demo coding |
-| Business Model / SWOT / Pitch | Saja | Business case, market research presentation, SWOT, judge Q&A, revenue model |
-| UI/UX Design | Deema | Visual design, pitch deck aesthetics, UI screens, demo polish |
+| # | Role | Who | Responsibility |
+|---|------|-----|----------------|
+| 1 | AI/Backend/Flutter | Abdulrahman Jahfali | Technical architecture, AI integration, Flutter app, demo coding |
+| 2 | Business Model / SWOT / Pitch | Saja | Business case, market research presentation, SWOT, judge Q&A, revenue model |
+| 3 | UI/UX Design | Deema | Visual design, pitch deck aesthetics, UI screens, demo polish |
+| 4 | Presentations & AMAD Form | Hala | Form completion, presentation preparation, demo script, pitch deck |
 
 Saja's hackathon experience: Previously reached FINALS in AMAD with a family finance app. Knows judges, knows what wins, knows what fails.
 

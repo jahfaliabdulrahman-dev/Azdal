@@ -27,11 +27,12 @@ We are **not** a budgeting app. We are **not** a BNPL clone. We are a **financia
 
 ## Team
 
-| Role | Name |
-|------|------|
-| AI / Backend / Flutter | **Abdulrahman Jahfali** |
-| Business Model / SWOT / Pitch | **Saja** |
-| UI / UX Design | **Deema** |
+| # | Role | Name |
+|---|------|------|
+| 1 | AI / Backend / Flutter | **Abdulrahman Jahfali** |
+| 2 | Business Model / SWOT / Pitch | **Saja** |
+| 3 | UI / UX Design | **Deema** |
+| 4 | Presentations & Forms | **Hala** |
 
 ---
 

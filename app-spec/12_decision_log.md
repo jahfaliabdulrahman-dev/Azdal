@@ -14,6 +14,19 @@ None at Stage 0. All Stage 0 decisions below are closed.
 
 ## Closed Decisions
 
+### DEC-012: Hala Joins Team as Presentations & Forms Lead
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-06-29 |
+| **Status** | ✅ Closed |
+| **Summary** | Hala joins as 4th team member, responsible for AMAD form completion and presentation preparation. |
+| **Rationale** | The AMAD form (14-page PDF) requires dedicated effort. Separating presentation/form work from technical design allows specialists to focus. |
+| **Impact** | Team now 4 members. `HALA_GUIDE.md` created (21KB) with form field answers mapped to spec files. `assets/AZDAL_AMAD_2026_FORM.pdf` added. All team files updated. |
+| **Related** | `HALA_GUIDE.md`, `assets/AZDAL_AMAD_2026_FORM.pdf`, `00_project_context.md` |
+
+---
+
 ### DEC-011: Preliminary Acceptance Received
 
 | Field | Value |
@@ -170,6 +183,7 @@ None at Stage 0. All Stage 0 decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-012 | Hala joins team (Presentations & Forms) | 2026-06-29 | ✅ |
 | DEC-011 | Preliminary acceptance received | 2026-06-28 | ✅ |
 | DEC-001 | 3-tier system | 2026-05-21 | ✅ |
 | DEC-002 | Financial Education track | 2026-05-21 | ✅ |

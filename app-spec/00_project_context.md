@@ -37,11 +37,12 @@
 
 ## Team
 
-| Role | Name | Responsibility |
-|------|------|----------------|
-| AI/Backend/Flutter | Abdulrahman Jahfali | Technical architecture, AI, Flutter app, demo |
-| Business Model / SWOT / Pitch | Saja | Business case, market research, judge Q&A, revenue |
-| UI/UX Design | Deema | Visual design, pitch deck aesthetics, UI screens |
+| # | Role | Name | Responsibility |
+|---|------|------|----------------|
+| 1 | AI/Backend/Flutter | Abdulrahman Jahfali | Technical architecture, AI, Flutter app, demo |
+| 2 | Business Model / SWOT / Pitch | Saja | Business case, market research, judge Q&A, revenue |
+| 3 | UI/UX Design | Deema | Visual design, pitch deck aesthetics, UI screens |
+| 4 | Presentations & Forms | Hala | AMAD form completion, presentation preparation, demo script polish |
 
 **Saja's experience:** Previously reached AMAD finals with family finance app. Knows judges, winning patterns, and pitfalls.
 
