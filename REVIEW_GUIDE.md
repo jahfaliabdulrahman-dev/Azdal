@@ -1,20 +1,35 @@
 # 🜔 Azdal — دليل المراجعة | Review Guide
 
 > **المرحلة:** Stage 0 — مراجعة وتدقيق | Review & Audit  
-> **قبل:** 1 يونيو — موعد تسجيل AMAD (⚠️ 3 أيام!)  
+> **التاريخ:** 29 يونيو 2026  
+> **الوقت المتبقي:** ~17 يوماً للهاكاثون (16-18 يوليو)  
+> **الحالة:** ✅ تم القبول المبدئي — 28 يونيو  
 > **الهدف:** مراجعة كل الملفات، تسجيل الملاحظات، الاتفاق الكامل قبل أي كود
 
 ---
 
-## ⚠️ تذكير: موعد التسجيل
+## ✅ الحالة الحالية — القبول المبدئي
 
-| الحدث | التاريخ |
-|-------|---------|
-| **تسجيل AMAD** | **1 يونيو 2026** |
-| إعلان القبول | ~1 يوليو |
-| الهاكاثون | 16-18 يوليو |
+| الحدث | التاريخ | الحالة |
+|-------|---------|--------|
+| **التسجيل في AMAD** | قبل 1 يونيو | ✅ مكتمل |
+| **القبول المبدئي** | **28 يونيو 2026** | ✅ **وصل أمس!** |
+| **اليوم** | **29 يونيو** | 🔄 مراجعة |
+| **الهاكاثون** | 16-18 يوليو | ⬜ 17 يوماً متبقية |
 
-> إذا لم تسجل بعد → هذا أول شيء! سجل قبل مراجعة الملفات.
+---
+
+## ⚡ تنبيه: 17 يوماً للهاكاثون
+
+> **الوقت ليس رفاهية.** كل يوم تأخير في المراجعة = يوم بناء مفقود.
+
+| الإطار الزمني | المدة | ما يجب إنجازه |
+|--------------|-------|-------------|
+| 29 يونيو → 2 يوليو | **~3 أيام** | مراجعة شخصية + نقاش مع الفريق |
+| 3-5 يوليو | **~3 أيام** | تطبيق التغذية الراجعة + الاتفاق النهائي |
+| 5-14 يوليو | **~9 أيام** | بناء MVP (كود) |
+| 14-15 يوليو | **يومين** | السفر للرياض |
+| 16-18 يوليو | **3 أيام** | **الهاكاثون** |
 
 ---
 
@@ -42,7 +57,7 @@
 | 4 | `app-spec/00_lessons_learned.md` | 9 دروس — هل فاتنا شيء مهم؟ | 5 د |
 | 5 | `app-spec/07_flutter_architecture.md` | الـ tech stack والـ hybrid architecture | 15 د |
 | 6 | `app-spec/05_data_model_erd.md` | 5 جداول — هل هذا يكفي للـ MVP؟ | 10 د |
-| 7 | `app-spec/16_implementation_backlog.md` | 35+ مهمة في 4 أسابيع — هل هذا واقعي؟ | 10 د |
+| 7 | `app-spec/16_implementation_backlog.md` | خطة البناء — هل هي واقعية في 9 أيام؟ | 10 د |
 | 8 | `app-spec/13_assumptions_risks.md` | 10 افتراضات + 15 خطر — فاتنا شيء؟ | 5 د |
 
 **الوقت المتوقع:** ~80 دقيقة  
@@ -65,7 +80,6 @@
 | 7 | `docs/business/hackathon-strategy.md` | خطة الهاكاثون — هل Demo Script مناسب؟ | 10 د |
 
 **الوقت المتوقع:** ~65 دقيقة  
-**ملفات اختيارية:** `docs/business/pestle-analysis.md`، `docs/business/porters-five-forces.md`، `docs/business/market-research.md`
 
 ---
 
@@ -147,29 +161,16 @@ Azdal/
 ├── README.md                ← نظرة عامة
 ├── app-spec/                ← 25 ملف (مصدر الحقيقة)
 │   ├── 00_product_discovery.md       ← ابدأ من هنا
-│   ├── 00_project_context.md
-│   ├── 00_active_capabilities.md
-│   ├── 00_lessons_learned.md
-│   ├── 00_project_overrides.md
-│   ├── 00_swarm_operating_playbook.md
+│   ├── 00_project_context.md         ← مواعيد وتفاصيل المسابقة
 │   ├── 01_prd.md                     ← مواصفات المنتج
 │   ├── 02_monetization_entitlements.md
 │   ├── 03_user_flows_navigation.md
 │   ├── 04_ui_design_system.md
 │   ├── 05_data_model_erd.md
-│   ├── 06_api_contract_openapi.yaml  ← (فارغ)
 │   ├── 07_flutter_architecture.md    ← العمارة التقنية
-│   ├── 08_security_privacy.md
-│   ├── 09_testing_acceptance.md
-│   ├── 10_devops_release_observability.md
-│   ├── 11_ai_agent_operating_contract.md
 │   ├── 12_decision_log.md            ← القرارات المعمارية
 │   ├── 13_assumptions_risks.md
-│   ├── 14_admin_panel_specification.md ← (فارغ)
-│   ├── 15_support_operations_playbook.md ← (فارغ)
-│   ├── 16_implementation_backlog.md
-│   ├── 17_data_architecture_acid_constraints.md
-│   ├── 18_zero_trust_red_team_audit.md
+│   ├── 16_implementation_backlog.md  ← خطة البناء
 │   └── 19_financial_model_unit_economics.md
 └── docs/                    ← 23 ملف مرجعي
     ├── business/            ← SWOT, PESTLE, Porter, BMC, Pitch

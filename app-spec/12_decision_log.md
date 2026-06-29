@@ -14,6 +14,19 @@ None at Stage 0. All Stage 0 decisions below are closed.
 
 ## Closed Decisions
 
+### DEC-011: Preliminary Acceptance Received
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-06-28 |
+| **Status** | ✅ Closed |
+| **Summary** | AMAD hackathon preliminary acceptance received. Project advances to build phase. |
+| **Rationale** | Registration completed before June 1. Track confirmed: Financial Education. Team of 3 locked. |
+| **Impact** | 17-day countdown begins. Specification review phase (3 days) → Finalize (3 days) → Build sprint (~9 days) → Travel → Hackathon. |
+| **Related** | `00_project_context.md`, `docs/business/hackathon-strategy.md` |
+
+---
+
 ### DEC-001: 3-Tier System Architecture
 
 | Field | Value |
@@ -157,6 +170,7 @@ None at Stage 0. All Stage 0 decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-011 | Preliminary acceptance received | 2026-06-28 | ✅ |
 | DEC-001 | 3-tier system | 2026-05-21 | ✅ |
 | DEC-002 | Financial Education track | 2026-05-21 | ✅ |
 | DEC-003 | Hybrid architecture | 2026-05-16 | ✅ |

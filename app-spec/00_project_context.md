@@ -1,7 +1,7 @@
 # Azdal — Project Context
 
 > **Type:** Project-specific  
-> **Status:** Stage 0 — Planning  
+> **Status:** 🟢 Stage 0 — Planning (Accepted to AMAD Hackathon)  
 > **Last Updated:** 2026-06-29
 
 ---
@@ -23,11 +23,14 @@
 
 | Field | Value |
 |-------|-------|
-| Event | AMAD Hackathon |
+| Event | **AMAD Hackathon** |
 | Track | Financial Education (التعليم المالي) |
 | Dates | July 16-18, 2026 |
 | Location | Riyadh (mandatory attendance) |
-| Registration Deadline | June 1, 2026 |
+| Registration | ✅ **Completed** (before June 1 deadline) |
+| Acceptance | ✅ **Preliminary acceptance received — June 28, 2026** |
+| Days remaining | **~17 days** (June 29 → July 16) |
+| Current phase | Team review & feedback (Stage 0) |
 | Type | FinTech / AI / Education |
 
 ---
@@ -44,14 +47,17 @@
 
 ---
 
-## Key Deadlines
+## Key Timeline (Updated — June 29)
 
-| Date | Milestone |
-|------|-----------|
-| June 1, 2026 | AMAD registration deadline |
-| ~July 1 | Acceptance notifications |
-| July 14-15 | Travel to Riyadh |
-| July 16-18 | Hackathon days |
+| Date | Milestone | Status |
+|------|-----------|--------|
+| ~May 2026 | Registration submitted | ✅ Completed |
+| **June 28, 2026** | **Preliminary acceptance received** | ✅ **Received** |
+| **June 29 → July 2** | Team review of spec pack | 🔄 In progress |
+| July 3-5 | Apply feedback, finalize specs | ⬜ Pending |
+| July 5-14 | Implementation sprint (~9 days) | ⬜ Pending |
+| July 14-15 | Travel to Riyadh | ⬜ Pending |
+| **July 16-18** | **HACKATHON** | ⬜ Pending |
 
 ---
 
@@ -107,4 +113,5 @@ Azdal/
 ## Related
 - `00_product_discovery.md` — Full product vision
 - `docs/business/hackathon-strategy.md` — Detailed hackathon plan
-- `01_prd.md` — Product requirements
+- `REVIEW_GUIDE.md` — Current review process
+- `FEEDBACK.md` — Team feedback tracker

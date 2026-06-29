@@ -1,6 +1,6 @@
 # Azdal — Active Capabilities
 
-> **Status:** Stage 0 — Planning Phase  
+> **Status:** 🟢 Stage 0 — Team Review Phase (Accepted to AMAD)  
 > **Last Updated:** 2026-06-29
 
 ---
@@ -46,15 +46,23 @@
 | Behavioral science applied | Fogg, Eyal, Amabile, Kahneman | `00_product_discovery.md` |
 | Saudi-specific market layer | SAMA, CMA, PDPL, platforms | `docs/research/financial-knowledge-layer.md` |
 
+### ✅ COMPLETE — AMAD Hackathon Application
+
+| Capability | Evidence | File |
+|------------|----------|------|
+| Registration submitted | Before June 1 deadline | `00_project_context.md` |
+| **Preliminary acceptance** | **Received June 28, 2026** ✅ | `00_project_context.md` |
+| Track locked | Financial Education (التعليم المالي) | `docs/business/hackathon-strategy.md` |
+| Team registered | Abdulrahman + Saja + Deema | `00_project_context.md` |
+
 ---
 
 ### 🔄 IN PROGRESS
 
 | Capability | Status | Next Action |
 |------------|--------|-------------|
-| app-spec file creation | Creating all 25 files | Populate with synthesized content |
-| Kanban activation | Pending | Decompose into Stage 0 cards |
-| Git initialization | Pending | After all spec files created |
+| Team review of spec pack | June 29 → July 2 | All 3 members review assigned files per REVIEW_GUIDE.md |
+| Feedback collection | Active | Record all notes in FEEDBACK.md |
 
 ---
 

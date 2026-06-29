@@ -1,20 +1,20 @@
 # Azdal — Hackathon Strategy (Updated)
 
-> **Date:** 2026-05-22 (Updated after team brainstorming)
+> **Date:** 2026-06-29 (Updated — preliminary acceptance received)
 > **Source:** Official AMAD hackathon info + team session May 21
-> **Status:** Strategy updated — Track changed to Financial Education
+> **Status:** ✅ Preliminary acceptance received June 28 — 17 days to hackathon
 
 ---
 
-## Critical Dates
+## Critical Dates (Updated — June 29)
 
-| Date | Event |
-|------|-------|
-| **June 1** | Registration deadline |
-| ~July 1 | Acceptance emails |
-| July 16-18 | Hackathon days (Riyadh — mandatory attendance) |
+| Date | Event | Status |
+|------|-------|--------|
+| **Before June 1** | Registration submitted (project + team) | ✅ Completed |
+| **June 28** | Preliminary acceptance received | ✅ **Received** |
+| **July 16-18** | Hackathon days (Riyadh — mandatory attendance) | ⬜ 17 days |
 
-**You have until June 1 to lock: project description + team names.**
+**Registration completed ✅. Project description + team names locked.**
 
 ---
 
@@ -83,16 +83,17 @@ Saja's hackathon experience: Previously reached FINALS in AMAD with a family fin
 
 ---
 
-## Pre-Hackathon Preparation (June 1 - July 15)
+## Pre-Hackathon Preparation — 17-Day Plan (June 29 → July 16)
 
-| Week | Focus |
-|------|-------|
-| June Week 1 | Finish registration + lock team + find academic advisor |
-| June Week 2-3 | Build Chat + add_transaction |
-| June Week 4 | Build OCR pipeline |
-| July Week 1 | Build "Can I buy?" + Goals + Integrity Score |
-| July Week 2 | Polish, Demo Runbook, Judge Q&A drilling |
-| July 14-15 | Travel to Riyadh, setup |
+| Date | Focus | Stage |
+|------|-------|-------|
+| **June 29 → July 2** | Team review of spec pack + feedback collection | Review |
+| **July 3-5** | Apply feedback, finalize specs, lock MVP scope | Finalize |
+| **July 5-14** | Implementation sprint (~9 build days) | Build |
+| **July 14-15** | Travel to Riyadh, setup, demo rehearsal | Deploy |
+| **July 16-18** | **HACKATHON** | 🏆 |
+
+**⚠️ The original 4-week build plan must be compressed to ~9 days. Review `16_implementation_backlog.md` for scope cut decisions.**
 
 ---
 
@@ -108,12 +109,14 @@ Saja's hackathon experience: Previously reached FINALS in AMAD with a family fin
 
 ---
 
-## Critical Reminders
+## Critical Reminders (Updated — June 29)
 
-1. **سجل قبل 1 يونيو** — لا تؤجل
-2. **اختر مسار التعليم المالي** — لا غيره
-3. **الفريق ٣ أشخاص** — جاهزين ومتناسقين
-4. **السفر على حسابك** — احجز فندق قريب
-5. **المشروع MVP حقيقي** — تطبيق Flutter شغال
-6. **ملكية الفكرة** — اسأل طويق: @AskTuwaiq
-7. **ابحث عن مستشار مالي أكاديمي** — وجوده يعطي مصداقية هائلة
+1. ✅ **التسجيل تم** — اكتمل قبل 1 يونيو
+2. ✅ **المسار: التعليم المالي** — محدد
+3. ✅ **القبول المبدئي وصل** — 28 يونيو
+4. **الفريق ٣ أشخاص** — جاهزين ومتناسقين
+5. **السفر على حسابك** — احجز فندق + تذاكر فوراً
+6. **راجع نطاق MVP** — 9 أيام بناء بدلاً من 4 أسابيع كان مخطط لها
+7. **المشروع MVP حقيقي** — تطبيق Flutter شغال
+8. **ملكية الفكرة** — اسأل طويق: @AskTuwaiq
+9. **ابحث عن مستشار مالي أكاديمي** — وجوده يعطي مصداقية هائلة
