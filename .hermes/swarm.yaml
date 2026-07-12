@@ -17,10 +17,57 @@ meta:
   source_of_truth: "app-spec/"
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🔀 TASK ROUTING DECISION TREE — READ THIS FIRST
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# BEFORE SENDING ANY TASK, ASK YOURSELF:
+#
+#   Is this task SMALL (≤2 files, same folder, bug fix, simple config change)?
+#       │
+#       ├── YES ──▶ Send DIRECTLY to Sulaiman (default profile / this chat).
+#       │           DO NOT use /goal. DO NOT involve the swarm.
+#       │           Sulaiman will execute the fix himself.
+#       │
+#       │           Examples:
+#       │           - Fix a typo in one file
+#       │           - Update a config value
+#       │           - Change a color/token in theme
+#       │           - Add a simple method to existing class
+#       │           - Run flutter analyze and fix warnings
+#       │           - Search codebase for something
+#       │
+#       └── NO ──▶ This is an EPIC (3+ files, multi-domain, new feature,
+#                   architecture change, new screen, data model change).
+#                   │
+#                   └── Use /goal with FULL FORMAT (below) → Lead Architect
+#                       activates Kanban → decomposes → delegates to workers.
+#                       The Lead Architect NEVER writes code — he ONLY
+#                       orchestrates. If you see him writing code, STOP him.
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# TWO ROUTES — DO NOT CONFUSE THEM:
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+#   ROUTE A: Direct to Sulaiman (default profile)
+#   ─────────────────────────────────────────────
+#   WHEN: Task is small, ≤2 files, same folder, bug fix, config, simple change
+#   HOW: Just describe the task in this chat. No /goal. No Kanban.
+#   WHO: Sulaiman executes directly. No workers involved.
+#
+#   ROUTE B: /goal → Lead Architect → Kanban Swarm
+#   ─────────────────────────────────────────────
+#   WHEN: EPIC — 3+ files, multi-domain, new feature, new screen, data change
+#   HOW: Use /goal with the full template below
+#   WHO: Lead Architect decomposes into Kanban tasks → workers execute
+#   RULE: Lead Architect NEVER writes code. If he does, the task should've
+#         been Route A (direct to Sulaiman).
+#
+# ═══════════════════════════════════════════════════════════════════════════════
 # 🜔 THE LEADER — FLUTTER LEAD ARCHITECT (ORCHESTRATOR)
 # ═══════════════════════════════════════════════════════════════════════════════
-# This is the ONLY profile you talk to. You give it a /goal and it decomposes
-# into Kanban tasks, routing each to the appropriate worker below.
+# Route B ONLY. For small tasks, use Route A (Sulaiman directly).
+# The Lead Architect decomposes EPICs into Kanban tasks and routes them to
+# workers. He NEVER writes application code. NEVER assigns BUILD/FIX/QA to self.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 leader:
@@ -88,9 +135,17 @@ leader:
   max_turns: 1000  # orchestrators need 3-5× more turns (GL-003, GL-007)
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# HOW TO COMMAND THE LEADER — /goal PROMPT FORMAT
+# HOW TO COMMAND THE LEADER — /goal PROMPT FORMAT (ROUTE B — EPICs ONLY)
 # ═══════════════════════════════════════════════════════════════════════════════
-# 
+#
+# ⛔ WARNING: If your task is small (≤2 files, bug fix, simple change),
+#    DO NOT use this format. Send it directly to Sulaiman (this chat).
+#    The Lead Architect is an ORCHESTRATOR, not a coder. If you give him
+#    a small task, he will either (a) over-engineer it with Kanban cards,
+#    or worse (b) write the code himself — violating his own boundaries.
+#
+# ✅ Use /goal ONLY for EPICs requiring 2+ worker types to coordinate.
+#
 # You give orders to the Lead Architect using /goal. Here is the template:
 #
 # /goal
