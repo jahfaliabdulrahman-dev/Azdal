@@ -294,13 +294,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     chatNotifier.addUserMessage(text);
 
     // Get current state for history
-    final currentMessages = ref.read(chatProvider).messages;
+    final allMessages = ref.read(chatProvider).messages;
+
+    // Layer 1 (MoA): filter out user messages whose transactions were
+    // already confirmed — Gemini must never see old transaction texts
+    // since it has no way to know they were handled (bot confirmations
+    // are stripped from history).
+    final filteredHistory = allMessages.where((m) {
+      if (!m.isUser) return true;
+      return !_storedClassifications.containsKey(m.id);
+    }).toList();
 
     try {
-      // Call Gemini
+      // Call Gemini with filtered history
       final response = await geminiService.sendMessage(
         text,
-        history: currentMessages,
+        history: filteredHistory,
       );
 
       if (!mounted) return;
@@ -314,17 +323,38 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (response.widget != null) {
         final widgetType = response.widget!['widget'] as String?;
 
-        if (widgetType == 'quick_input_form' &&
+        // Layer 2 (MoA): NEVER trust the main chat response for
+        // transaction widgets. These MUST come through _tryAutoClassify.
+        // Only non-transaction widgets (summary_card, bar_chart,
+        // quick_input_form) pass through here.
+        final isTransactionWidget =
+            widgetType == 'compound_split_card' ||
+            widgetType == 'action_buttons';
+
+        if (isTransactionWidget) {
+          // Drop the widget — fall through to classification path.
+          // The response.text is still used for the bot message.
+        } else if (widgetType == 'quick_input_form' &&
             response.widget!['title'] == 'معلوماتك المالية') {
           // Cold start form — handled specially
+          chatNotifier.addBotMessage(
+            response.text,
+            widget: response.widget,
+          );
+        } else {
+          // Non-transaction widget — safe to show directly
+          chatNotifier.addBotMessage(
+            response.text,
+            widget: response.widget,
+          );
         }
 
-        chatNotifier.addBotMessage(
-          response.text,
-          widget: response.widget,
-        );
-      } else {
-        // Check if this looks like a transaction entry
+        // Only return if we actually showed a widget (not a dropped transaction widget)
+        if (!isTransactionWidget) return;
+      }
+
+      // ── Classification path (always reached for transactions) ──
+      // Check if this looks like a transaction entry
         final txResult = await _tryAutoClassify(text);
         if (txResult != null && mounted) {
           final txType = txResult['type'] as String?;
@@ -372,7 +402,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         } else {
           chatNotifier.addBotMessage(response.text, widget: response.widget);
         }
-      }
     } catch (e) {
       if (!mounted) return;
       chatNotifier.setError(e.toString());
