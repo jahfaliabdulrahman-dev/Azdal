@@ -27,15 +27,17 @@ void main() {
   });
 
   group('GeminiService ping', () {
-    test('returns false when API key is missing', () async {
+    test('asserts when API key is missing', () async {
       if (service.isConfigured) {
         // ignore: avoid_print
         print('=== AZDAL DEBUG: Skipping missing-key test — '
             'GEMINI_API_KEY is compiled in.');
         return;
       }
-      final result = await service.ping();
-      expect(result, isFalse);
+      expectLater(
+        service.ping(),
+        throwsA(isA<AssertionError>()),
+      );
     });
 
     test('returns true on successful round-trip', () async {

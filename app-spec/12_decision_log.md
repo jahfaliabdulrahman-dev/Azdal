@@ -193,6 +193,20 @@ None at Stage 0. All Stage 0 decisions below are closed.
 
 ---
 
+### DEC-015: Isar Local Storage Deferred (Post-Hackathon)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-12 |
+| **Status** | ✅ Closed |
+| **Summary** | Isar (`^3.1.0`) + `isar_flutter_libs` (`^3.1.0`) removed from `pubspec.yaml` (commented out, not deleted). No production code depends on Isar — zero functional impact. |
+| **Rationale** | Isar was re-enabled in pubspec.yaml earlier today (Stage-1 rework). Release builds (`flutter build apk --release`) failed with `AAPT: error: resource android:attr/lStar not found` during `isar_flutter_libs:verifyReleaseResources`. The working fix (patching `namespace` into `~/.pub-cache/hosted/pub.dev/isar_flutter_libs-3.1.0+1/android/build.gradle`) is a local-only hack — not reproducible on any other machine or CI runner. Isar 3.1.0 targets AGP 4.2; Azdal targets AGP 8.8. The AGP compatibility gap is the root cause. |
+| **Alternatives** | (A) Fork Isar and port to AGP 8+ — rejected: too large for hackathon timeline, and no code needs it yet. (B) `hive_ce` — considered but not evaluated; Isar's query performance was the original draw. (C) `drift` (SQLite) — also valid; evaluate alongside Isar fork when local caching is actually needed. |
+| **Impact** | `path_provider` stays (no AGP issues). When Stage 2 reaches a point that actually needs local caching (offline receipt storage, draft persistence), the task will explicitly evaluate either a maintained AGP 8-compatible Isar fork or an alternative (`drift`, `hive_ce`) — instead of patching the pub cache again. |
+| **Related** | `pubspec.yaml`, `07_flutter_architecture.md` |
+
+---
+
 ### DEC-014: Gemini API Key Shipped Client-Side (Hackathon MVP)
 | Field | Value |
 |-------|-------|
@@ -210,6 +224,7 @@ None at Stage 0. All Stage 0 decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-015 | Isar local storage deferred (post-hackathon) | 2026-07-12 | ✅ |
 | DEC-014 | Gemini API key shipped client-side (hackathon MVP accepted risk) | 2026-07-12 | ✅ |
 | DEC-013 | Visual identity amendment — shield+chart logo, light mode | 2026-07-12 | ✅ |
 | DEC-012 | Hala joins team (Presentations & Forms) | 2026-06-29 | ✅ |

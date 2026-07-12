@@ -34,7 +34,15 @@ final class GeminiService {
   /// Returns `false` if the compile-time key is empty, the network call
   /// fails, or the response is blocked.
   Future<bool> ping() async {
-    // ── Guard: no compile-time key ─────────────────────────────────
+    // ── Fail loud — never silently proceed with empty credentials ──
+    assert(
+      _apiKey.isNotEmpty,
+      'GEMINI_API_KEY is empty.\n'
+      'Build with:  flutter build apk --dart-define-from-file=.env\n'
+      'Or use:      bash scripts/build_debug.sh',
+    );
+
+    // ── Guard: no compile-time key (release builds strip asserts) ──
     if (_apiKey.isEmpty) {
       // ignore: avoid_print
       print('=== AZDAL DEBUG: Gemini ping SKIPPED — '

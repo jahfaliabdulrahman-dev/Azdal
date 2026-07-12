@@ -37,8 +37,8 @@ dependencies:
   go_router: ^14.0.0                    # Declarative routing (single route)
   
   # Local Storage
-  isar_flutter_libs: ^3.1.0             # Isar local cache
-  isar: ^3.1.0
+  # isar_flutter_libs: ^3.1.0           # Isar local cache — deferred DEC-015
+  # isar: ^3.1.0                        # Isar — deferred DEC-015
   path_provider: ^2.1.0
 
 dev_dependencies:
