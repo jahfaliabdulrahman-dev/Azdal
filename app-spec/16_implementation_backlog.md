@@ -1,19 +1,31 @@
 # Azdal — Implementation Backlog & Build Plan
 
-> **Status:** Populated — Stage 0 Plan  
+> **Status:** Populated — Reconciled 2026-07-12 against real runway  
 > **Source:** Synthesized from `docs/business/build-plan.md` and `docs/business/hackathon-strategy.md`
 
 ---
 
 ## Overview
 
-**Total build window:** 4 weeks (pre-hackathon) + hackathon refinement  
 **MVP scope:** Tier 1 Coach — 8 features  
-**Team:** Abdulrahman (Flutter/AI) + Deema (UI) + Saja (Business/Pitch)
+**Team:** Abdulrahman (Flutter/AI, + AI agent swarm per `.hermes/swarm.yaml`) + Deema (UI) + Saja (Business/Pitch) + Hala (Forms/Presentation)
+
+### Revised Timeline (2026-07-12) — the original 4-week / 9-day plan is void
+
+As of today, `lib/` and `test/` are still empty and `pubspec.yaml` is a stub — **zero code written**, against a plan that assumed 9 build days ending July 14. That plan is gone. Good news: AMAD is now **online, no travel** — the 2 days that were going to be lost to travel (July 14-15) are recovered as build time.
+
+| Window | Dates | What happens |
+|--------|-------|---------------|
+| Build sprint | **July 12-15** (~3.5 days) | Stage 1-4 below — scaffold through Goals/Integrity. This is the core feature build. |
+| Event window | **July 16-18** (3 days, online) | Stage 5 — testing, audit, demo polish, pitch rehearsal, and any cut-list items if the sprint finishes early. Real working time, not just a presentation slot. |
+
+**Total estimated effort across Stage 1-5: ~101 hours.** Across ~6.5 available days that's ~15h/day solo — not sustainable for one person. This is exactly why the AI agent swarm (`.hermes/swarm.yaml`, currently marked "Activated during Stage 1+") needs to switch on **today**, not get deferred — solo manual coding at this pace doesn't close the gap.
+
+**If the swarm isn't ready to activate today:** cut scope, don't cut sleep. Re-check the cut list in Risk Mitigation below daily, starting from Stage 4 polish items inward.
 
 ---
 
-## Stage 1 — Project Init (Week 0)
+## Stage 1 — Project Init (July 12, today)
 
 **Goal:** Flutter scaffold + Gemini connection
 
@@ -27,7 +39,7 @@
 
 ---
 
-## Stage 2 — Chat + Transaction Entry (Week 1)
+## Stage 2 — Chat + Transaction Entry (July 12-13)
 
 **Goal:** Working chat with AI + voice/text transaction logging
 
@@ -44,7 +56,7 @@
 
 ---
 
-## Stage 3 — OCR + "Can I Buy?" (Week 2)
+## Stage 3 — OCR + "Can I Buy?" (July 13-14)
 
 **Goal:** Receipt scanning + purchase decision engine
 
@@ -61,7 +73,7 @@
 
 ---
 
-## Stage 4 — Goals + Integrity + Polish (Week 3)
+## Stage 4 — Goals + Integrity + Polish (July 14-15)
 
 **Goal:** Savings goals, integrity score, Tier 2 simulation
 
@@ -80,7 +92,7 @@
 
 ---
 
-## Stage 5 — Testing, Audit, Polish (Week 4 + Hackathon Prep)
+## Stage 5 — Testing, Audit, Polish (July 16-18, online event window)
 
 **Goal:** All tests pass, demo rehearsed, pitch ready
 
@@ -96,6 +108,7 @@
 | DEMO-03 | Backup recorded video demo | Team | DEMO-01 | 2h |
 | PITCH-01 | Pitch deck polish (Deema — visual) | UI/UX Designer | None | 4h |
 | PITCH-02 | Judge Q&A drilling (Saja leads) | Team | PITCH-01 | 2h |
+| MON-01 | **Stretch, non-functional.** Static "Premium unlock" / course-store teaser card in-app (lock icon, price, CTA that does nothing or shows "coming soon") — visual proof of Day-1 revenue model for judges. Zero backend, zero payment logic. Build only after Stage 2-4 are demo-stable | State Engineer | Stage 2-4 complete | 1h |
 
 ---
 
@@ -122,12 +135,12 @@ Stage 2-4 → QA-01, QA-02, QA-03, QA-04
 
 ## Parallel Work Opportunities
 
-| Week | Parallel Tasks |
-|------|---------------|
-| Week 1 | CHAT-01 (+ QA CHAT-08 in parallel) |
-| Week 2 | OCR-01/02 + BUY-01 (in parallel) |
-| Week 3 | GOAL-01 + INTG-01 (in parallel) |
-| Week 4 | QA + Audit + Demo (all parallel) |
+| Window | Parallel Tasks |
+|--------|---------------|
+| July 12-13 (Stage 2) | CHAT-01 (+ QA CHAT-08 in parallel) |
+| July 13-14 (Stage 3) | OCR-01/02 + BUY-01 (in parallel) |
+| July 14-15 (Stage 4) | GOAL-01 + INTG-01 (in parallel) |
+| July 16-18 (Stage 5) | QA + Audit + Demo (all parallel) |
 
 ---
 
@@ -137,7 +150,7 @@ Stage 2-4 → QA-01, QA-02, QA-03, QA-04
 |------|-----------|
 | Gemini API issues | DeepSeek fallback, local mock responses |
 | GenUI/A2UI beta fails | Native Flutter widgets from same JSON schemas |
-| Time runs short | Cut SIM-02 (Tier 2 simulation) first. Core 6 features non-negotiable. |
+| Time runs short | Cut MON-01 (monetization teaser card) first, then SIM-02 (Tier 2 simulation). Core 6 features non-negotiable. |
 
 ---
 

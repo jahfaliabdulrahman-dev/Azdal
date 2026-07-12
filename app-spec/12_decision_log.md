@@ -179,10 +179,25 @@ None at Stage 0. All Stage 0 decisions below are closed.
 
 ---
 
+### DEC-013: Visual Identity Amendment — Logo & Theme
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-12 |
+| **Status** | ✅ Closed — supersedes part of DEC-007 |
+| **Summary** | Logo changed from Solomon's Seal (🜔) to a shield + upward bar-chart icon. Theme changed from dark-mode-only to light mode. Cairo font, Western numerals, Navy #001F5E + Cyan #32C2FF unchanged from DEC-007. |
+| **Rationale** | Both the actual production logo asset and the AMAD demo deck screenshots (Visily mockups) had already diverged from the original spec — shield+chart icon in use, light-theme screens throughout. Resolved via the team's open-questions review (7 items in `FEEDBACK.md`) by updating the spec to match what was actually built rather than rebuilding assets to match a stale spec, given ~4 days to AMAD. |
+| **Alternatives** | (A) Revert logo to Solomon's Seal and rebuild mockups in dark mode — rejected: no time, and light mode already reads fine in the existing demo screens. |
+| **Impact** | `04_ui_design_system.md` (color palette + layout rule), `docs/design/visual-identity.md` (logo section) updated to match. Any future dark-mode work is a post-hackathon nice-to-have, not MVP scope. |
+| **Related** | `04_ui_design_system.md`, `docs/design/visual-identity.md`, `FEEDBACK.md` |
+
+---
+
 ## Decision Summary
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-013 | Visual identity amendment — shield+chart logo, light mode | 2026-07-12 | ✅ |
 | DEC-012 | Hala joins team (Presentations & Forms) | 2026-06-29 | ✅ |
 | DEC-011 | Preliminary acceptance received | 2026-06-28 | ✅ |
 | DEC-001 | 3-tier system | 2026-05-21 | ✅ |

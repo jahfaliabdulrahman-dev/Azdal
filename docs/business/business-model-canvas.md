@@ -1,6 +1,7 @@
 # Azdal — Business Model Canvas (BMC)
 
 > **Date:** 2026-05-22 (Updated — BNPL credit scoring focus)
+> **Updated:** 2026-07-12 — added Phase 1 freemium (subscription + pay-per-course) revenue, Corporate Wellness B2B, and future Advisor Marketplace. See `../../app-spec/02_monetization_entitlements.md` for full detail; this file stays as the canvas-level summary.
 > **Purpose:** Complete business model for hackathon + post-hackathon phases
 
 ---
@@ -51,21 +52,22 @@
 ├──────────────────────────────┴──────────────────────────────────┤
 │ COST STRUCTURE                         │ REVENUE STREAMS         │
 │                                        │                        │
-│ • Gemini API: ~$1.50/user/month        │ PHASE 1: Coach         │
-│ • Supabase: Free → $25/month           │ • B2C: FREE            │
-│ • Apple/Google: 0% (free app)          │                        │
-│ • Development: Solo/small team         │ PHASE 2: B2B Insights  │
-│ • Marketing: Organic X + hackathon     │ • Behavioral Credit    │
-│ • Total MVP burn: ~$50-100/month       │   Score API per query  │
-│                                        │ • Monthly subscription │
-│                                        │   for lending partners │
+│ • Gemini API: ~$1.50/user/month        │ PHASE 1: Coach freemium│
+│ • Supabase: Free → $25/month           │ • Free core + 49-79    │
+│ • Apple/Google: 0% (free app)          │   SAR/mo subscription  │
+│ • Development: Solo/small team         │ • Pay-per-course       │
+│ • Marketing: Organic X + hackathon     │                        │
+│ • Total MVP burn: ~$50-100/month       │ PHASE 2: Affiliate+B2B │
+│                                        │ • Bank/investment/     │
+│                                        │   installment referral │
+│                                        │ • Behavioral Credit    │
+│                                        │   Score + Corp Wellness│
 │                                        │                        │
 │                                        │ PHASE 3: Smart Lender  │
 │                                        │ • Murabaha margins     │
 │                                        │                        │
-│                                        │ PHASE 4: Wealth        │
-│                                        │ • Investment referral  │
-│                                        │   commissions          │
+│                                        │ PHASE 4 (future):      │
+│                                        │ • Advisor Marketplace  │
 └────────────────────────────────────────┴────────────────────────┘
 ```
 
@@ -120,18 +122,30 @@
 
 ## 3. Revenue Streams (Phased)
 
-### Phase 1: Hackathon MVP — Free
-No revenue. Focus = validation + winning.
+> Full detail lives in `../../app-spec/02_monetization_entitlements.md`. Summary below.
 
-### Phase 2: B2B Behavioral Credit Insights (Year 1-2)
+### Phase 1: Coach — Freemium (Hackathon → Year 1)
 
 | Stream | Model | Price |
 |--------|-------|-------|
-| **API per query** | BNPL company queries score before approving loan | 5-15 SAR/query |
-| **Monthly subscription** | Up to 1,000 queries/month | 5,000 SAR/month |
-| **Enterprise** | Unlimited queries + dashboard | Custom |
+| Free core | Tracking, receipt scan/OCR, chat, "Can I buy?", Integrity Score | $0 |
+| Premium subscription | Unlimited AI advisor, predictive planning, advanced PDF reports | 49-79 SAR/month |
+| Pay-per-course | Independent purchase — debt-elimination, beginner investing, etc. | 29 SAR (distress topics) / 59 SAR (growth topics) |
 
-Target: 10 BNPL/finance partners × 5,000 SAR/month = 50,000 SAR/month.
+Gives judges/investors a Day-1 revenue story, not just a future promise. Hackathon build ships the free core only — subscription/courses are pitch narrative for now.
+
+### Phase 2: Affiliate, Lead-Gen & B2B Insights (Year 1-2)
+
+| Stream | Model | Price |
+|--------|-------|-------|
+| Bank/investment referral | Behavior-triggered commission for ready-to-convert users | Commission per conversion |
+| Installment referral | Route within computed "safe limit" or budget-fit products | Commission per conversion |
+| Behavioral Credit Score (API) | BNPL company queries score before approving loan | 5-15 SAR/query |
+| Behavioral Credit Score (subscription) | Up to 1,000 queries/month | 5,000 SAR/month |
+| Enterprise | Unlimited queries + dashboard | Custom |
+| Corporate Wellness | Annual employer subscription, Azdal as employee benefit | Custom/annual |
+
+Target: 10 BNPL/finance partners × 5,000 SAR/month = 50,000 SAR/month (credit score line alone).
 
 ### Phase 3: Smart Lending (Year 3+)
 
@@ -140,12 +154,11 @@ Target: 10 BNPL/finance partners × 5,000 SAR/month = 50,000 SAR/month.
 | Murabaha margins | Islamic installment financing to Tier 2 users |
 | Lower default rate → higher effective margin than competitors |
 
-### Phase 4: Investment Referrals (Year 3+)
+### Phase 4 (Future Plans): Financial Advisor Marketplace
 
 | Stream | Model |
 |--------|-------|
-| Referral commission | Route users with surplus to investment platforms |
-| Per-user fee | Partners pay for qualified investor leads |
+| Booking commission | Connect users to licensed human financial advisors for paid consultations |
 
 ---
 
@@ -202,6 +215,6 @@ Key insight: ONE B2B client at 5,000 SAR/month covers all costs.
 
 ## BMC Summary
 
-> **Free AI financial coach for Saudi consumers → Behavioral data for credit scoring → Sell insights to BNPL/finance companies → Become the smart lender.**
+> **Free-core AI financial coach for Saudi consumers, with a premium subscription and course store for Day-1 revenue → Behavioral data for credit scoring → Sell insights to BNPL/finance companies and corporates → Become the smart lender.**
 >
 > **المستخدم يدخل مديونًا — ويخرج مستثمرًا.**

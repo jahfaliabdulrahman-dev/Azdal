@@ -21,12 +21,16 @@
 
 ## 2. Unit Economics — Per Active User
 
-### Revenue (Free Tier)
+### Revenue (Phase 1 — Freemium, Updated 2026-07-12)
 
 | Source | Per User/Month | Notes |
 |--------|---------------|-------|
-| B2C Direct | $0 | Free forever |
+| B2C Free core | $0 | Majority of users — tracking, OCR, chat, "Can I buy?" |
+| B2C Premium subscription | ~$13-21 (49-79 SAR) | Only for converted subscribers. **Conversion rate not yet estimated — needs a team assumption (industry freemium benchmark: 2-5%) before this can roll into blended ARPU.** |
+| Pay-per-course | ~$7.75 (29 SAR) / ~$15.75 (59 SAR) | Priced 2026-07-12. Expected purchases/user/year not yet estimated |
 | B2B Credit Score (Phase 2) | $0.50-$1.50 | Per query, varies by partner |
+
+**Note:** the blended per-user revenue below still uses $0 (pre-subscription) since conversion rate isn't locked yet — treat Phase 1 economics as conservative/floor numbers until the team sets that assumption.
 
 ### Cost Per User/Month
 

@@ -1,58 +1,61 @@
 # Azdal — Visual Identity Guidelines
 
 > **Date:** 2026-05-20
-> **Source:** Gemini logo design + Sulaiman spec
+> **Amended:** 2026-07-12 (DEC-013) — logo and theme updated to match what's actually in production/the AMAD deck, not the original brief
+> **Source:** Gemini logo design + Sulaiman spec (superseded logo/theme sections below)
 
 ---
 
 ## 1. Logo
 
 ### Primary Logo
-- **File:** `AZDAL Logo.png` (5.6MB — print-ready)
-- **Design:** Solomon's Seal (🜔) shield with digital circuit weave patterns
+- **File:** `assets/branding/azdal-logo.png`
+- **Design:** Shield outline in a navy-to-cyan gradient, containing three ascending bars (bar chart) with a diagonal upward sweep beneath them — reads as "growth, protected"
 - **Arabic text:** "أزدل" in geometric Kufic script
-- **Tagline (Arabic):** "أزدل — درعك المالي"
+- **Tagline (Arabic):** "أزدل — من مديون... إلى مستثمر"
 - **Tagline (English):** "Azdal — Spend Aware"
+
+**Note:** the original brief called for a Solomon's Seal (🜔) symbol. That was dropped at some point before the AMAD submission in favor of the shield+chart mark below — nobody logged the change, so this doc was stale until the 2026-07-12 team review (see `FEEDBACK.md` Q2, `12_decision_log.md` DEC-013).
 
 ### Logo Elements
 
 | Element | Description |
 |---------|-------------|
-| 🜔 Solomon's Seal | Central symbol — wisdom, strength, protection |
+| Ascending bar chart | Central symbol — growth, financial progress |
 | Shield shape | Financial protection and resilience |
-| Digital circuit weave | Technology/AI integration |
-| Geometric paths | Financial journey, guidance |
-| Navy background | #001F5E — trust, authority |
-| Cyan accents | #32C2FF — intelligence, clarity |
+| Diagonal sweep | Momentum, forward motion |
+| Navy-to-cyan gradient | #001F5E → #32C2FF — trust transitioning to growth/clarity |
 
 ### Logo Variations
 
 | Use Case | Format |
 |----------|--------|
-| App icon | 🜔 symbol only, navy background, cyan seal outline |
-| Splash screen | Full logo + tagline on navy background |
-| App header | 🜔 icon (small) + "أزدل" text |
+| App icon | Shield+chart mark only, navy-cyan gradient |
+| Splash screen | Full logo + tagline "من مديون... إلى مستثمر" on light background |
+| App header | Shield+chart icon (small) + "أزدل" text |
 | Pitch deck / Dark BG | White/cyan version on navy |
-| Pitch deck / Light BG | Navy version on white |
+| Pitch deck / Light BG | Navy-cyan gradient version on white |
 
 ---
 
-## 2. Color Palette
+## 2. Color Palette — Light Mode (amended 2026-07-12, DEC-013)
+
+> Values below are proposed light-theme equivalents inferred from the AMAD demo screenshots, keeping Navy/Cyan as the unchanged brand anchors. **Not pixel-exact** — confirm against Deema's actual Visily source file before final build.
 
 | Role | Name | Hex | Usage |
 |------|------|-----|-------|
 | **Primary** | Navy | `#001F5E` | App header, bot bubbles, logo background, primary buttons |
 | **Secondary** | Cyan | `#32C2FF` | Highlights, chart bars, active states, send button, links |
-| **Surface** | Dark Gray | `#1B1B1F` | Main app background |
-| **Input Bar** | Input Gray | `#161B22` | Bottom input bar background |
-| **Card** | Card Gray | `#161B22` | Cards, elevated surfaces |
-| **User Bubble** | Bubble Gray | `#30363D` | User message bubbles |
-| **On Surface** | White | `#E6E1E5` | Primary text |
-| **Muted** | Gray | `#8B949E` | Secondary text, timestamps, placeholders |
-| **Success** | Green | `#3FB950` | Positive verdicts, completed states |
-| **Warning** | Yellow | `#D29922` | Caution, "wait" verdict |
-| **Danger** | Red | `#F85149` | Negative verdicts, "no" states |
-| **Border** | Border Gray | `#30363D` | Subtle borders for cards and inputs |
+| **Surface** | Off-White | `#F7F8FA` | Main app background |
+| **Input Bar** | Light Gray | `#F1F3F5` | Bottom input bar background |
+| **Card** | Card White | `#FFFFFF` | Cards, elevated surfaces (with subtle border/shadow) |
+| **User Bubble** | Light Navy Tint | `#E3E8F5` | User message bubbles |
+| **On Surface** | Near-Black | `#1B1B1F` | Primary text |
+| **Muted** | Gray | `#6B7280` | Secondary text, timestamps, placeholders |
+| **Success** | Green | `#2E7D32` | Positive verdicts, completed states |
+| **Warning** | Amber | `#B7791F` | Caution, "wait" verdict |
+| **Danger** | Red | `#D32F2F` | Negative verdicts, "no" states |
+| **Border** | Border Gray | `#E1E4E8` | Subtle borders for cards and inputs |
 
 ---
 
@@ -81,7 +84,7 @@
 |----------|-------|
 | **Family** | **Noto Kufi Arabic** or geometric Kufic (for Arabic "أزدل") |
 | **Usage** | Logo ONLY — not in app UI |
-| **Why** | Kufic = geometric, timeless, Islamic heritage. Matches 🜔 seal aesthetic. |
+| **Why** | Kufic = geometric, timeless, Islamic heritage. Matches the shield mark's geometric aesthetic. |
 
 ---
 
@@ -102,7 +105,7 @@
 |---------|------|
 | Logo clear space | Minimum 1x logo height on all sides |
 | App icon | 1024×1024 px source (standard iOS/Android) |
-| 🜔 symbol | Always centered in its container |
+| Shield+chart mark | Always centered in its container |
 
 ---
 
@@ -121,8 +124,8 @@
 
 | File | Type | Size | Status |
 |------|------|------|--------|
-| `AZDAL Logo.png` | Full logo | 5.6MB | ✅ Ready |
-| App icon (to generate) | 🜔 on navy bg | 1024×1024 | ⬜ Needed |
-| Splash screen (to generate) | Logo + tagline | 1284×2778 | ⬜ Needed |
-| Favicon | 🜔 | 32×32 | ⬜ Needed |
+| `azdal-logo.png` | Full logo (shield+chart) | — | ✅ Ready |
+| App icon (to generate) | Shield+chart on navy-cyan gradient | 1024×1024 | ⬜ Needed |
+| Splash screen | Logo + tagline, light background | 1284×2778 | ✅ In deck (Visily) |
+| Favicon | Shield+chart mark | 32×32 | ⬜ Needed |
 | Pitch deck logo | Light + Dark variants | SVG | ⬜ Needed |

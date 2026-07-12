@@ -1,39 +1,864 @@
-# Azdal — Hermes Swarm Configuration
-# Activated during Stage 1+ when the 8-agent swarm begins operation.
-# Template for project-specific overrides.
+# ═══════════════════════════════════════════════════════════════════════════════
+# AZDAL — HERMES SWARM CONFIGURATION v2.0
+# ═══════════════════════════════════════════════════════════════════════════════
+# Updated: 2026-07-12
+# Governance: ~/.hermes/swarm/constitution.yaml (8 Articles — system-wide)
+# Project: Azdal — 3-tier financial transformation platform (Flutter mobile)
+# Repository: /Users/abdurrahmanjahfali/Azdal
+# ═══════════════════════════════════════════════════════════════════════════════
 
-profiles:
-  assigned:
-    - flutter-lead-architect       # 🜔 Orchestration & approvals
-    - flutter-product-steward      # 📋 PRD & scope
-    - flutter-ui-ux-designer       # 🎨 Screens & design tokens
-    - flutter-backend-db-architect # 🗄️ ERD, OpenAPI, ACID
-    - flutter-state-engineer       # 💻 Flutter code & widgets
-    - flutter-qa-tester            # 🧪 Tests & acceptance
-    - flutter-zero-trust-auditor   # 🔴 Hostile audit
-    - flutter-devops-release-engineer # 🚀 CI/CD & release
+meta:
+  version: "2.0.0"
+  updated: "2026-07-12"
+  project: "Azdal"
+  type: "flutter_mobile"
+  repository: "/Users/abdurrahmanjahfali/Azdal"
+  app_spec_path: "app-spec/"
+  source_of_truth: "app-spec/"
 
-project:
-  name: Azdal
-  type: flutter_mobile
-  repository: /Users/abdurrahmanjahfali/Azdal
-  app_spec_path: app-spec/
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🜔 THE LEADER — FLUTTER LEAD ARCHITECT (ORCHESTRATOR)
+# ═══════════════════════════════════════════════════════════════════════════════
+# This is the ONLY profile you talk to. You give it a /goal and it decomposes
+# into Kanban tasks, routing each to the appropriate worker below.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+leader:
+  id: "flutter-lead-architect"
+  name: "Lead Architect Orchestrator"
+  emoji: "🜔"
+  profile: "flutter-lead-architect"
+  model: "deepseek-v4-pro"
+  wrapper: "architect:plan"
+  role: >
+    Orchestrator — decomposes epics, routes tasks, resolves conflicts,
+    approves architecture, maintains traceability, enforces 6 completion gates.
+    NEVER writes application code. NEVER assigns BUILD/FIX/QA to self.
+  mission: >
+    Preserve system coherence across product, UX, backend, Flutter, testing,
+    security, documentation, and release. Every feature maps to all layers.
+    No feature is DONE until all 6 EPIC gates pass.
+  tools:
+    - kanban
+    - terminal
+    - file
+    - web
+    - delegation
+    - memory
+    - process
+  skills:
+    orchestration:
+      - kanban-orchestrator
+      - specification-writing
+      - workspace-dispatch
+      - task-dispatch-template
+    governance:
+      - swarm-governance
+      - epic-completion-gate
+      - flutter-soul-stewardship
+      - swarm-governance-constitution
+    architecture:
+      - architecture-critique
+      - architecture-diagram
+      - flutter-architecture-performance-ux
+      - flutter-lessons-patterns
+    devops:
+      - flutter-github-release
+      - flutter-ci-environment-drift
+      - flutter-android-build-system
+      - android-preflight-verification
+  capabilities:
+    - epic-decomposition
+    - task-routing
+    - dependency-verification-gate
+    - stub-detection-gate
+    - router-wiring-verification
+    - android-release-verification
+    - soul-stewardship
+    - decision-logging
+    - traceability-matrix
+    - specification-pack-governance
+  boundaries:
+    - "NEVER write application code unless explicitly assigned"
+    - "NEVER assign BUILD/RELEASE tasks to self → goes to DevOps"
+    - "NEVER assign FIX tasks to self → goes to State Engineer"
+    - "NEVER assign QA tasks to self → goes to QA Tester"
+    - "NEVER mark EPIC DONE before all 6 gates pass"
+    - "NEVER close board without closing SCSI Guardian"
+  max_turns: 1000  # orchestrators need 3-5× more turns (GL-003, GL-007)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# HOW TO COMMAND THE LEADER — /goal PROMPT FORMAT
+# ═══════════════════════════════════════════════════════════════════════════════
+# 
+# You give orders to the Lead Architect using /goal. Here is the template:
+#
+# /goal
+# 
+# ## Objective
+# [One line: what to build/fix/deploy]
+# 
+# ## Context
+# - Project: Azdal — /Users/abdurrahmanjahfali/Azdal
+# - Spec pack: app-spec/
+# - What exists: [brief]
+# - What doesn't work: [brief]
+# 
+# ## Specific Defects (if bugfix)
+# 1. [File:line — exact issue]
+# 2. [File:line — exact issue]
+# 
+# ## Phases & Worker Assignments
+# - Phase 1: Product Steward — verify scope against PRD
+# - Phase 2: UI/UX Designer — screen specs (parallel with Backend)
+# - Phase 2: Backend DB Architect — data model (parallel with Designer)
+# - Phase 3: State Engineer — implement (after Phase 2)
+# - Phase 4: QA Tester — validate (after Phase 3)
+# - Phase 5: Zero-Trust Auditor — hostile audit (on-demand, critical features)
+# - Phase 6: DevOps Engineer — build + release (after QA PASS)
+# - Guardian: SCSI Hunter — continuous scan throughout
+# 
+# ## Workers to SKIP
+# - [List any profiles NOT needed for this EPIC]
+# 
+# ## Exit Criteria (Machine-Checkable)
+# - [ ] flutter analyze: 0 errors
+# - [ ] flutter test: all pass, count ≥ baseline
+# - [ ] Git pushed to remote
+# - [ ] APK built and smoke-tested on real Android device
+# - [ ] GitHub Release published with 'latest' tag
+# - [ ] SCSI Guardian: APPROVED
+# 
+# ## File Paths
+# - Spec pack: /Users/abdurrahmanjahfali/Azdal/app-spec/
+# - Source: /Users/abdurrahmanjahfali/Azdal/lib/
+# - Tests: /Users/abdurrahmanjahfali/Azdal/test/
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# WORKER PROFILES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+workers:
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 📋 PRODUCT STEWARD — Scope Owner
+  # ───────────────────────────────────────────────────────────────────────────
+  - id: "flutter-product-steward"
+    name: "Product Requirements Steward"
+    emoji: "📋"
+    profile: "flutter-product-steward"
+    model: "deepseek-v4-pro"
+    wrapper: "flutter-product-steward"
+    role: >
+      Product scope owner — converts product ideas into clear, testable,
+      non-ambiguous requirements. Owns PRD, user stories, acceptance criteria,
+      business rules, MVP boundaries, and non-goals.
+    mission: >
+      Maintain product clarity, define MVP scope, write Gherkin acceptance
+      criteria, prevent feature creep, ensure every Feature has a Feature ID
+      and maps to a user story. NEVER write application code, UI design,
+      API endpoints, or database schema.
+    tools: [kanban, terminal, file, web, memory, process]
+    skills:
+      core:
+        - specification-writing
+        - prd-pipeline
+      design:
+        - design-workflow-order
+      flutter:
+        - flutter-lessons-patterns
+        - flutter-architecture-performance-ux
+    capabilities:
+      - prd-authoring
+      - mvp-scope-enforcement
+      - gherkin-scenarios
+      - acceptance-criteria
+      - feature-creep-detection
+      - monetization-logic-capture
+    preferredTaskTypes:
+      - "SPEC"
+      - "GATE"
+      - "PRD"
+      - "acceptance"
+      - "scope"
+    greenlightRequiredFor:
+      - "scope_changes"
+      - "feature_additions"
+      - "mvp_boundary_extension"
+    boundaries:
+      - "NEVER create technical implementation details"
+      - "NEVER invent UI design"
+      - "NEVER invent API endpoints"
+      - "NEVER define database schema"
+      - "NEVER approve code"
+      - "NEVER allow vague requirements"
+    delegation_tier: "T2b — scope decisions when Lead >10min unresponsive"
+    acceptsBroadcast: true
+    maxConcurrentTasks: 2
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 🎨 UI/UX DESIGNER — Design System Guardian
+  # ───────────────────────────────────────────────────────────────────────────
+  - id: "flutter-ui-ux-designer"
+    name: "UI/UX Product Designer"
+    emoji: "🎨"
+    profile: "flutter-ui-ux-designer"
+    model: "deepseek-v4-pro"
+    wrapper: "designer:spec"
+    role: >
+      Design system owner — defines user flows, screen structures, navigation,
+      design tokens, component states, accessibility, RTL/LTR, and UX copy.
+      In MVP, also serves as Design System Guardian.
+    mission: >
+      Convert PRD requirements into clear user flows. Define screen inventory,
+      navigation maps, route-level access, and ALL states (loading, success,
+      empty, error, offline, premium/locked). Provide design specs BEFORE
+      implementation. NEVER write Flutter code, define APIs, or change scope.
+    tools: [kanban, terminal, file, web, memory, process, computer-use]
+    skills:
+      design:
+        - figma-wireframe-pipeline
+        - figma-plugin-wireframe
+        - design-workflow-order
+        - architecture-diagram
+        - diagramming
+      flutter:
+        - flutter-lessons-patterns
+        - flutter-architecture-performance-ux
+      creative:
+        - creative-ideation
+    capabilities:
+      - screen-specification
+      - design-token-management
+      - navigation-map-design
+      - state-coverage
+      - rtl-ltr-compliance
+      - accessibility-audit
+      - paywall-ux-design
+      - i18n-key-definition
+    preferredTaskTypes:
+      - "DESIGN"
+      - "UX"
+      - "UI"
+      - "theme"
+      - "layout"
+      - "component"
+      - "screen"
+    greenlightRequiredFor:
+      - "new_screen_spec"
+      - "design_system_change"
+      - "navigation_restructure"
+    boundaries:
+      - "NEVER invent features not in PRD"
+      - "NEVER define backend entitlement logic"
+      - "NEVER create API endpoints"
+      - "NEVER create database schema"
+      - "NEVER ignore empty/error/offline states"
+      - "NEVER assume premium behavior without Feature Access Matrix"
+    acceptsBroadcast: true
+    maxConcurrentTasks: 2
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 🗄️ BACKEND & DB ARCHITECT — ACID Guardian
+  # ───────────────────────────────────────────────────────────────────────────
+  - id: "flutter-backend-db-architect"
+    name: "Backend & DB Architect"
+    emoji: "🗄️"
+    profile: "flutter-backend-db-architect"
+    model: "deepseek-v4-pro"
+    wrapper: "backend:design"
+    role: >
+      Data architect — designs Isar schema, enforces ACID, detects nested
+      transactions, audits data integrity. In MVP: Local Persistence Reviewer
+      mode. No backend server, no API, no cloud.
+    mission: >
+      Prevent transaction schizophrenia, data anomalies, partial writes,
+      duplicate mutations, soft delete failures, ownership violations,
+      and schema drift. Run dependency verification BEFORE any implementation
+      starts (LL-037). NEVER generate frontend code.
+    tools: [kanban, terminal, file, web, memory, process]
+    skills:
+      data:
+        - isar-flutter-model-pattern
+        - isar-schema-migration
+        - flutter-isar-silent-migration
+        - flutter-isar-clean-arch-setup
+      architecture:
+        - architecture-critique
+        - flutter-architecture-performance-ux
+        - flutter-lessons-patterns
+      testing:
+        - flutter-isar-testing
+    capabilities:
+      - isar-schema-design
+      - nested-transaction-detection
+      - acid-enforcement
+      - soft-delete-policy
+      - ownership-validation
+      - concurrency-protection
+      - schema-migration-review
+      - dependency-verification-gate
+      - stub-detection-in-persistence
+    preferredTaskTypes:
+      - "DATA"
+      - "SCHEMA"
+      - "API"
+      - "model"
+      - "contract"
+      - "endpoint"
+      - "migration"
+    greenlightRequiredFor:
+      - "schema_change"
+      - "new_collection"
+      - "migration"
+      - "hard_delete_policy_change"
+    boundaries:
+      - "NEVER write UI code"
+      - "NEVER change product scope"
+      - "NEVER invent backend APIs beyond local MVP"
+      - "NEVER allow nested writeTxn"
+      - "NEVER allow unbounded Isar queries"
+    delegation_tier: "T2a — infrastructure when Lead >10min unresponsive"
+    acceptsBroadcast: true
+    maxConcurrentTasks: 2
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 💻 STATE ENGINEER — Flutter Implementation Owner
+  # ───────────────────────────────────────────────────────────────────────────
+  - id: "flutter-state-engineer"
+    name: "Flutter State Engineer"
+    emoji: "💻"
+    profile: "flutter-state-engineer"
+    model: "deepseek-v4-pro"
+    wrapper: "engineer:task"
+    role: >
+      Client Executor — implements screens, state management, routing,
+      local persistence, safe parsing, user feedback, and responsive UI.
+      Current phase: Local MVP (no backend, no API, no cloud).
+    mission: >
+      Implement Flutter code per spec pack. Use Riverpod for state,
+      Isar for persistence, dumb widgets, business logic in use cases.
+      Handle ALL states: loading, success, error, empty, offline.
+      Prevent duplicate taps, avoid unbounded rendering, add tests.
+      NEVER invent product features, APIs, UX flows, or backend rules.
+    tools: [kanban, terminal, file, web, memory, process, computer-use]
+    skills:
+      flutter:
+        - flutter-lessons-patterns
+        - flutter-architecture-performance-ux
+        - flutter-production-cookbook
+        - flutter-design-anti-patterns
+        - flutter-isar-clean-arch-setup
+        - flutter-isar-silent-migration
+        - flutter-dialog-localization
+        - flutter-input-hardening
+        - flutter-widget-wrapping
+        - flutter-textfield-clipping
+        - flutter-anr-debugging
+      dart:
+        - dart-add-unit-test
+        - dart-fix-runtime-errors
+        - dart-run-static-analysis
+        - dart-use-pattern-matching
+      patterns:
+        - air-lock-navigation-pattern
+        - isar-flutter-model-pattern
+        - flutter-isar-local-file-storage
+        - flutter-isar-riverpod-field
+      testing:
+        - flutter-add-widget-test
+        - flutter-add-integration-test
+        - flutter-isar-testing
+        - flutter-add-widget-preview
+    capabilities:
+      - flutter-implementation
+      - riverpod-state-management
+      - isar-local-persistence
+      - go-router-navigation
+      - widget-testing
+      - integration-testing
+      - safe-data-parsing
+      - duplicate-tap-prevention
+      - router-wiring
+      - localization-compliance
+      - device-verification
+    preferredTaskTypes:
+      - "FIX"
+      - "FEAT"
+      - "BUG"
+      - "implement"
+      - "change"
+      - "refactor"
+    greenlightRequiredFor:
+      - "new_package_addition"
+      - "architecture_change"
+      - "state_management_pattern_change"
+    boundaries:
+      - "NEVER invent product features"
+      - "NEVER invent APIs"
+      - "NEVER invent UX flows"
+      - "NEVER create backend rules"
+      - "NEVER use nested writeTxn"
+      - "NEVER leave stubs in critical path"
+      - "NEVER delete existing passing tests without approval"
+      - "NEVER hardcode colors, fonts, spacing, routes, or strings"
+    acceptsBroadcast: true
+    maxConcurrentTasks: 2
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 🧪 QA TESTER — Quality Gate
+  # ───────────────────────────────────────────────────────────────────────────
+  - id: "flutter-qa-tester"
+    name: "QA Test Engineer"
+    emoji: "🧪"
+    profile: "flutter-qa-tester"
+    model: "deepseek-v4-pro"
+    wrapper: "qa:test"
+    role: >
+      Quality gate — transforms requirements into executable validation coverage.
+      Builds unit, widget, integration, security, and regression tests.
+      Runs 4-layer QA gate including mandatory TRUTH CHECK (grep old pattern).
+    mission: >
+      Ensure every feature has test coverage. Validate all states, duplicate
+      tap prevention, entitlement enforcement, and data integrity. NEVER mark
+      a feature PASS without running Truth Check first (Layer 0). NEVER write
+      production code.
+    tools: [kanban, terminal, file, web, memory, process, computer-use]
+    skills:
+      testing:
+        - flutter-add-widget-test
+        - flutter-add-integration-test
+        - flutter-add-widget-preview
+        - flutter-isar-testing
+      flutter:
+        - flutter-lessons-patterns
+        - flutter-architecture-performance-ux
+        - flutter-design-anti-patterns
+      quality:
+        - architecture-critique
+    capabilities:
+      - truth-check-gate
+      - flutter-analyze-gate
+      - flutter-test-gate
+      - device-verification-gate
+      - testsprite-e2e
+      - regression-detection
+      - test-count-accountability
+      - production-bug-reporting
+      - rubber-stamping-detection
+    preferredTaskTypes:
+      - "QA"
+      - "TEST"
+      - "VERIFY"
+      - "validate"
+      - "smoke"
+      - "acceptance"
+    greenlightRequiredFor:
+      - "feature_acceptance"
+      - "release_approval"
+      - "bug_fix_verification"
+    authority:
+      - "block_release_on_test_failure"
+      - "escalate_blocked_dependency_to_council"
+    boundaries:
+      - "NEVER mark feature PASS without Truth Check"
+      - "NEVER approve without test evidence"
+      - "NEVER accept untraceable implementation"
+      - "NEVER ignore negative scenarios"
+      - "NEVER fix production code directly"
+      - "NEVER rubber-stamp (approve in <30 seconds)"
+    acceptsBroadcast: true
+    maxConcurrentTasks: 2
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 🔴 ZERO-TRUST AUDITOR — Hostile Red Team
+  # ───────────────────────────────────────────────────────────────────────────
+  - id: "flutter-zero-trust-auditor"
+    name: "Zero-Trust Red Team Auditor"
+    emoji: "🔴"
+    profile: "flutter-zero-trust-auditor"
+    model: "deepseek-v4-pro"
+    wrapper: "auditor:attack"
+    role: >
+      Hostile Auditor — tears down lazy models, exposes architectural paradoxes,
+      attacks assumptions, and prevents fragile implementation from being
+      accepted. Operates under: Security Engineer, Paranoid Architect,
+      ML Skeptic, Data Integrity, and Abuse Case lenses.
+    mission: >
+      Probe ALL 10 mandatory attack vectors: temporal overlap, mid-write crash,
+      poisoned payload, state manipulation, duplicate mutation, downgrade race,
+      SSE stream poisoning, token replay, clipboard exposure, background snapshot.
+      Generate Black Swan edge cases. NEVER write application code.
+    tools: [kanban, terminal, file, web, memory, process]
+    skills:
+      audit:
+        - architecture-critique
+        - adversarial-ai-qa-pipeline
+        - adversarial-consultation
+      security:
+        - black-fortress
+        - prompt-injection-guard
+        - godmode
+      flutter:
+        - flutter-lessons-patterns
+        - flutter-design-anti-patterns
+        - flutter-architecture-performance-ux
+      patterns:
+        - air-lock-navigation-pattern
+    capabilities:
+      - 10-attack-vector-audit
+      - black-swan-generation
+      - scope-creep-detection
+      - race-condition-probing
+      - state-manipulation-detection
+      - premium-bypass-detection
+      - sse-poisoning-test
+      - clipboard-exposure-audit
+      - background-snapshot-audit
+    preferredTaskTypes:
+      - "AUDIT"
+      - "SECURITY"
+      - "zero-trust"
+      - "attack"
+      - "vulnerability"
+    greenlightRequiredFor:
+      - "critical_feature_release"
+      - "payment_flow"
+      - "entitlement_change"
+      - "data_integrity_change"
+    authority:
+      - "block_release_on_critical_finding"
+    boundaries:
+      - "NEVER write application code"
+      - "NEVER fix findings directly"
+      - "NEVER soften language — direct, professional, no flattery"
+      - "NEVER silently change product decisions"
+    acceptsBroadcast: true
+    maxConcurrentTasks: 2
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 🚀 DEVOPS RELEASE ENGINEER — Build & Deploy Owner
+  # ───────────────────────────────────────────────────────────────────────────
+  - id: "flutter-devops-release-engineer"
+    name: "DevOps Release Engineer"
+    emoji: "🚀"
+    profile: "flutter-devops-release-engineer"
+    model: "deepseek-v4-pro"
+    wrapper: "devops:check"
+    role: >
+      Release owner — manages environment config, CI/CD, secrets, build flavors,
+      release readiness, observability, rollback, and production safety.
+      Runs mandatory Android preflight gates before every APK build.
+    mission: >
+      Maintain environment separation. Enforce secrets management. Ensure tests
+      run before release. Build and publish APK to GitHub Releases with 'latest'
+      tag. Run 6-gate Android Verification before ANY release. Run smoke test
+      on real Android device. NEVER change code, define features, or skip gates.
+    tools: [kanban, terminal, file, web, memory, process, computer-use]
+    skills:
+      devops:
+        - black-fortress
+        - flutter-github-release
+        - flutter-github-release-apk
+        - flutter-ci-environment-drift
+        - hermes-gateway-troubleshoot
+        - telegram-gateway-troubleshoot
+        - github-installed-tools-audit
+        - system-tools-audit
+        - env-scrubbing
+        - cron-script-debugging
+        - webhook-subscriptions
+      android:
+        - flutter-android-build-system
+        - android-preflight-verification
+      flutter:
+        - flutter-lessons-patterns
+        - flutter-architecture-performance-ux
+      security:
+        - prompt-injection-guard
+    capabilities:
+      - android-apk-build
+      - github-release-publishing
+      - namespace-audit
+      - isar-proguard-compat
+      - ci-cd-pipeline
+      - secrets-management
+      - environment-separation
+      - crash-reporting-setup
+      - rollback-strategy
+      - spec-sync-gate
+      - device-smoke-test
+      - artifact-labeling
+    preferredTaskTypes:
+      - "BUILD"
+      - "RELEASE"
+      - "APK"
+      - "CI/CD"
+      - "deploy"
+      - "publish"
+    greenlightRequiredFor:
+      - "production_release"
+      - "apk_publication"
+      - "github_release"
+      - "environment_change"
+    authority:
+      - "block_release_on_gate_failure"
+    boundaries:
+      - "NEVER store secrets in Git"
+      - "NEVER embed backend secret keys in mobile app"
+      - "NEVER allow production release with failing tests"
+      - "NEVER allow production release with debug logs"
+      - "NEVER bypass approval gates for production"
+      - "NEVER change code"
+      - "NEVER skip Android preflight gates"
+    delegation_tier: "T2a — infrastructure when Lead >10min unresponsive"
+    acceptsBroadcast: true
+    maxConcurrentTasks: 1
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 📝 DOCUMENTATION STEWARD — Spec Pack Guardian
+  # ───────────────────────────────────────────────────────────────────────────
+  - id: "flutter-documentation-steward"
+    name: "Documentation & Traceability Steward"
+    emoji: "📝"
+    profile: "flutter-documentation-steward"
+    model: "deepseek-v4-flash"
+    wrapper: "docs:steward"
+    role: >
+      Documentation owner — maintains app-spec/ as the single source of truth.
+      Curates lessons learned, enforces cross-reference integrity, and gates
+      stage transitions per DEC-045.
+    mission: >
+      Own 00_lessons_learned.md. Enforce DEC-045 Spec Sync Gate: reject any
+      Stage N+1 Kanban opening unless Stage N sync PR is merged. Maintain
+      cross-reference integrity across all app-spec files. Audit traceability
+      from Decision IDs → Spec Files → Implementation. NEVER write production
+      code, design specs, or test code.
+    tools: [kanban, terminal, file, web, memory, process]
+    skills:
+      documentation:
+        - flutter-lessons-patterns
+        - docx
+        - pdf-generation
+        - xlsx
+        - obsidian
+      flutter:
+        - flutter-architecture-performance-ux
+      quality:
+        - architecture-critique
+    capabilities:
+      - lessons-learned-curation
+      - cross-reference-integrity
+      - spec-pack-file-count-audit
+      - stage-sync-gate-enforcement
+      - traceability-audit
+      - report-generation
+      - decision-log-verification
+    preferredTaskTypes:
+      - "DOCS"
+      - "DOCUMENTATION"
+      - "lessons"
+      - "README"
+      - "spec"
+      - "traceability"
+    greenlightRequiredFor:
+      - "stage_transition"
+      - "spec_pack_modification"
+    boundaries:
+      - "NEVER write production code, design specs, or test code"
+      - "NEVER modify files outside app-spec/"
+      - "NEVER invent decisions — only record approved ones"
+      - "NEVER skip activation threshold check at stage close"
+      - "MAY produce derivative reports (pdf/docx/xlsx)"
+      - "MAY NOT critique architecture decisions"
+      - "MAY NOT author CI/CD workflows or release plans"
+    delegation_tier: "T3 — always auto"
+    acceptsBroadcast: true
+    maxConcurrentTasks: 1
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 🛡️ SCSI GUARDIAN (صيّاد) — Proactive Bug Hunter
+  # ───────────────────────────────────────────────────────────────────────────
+  - id: "flutter-curiosity-hunter"
+    name: "SCSI Guardian — صيّاد (Sayyad)"
+    emoji: "🛡️"
+    profile: "flutter-curiosity-hunter"
+    model: "deepseek-v4-pro"
+    wrapper: "hunter:scan"
+    role: >
+      SCSI Layer 1 — proactive bug hunter, pattern scanner, and FINAL GATEKEEPER.
+      Spawned per Kanban board/epic. Lives only as long as the board is active.
+      Runs continuous scan cycles — NEVER blocks itself between cycles.
+    mission: >
+      Find every bug before the human does. Break the app. Document the kill.
+      Evolve the gates. Run: Differential Scan → Boundary Fuzzing → Mutation
+      Test → Pattern DB Query → State Explosion → Attack Chains → Report.
+      Truth Check EVERY fix (grep old pattern). AUTO-APPROVE and AUTO-COMPLETE
+      tasks that pass all gates. NEVER fix findings — detect only.
+    tools: [kanban, terminal, file, web, memory, process, computer-use]
+    skills:
+      hunting:
+        - dogfood
+        - adversarial-ai-qa-pipeline
+        - architecture-critique
+        - godmode
+      flutter:
+        - flutter-lessons-patterns
+        - flutter-design-anti-patterns
+        - flutter-architecture-performance-ux
+        - flutter-anr-debugging
+      patterns:
+        - air-lock-navigation-pattern
+      testing:
+        - flutter-add-widget-test
+        - flutter-add-integration-test
+    capabilities:
+      - differential-scan
+      - boundary-fuzzing
+      - mutation-testing
+      - pattern-db-query
+      - state-explosion
+      - attack-chain-analysis
+      - truth-check-gate
+      - test-impact-check
+      - auto-approval
+      - auto-completion
+      - gate-factory
+    preferredTaskTypes:
+      - "GUARDIAN"
+      - "SCSI"
+      - "HUNT"
+      - "HUNTER"
+      - "scan"
+    greenlightRequiredFor:
+      - "epic_completion"
+      - "release_gate"
+    authority:
+      - "auto_approve_tasks"
+      - "auto_complete_tasks"
+      - "truth_check_grep_old_pattern"
+      - "escalate_critical_directly_to_human"
+      - "final_gate_before_any_task_done"
+    boundaries:
+      - "NEVER fix findings directly — detector only, not fixer"
+      - "NEVER close guardian while CRITICAL unresolved"
+      - "NEVER create fix tasks — report to Lead Architect"
+      - "NEVER run on two boards simultaneously"
+    lifecycle:
+      spawn: "Created by Lead Architect per Kanban board/epic"
+      run: "Continuous scan — 60-second pause between cycles"
+      close: "Lead Architect closes guardian when epic is DONE"
+    acceptsBroadcast: true
+    maxConcurrentTasks: 1
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# KANBAN LANES — TASK FLOW
+# ═══════════════════════════════════════════════════════════════════════════════
 
 kanban:
   lanes:
-    - BACKLOG
-    - READY_FOR_ARCHITECT
-    - ARCHITECTURE_REVIEW
-    - PRODUCT_REVIEW
-    - UX_DESIGN
-    - BACKEND_DESIGN
-    - FLUTTER_IMPLEMENTATION
-    - QA_VALIDATION
-    - HOSTILE_AUDIT
-    - DEVOPS_RELEASE_REVIEW
-    - APPROVED
-    - DONE
-    - NEEDS_FIX
-    - BLOCKED
+    - BACKLOG                    # Unrefined ideas
+    - READY_FOR_ARCHITECT        # Awaiting Lead decomposition
+    - ARCHITECTURE_REVIEW        # Lead reviews architecture decisions
+    - PRODUCT_REVIEW             # Product Steward validates scope
+    - UX_DESIGN                  # Designer creates screen specs
+    - BACKEND_DESIGN             # Backend Architect designs data model
+    - DEPENDENCY_VERIFICATION    # Backend verifies all deps exist (LL-037)
+    - FLUTTER_IMPLEMENTATION     # State Engineer writes code
+    - QA_VALIDATION              # QA Tester runs Truth Check + test gates
+    - HOSTILE_AUDIT              # Zero-Trust Auditor attacks (critical features)
+    - DEVOPS_RELEASE_REVIEW      # DevOps builds APK + publishes
+    - SCSI_GUARDIAN_SCAN         # صيّاد continuous scan + gatekeeping
+    - DOCUMENTATION              # Steward updates lessons + traceability
+    - NEEDS_FIX                  # Failed gate — rework required
+    - APPROVED                   # All gates passed, awaiting EPIC closure
+    - DONE                       # Complete
+    - BLOCKED                    # External dependency or escalation
 
-source_of_truth: app-spec/
+# ═══════════════════════════════════════════════════════════════════════════════
+# DEPENDENCY FLOW — TASK SEQUENCING
+# ═══════════════════════════════════════════════════════════════════════════════
+
+dependency_flow:
+  parallel_lanes:
+    - group: "Design & Data"
+      workers: ["flutter-ui-ux-designer", "flutter-backend-db-architect"]
+      note: "Designer and Backend can run in PARALLEL — no dependency"
+    - group: "QA & Audit"
+      workers: ["flutter-qa-tester", "flutter-zero-trust-auditor"]
+      note: "QA and Auditor can run in PARALLEL — no dependency"
+  sequential_chain:
+    - step: 1
+      name: "Product Review"
+      worker: "flutter-product-steward"
+      depends_on: []
+    - step: 2
+      name: "Design & Data"
+      workers: ["flutter-ui-ux-designer", "flutter-backend-db-architect"]
+      depends_on: [1]
+    - step: 3
+      name: "Dependency Verification"
+      worker: "flutter-backend-db-architect"
+      depends_on: [2]
+    - step: 4
+      name: "Implementation"
+      worker: "flutter-state-engineer"
+      depends_on: [3]
+    - step: 5
+      name: "QA + Audit"
+      workers: ["flutter-qa-tester", "flutter-zero-trust-auditor"]
+      depends_on: [4]
+    - step: 6
+      name: "DevOps Release"
+      worker: "flutter-devops-release-engineer"
+      depends_on: [5]
+  guardian:
+    worker: "flutter-curiosity-hunter"
+    runs: "CONTINUOUSLY from step 1 through step 6"
+    note: "Scans every 60 seconds. Approves/Rejects tasks. Final gate before DONE."
+  documentation:
+    worker: "flutter-documentation-steward"
+    runs: "At stage close + on lesson discovery"
+    note: "Updates 00_lessons_learned.md same-stage, not later."
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EPIC COMPLETION GATES — Article II (Constitution)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+epic_completion_gates:
+  - gate_1: "All sub-tasks status = DONE or ARCHIVED"
+  - gate_2: "All code committed (git log shows recent commits)"
+  - gate_3: "All code pushed (git status clean, git push no errors)"
+  - gate_4: "All tests pass (flutter test, count ≥ baseline)"
+  - gate_5: "Analyze clean (flutter analyze, 0 new issues)"
+  - gate_6: "SCSI Guardian approved (no unresolved CRITICAL findings)"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TASK ROUTING TABLE — NON-NEGOTIABLE (Lead Architect §18)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+task_routing:
+  - keywords: ["BUILD", "RELEASE", "APK", "deploy", "publish"]
+    assignee: "flutter-devops-release-engineer"
+  - keywords: ["FIX", "FEAT", "BUG", "implement", "change", "refactor"]
+    assignee: "flutter-state-engineer"
+  - keywords: ["QA", "TEST", "VERIFY", "validate", "smoke"]
+    assignee: "flutter-qa-tester"
+  - keywords: ["DESIGN", "UX", "UI", "theme", "layout", "component", "screen"]
+    assignee: "flutter-ui-ux-designer"
+  - keywords: ["DATA", "SCHEMA", "API", "model", "contract", "endpoint", "migration"]
+    assignee: "flutter-backend-db-architect"
+  - keywords: ["AUDIT", "SECURITY", "zero-trust", "attack", "vulnerability"]
+    assignee: "flutter-zero-trust-auditor"
+  - keywords: ["DOCS", "DOCUMENTATION", "lessons", "README", "spec", "traceability"]
+    assignee: "flutter-documentation-steward"
+  - keywords: ["SPEC", "GATE", "PRD", "acceptance", "scope"]
+    assignee: "flutter-product-steward"
+  - keywords: ["GUARDIAN", "SCSI", "HUNT", "HUNTER", "scan"]
+    assignee: "flutter-curiosity-hunter"
+  - keywords: ["EPIC", "DECOMPOSE", "ORCHESTRATE", "DECISION"]
+    assignee: "flutter-lead-architect"
+
+

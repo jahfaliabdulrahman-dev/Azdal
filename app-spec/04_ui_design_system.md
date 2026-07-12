@@ -1,26 +1,28 @@
 # Azdal — UI Design System
 
-> **Status:** Locked  
+> **Status:** Locked — amended 2026-07-12 (DEC-013), see `12_decision_log.md`  
 > **Source:** Synthesized from `docs/design/design-system-original.md` and `docs/design/visual-identity.md`
 
 ---
 
-## Color Palette
+## Color Palette — Light Mode
+
+> Switched from the original dark-mode-only spec to match what's actually in the AMAD demo screenshots. Values below are proposed light equivalents — confirm exact hex against Deema's Visily source before final build.
 
 | Role | Name | Hex | Usage |
 |------|------|-----|-------|
 | **Primary** | Navy | `#001F5E` | App header, bot bubbles, logo BG, primary buttons |
 | **Secondary** | Cyan | `#32C2FF` | Highlights, charts, active states, send button, links |
-| **Surface** | Dark Gray | `#1B1B1F` | Main app background |
-| **Input Bar** | Input Gray | `#161B22` | Bottom input bar background |
-| **Card** | Card Gray | `#161B22` | Cards, elevated surfaces |
-| **User Bubble** | Bubble Gray | `#30363D` | User message bubbles |
-| **On Surface** | White | `#E6E1E5` | Primary text |
-| **Muted** | Gray | `#8B949E` | Secondary text, timestamps, placeholders |
-| **Success** | Green | `#3FB950` | Positive verdicts, completed states |
-| **Warning** | Yellow | `#D29922` | Caution, "wait" verdict |
-| **Danger** | Red | `#F85149` | Negative verdicts, "no" states |
-| **Border** | Border Gray | `#30363D` | Subtle borders |
+| **Surface** | Off-White | `#F7F8FA` | Main app background |
+| **Input Bar** | Light Gray | `#F1F3F5` | Bottom input bar background |
+| **Card** | Card White | `#FFFFFF` | Cards, elevated surfaces (subtle border/shadow) |
+| **User Bubble** | Light Navy Tint | `#E3E8F5` | User message bubbles |
+| **On Surface** | Near-Black | `#1B1B1F` | Primary text |
+| **Muted** | Gray | `#6B7280` | Secondary text, timestamps, placeholders |
+| **Success** | Green | `#2E7D32` | Positive verdicts, completed states |
+| **Warning** | Amber | `#B7791F` | Caution, "wait" verdict |
+| **Danger** | Red | `#D32F2F` | Negative verdicts, "no" states |
+| **Border** | Border Gray | `#E1E4E8` | Subtle borders |
 
 ---
 
@@ -72,7 +74,7 @@
 | Rule | Details |
 |------|---------|
 | Single screen | Chat only — no navigation |
-| Dark mode ONLY | No light mode variant |
+| Light mode ONLY | No dark mode variant (changed 2026-07-12, DEC-013 — dark mode may return post-hackathon) |
 | RTL layout | All text right-aligned |
 | Western numerals | 1, 2, 3 NOT ١, ٢, ٣ |
 | Currency format | "1,250 ريال" or "1,250 SAR" |
