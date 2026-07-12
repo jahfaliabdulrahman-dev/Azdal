@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+// OCR-02: System share sheet — disabled (receive_sharing_intent broken)
+// import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app_router.dart';
@@ -60,10 +61,11 @@ Future<void> main() async {
         'user_id: ${supabase.auth.currentUser?.id}');
   }
 
-  // ── System Share Sheet (Stage 3 OCR) ──
-  // Listen for incoming shared images from other apps.
-  // On Android, the stream emits the initial intent immediately.
-  // We store the path and let ChatScreen pick it up.
+  // ── System Share Sheet (Stage 3 OCR) ── DISABLED
+  // receive_sharing_intent package has a kotlin() build error with AGP 8.x.
+  // Will be re-enabled when we find a working version or alternative package.
+  // When re-enabled, uncomment the stream listener below.
+  /*
   ReceiveSharingIntent.getMediaStream().listen(
     (List<SharedMediaFile> files) {
       if (files.isNotEmpty) {
@@ -72,7 +74,6 @@ Future<void> main() async {
           // ignore: avoid_print
           print('=== AZDAL DEBUG: Shared image received — '
               'path=${file.path}');
-          // The ChatScreen handles this via the provider.
           _pendingSharedImage = file.path;
         }
       }
@@ -82,6 +83,7 @@ Future<void> main() async {
       print('=== AZDAL DEBUG: Share intent stream error — $err');
     },
   );
+  */
 
   runApp(const ProviderScope(child: AzdalApp()));
 }
