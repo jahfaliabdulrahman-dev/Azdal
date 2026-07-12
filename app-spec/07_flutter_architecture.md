@@ -17,7 +17,7 @@
 | Calculate balances | SQL (Supabase) | Deterministic, no hallucination |
 | Financial projections | Python (Edge Functions) | Controlled math |
 | Data storage | Supabase PostgreSQL | Persistent, ACID |
-| Voice input | Apple Speech (on-device) | Free, instant, private |
+| Voice input | speech_to_text (Android SpeechRecognizer) | Cross-platform, on-device |
 | OCR receipt scanning | Gemini Vision | Best Arabic OCR |
 
 ---
@@ -49,7 +49,7 @@
 │                INFRASTRUCTURE                 │
 │  Supabase Edge Functions (Python)             │
 │  Gemini API (Cloud)                           │
-│  Apple Speech (On-Device)                     │
+│  speech_to_text (Android SpeechRecognizer)    │
 └──────────────────────────────────────────────┘
 ```
 
@@ -64,8 +64,8 @@ Frontend:
   UI: Material 3 (Arabic RTL — dark mode only)
   Dynamic UI: Flutter GenUI SDK + A2UI protocol
   Local Cache: Isar (SQLite for offline/recent)
-  Voice: Apple Speech (on-device STT)
-  TTS: AVSpeechSynthesizer (on-device)
+  Voice: speech_to_text (Android SpeechRecognizer)
+  TTS: flutter_tts (cross-platform)
   Routing: go_router (single route — chat)
 
 Backend:

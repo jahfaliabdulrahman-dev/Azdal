@@ -52,5 +52,7 @@ Azdal follows the Flutter Operation Global Contract in its entirety:
 | `flutter_riverpod` | State management | Pre-approved |
 | `receive_sharing_intent` | System share sheet | Pre-approved |
 | `image_picker` | Camera/gallery | Pre-approved |
+| `speech_to_text` | Voice input (Android SpeechRecognizer) | Pre-approved |
+| `flutter_tts` | Text-to-speech output | Pre-approved |
 
 All other packages require Lead Architect escalation per Global Contract Rule 7.

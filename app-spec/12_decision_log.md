@@ -193,6 +193,20 @@ None at Stage 0. All Stage 0 decisions below are closed.
 
 ---
 
+### DEC-016: Voice/TTS Platform Corrected — iOS-Only → Cross-Platform Android-First
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-12 |
+| **Status** | ✅ Closed |
+| **Summary** | Voice input and TTS specs corrected from iOS-only Apple frameworks (`Apple Speech`, `AVSpeechSynthesizer`) to cross-platform packages (`speech_to_text`, `flutter_tts`). Azdal is Android-only — the previous specs referenced APIs not accessible on the target platform. |
+| **Rationale** | `07_flutter_architecture.md` §1, §2, and §3 all specified Apple Speech and AVSpeechSynthesizer — iOS/macOS on-device frameworks with no Android equivalent. `speech_to_text` wraps Android's native `SpeechRecognizer` (same on-device privacy properties) and provides an identical Dart API if iOS is ever added. `flutter_tts` is the standard cross-platform TTS package. Both are now pre-approved in `00_project_overrides.md` per Global Contract Rule 7. |
+| **Alternatives** | (A) Keep Apple-only specs and add conditional platform channels — rejected: unnecessary complexity for a platform the app doesn't target. (B) `record` + cloud STT — rejected: adds latency and network dependency for basic voice input. |
+| **Impact** | `07_flutter_architecture.md` §1 table, §2 layer diagram, and §3 stack block updated. `00_project_overrides.md` package exceptions table updated. No code changes — voice input is Stage 3 scope. |
+| **Related** | `07_flutter_architecture.md`, `00_project_overrides.md`, `01_prd.md §194` |
+
+---
+
 ### DEC-015: Isar Local Storage Deferred (Post-Hackathon)
 
 | Field | Value |
@@ -224,6 +238,7 @@ None at Stage 0. All Stage 0 decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-016 | Voice/TTS platform corrected — iOS-only → cross-platform Android-first | 2026-07-12 | ✅ |
 | DEC-015 | Isar local storage deferred (post-hackathon) | 2026-07-12 | ✅ |
 | DEC-014 | Gemini API key shipped client-side (hackathon MVP accepted risk) | 2026-07-12 | ✅ |
 | DEC-013 | Visual identity amendment — shield+chart logo, light mode | 2026-07-12 | ✅ |
