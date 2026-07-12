@@ -8,6 +8,11 @@
 #   - Test runner (flutter test)  → Stage 2
 #   - Build (flutter build)       → Stage 3
 #   - Deploy / release            → Stage 4
+#
+# NOTE: Building this project requires --dart-define-from-file=.env
+# (see scripts/build_debug.sh). flutter analyze does NOT need credentials
+# because String.fromEnvironment() returns '' at analysis time and the
+# asserts don't fire at compile time — no build step = no flag needed.
 # =============================================================================
 
 name: Azdal CI — Lint

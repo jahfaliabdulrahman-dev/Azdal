@@ -5,12 +5,33 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app/app_router.dart';
 import 'app/theme.dart';
 
+// ── Compile-time credentials (injected via --dart-define-from-file=.env) ──
+// These are baked into the APK at build time — NOT read from the OS
+// process environment.  On Android `Platform.environment` does NOT contain
+// the developer's shell vars.
+const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+const _supabaseKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // ── Fail loud — never silently proceed with empty credentials ──
+  assert(
+    _supabaseUrl.isNotEmpty,
+    'SUPABASE_URL is empty.\n'
+    'Build with:  flutter build apk --dart-define-from-file=.env\n'
+    'Or use:      bash scripts/build_debug.sh',
+  );
+  assert(
+    _supabaseKey.isNotEmpty,
+    'SUPABASE_ANON_KEY is empty.\n'
+    'Build with:  flutter build apk --dart-define-from-file=.env\n'
+    'Or use:      bash scripts/build_debug.sh',
+  );
+
   await Supabase.initialize(
-    url: 'https://kqhyjngtquutzdvjfbnf.supabase.co',
-    publishableKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxaHlqbmd0cXV1dHpkdmpmYm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5NjYxMjMsImV4cCI6MjA2NzU0MjEyM30.bP4rPq7IFb2fnmCrYqhziQ7hBa48o6rIlEULskL6Bik',
+    url: _supabaseUrl,
+    publishableKey: _supabaseKey,
   );
 
   runApp(const ProviderScope(child: AzdalApp()));

@@ -193,10 +193,24 @@ None at Stage 0. All Stage 0 decisions below are closed.
 
 ---
 
+### DEC-014: Gemini API Key Shipped Client-Side (Hackathon MVP)
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-12 |
+| **Status** | ✅ Closed — accepted risk for hackathon |
+| **Summary** | The Gemini API key is compiled into the APK via `--dart-define-from-file=.env`. Any client-side key is extractable by reverse-engineering the APK. This is a known, accepted risk for the hackathon MVP. |
+| **Rationale** | Building a backend proxy (Supabase Edge Function) to mediate all Gemini calls is the proper long-term fix, but it adds latency, a new failure domain, and ~4h of work that the hackathon timeline cannot absorb. The key is a free-tier key with low quota — abuse surface is minimal. |
+| **Alternatives** | (A) Backend proxy now — rejected: too large for hackathon timeline. (B) Hardcode the key — rejected: `--dart-define-from-file` at least keeps it out of version control. |
+| **Impact** | The key will be rotated post-hackathon. A Supabase Edge Function proxy task is added to the post-MVP backlog. This decision is tracked so it doesn't become a silent production gap. |
+| **Related** | `07_flutter_architecture.md §9`, `16_implementation_backlog.md`, `scripts/build_debug.sh` |
+
+---
+
 ## Decision Summary
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-014 | Gemini API key shipped client-side (hackathon MVP accepted risk) | 2026-07-12 | ✅ |
 | DEC-013 | Visual identity amendment — shield+chart logo, light mode | 2026-07-12 | ✅ |
 | DEC-012 | Hala joins team (Presentations & Forms) | 2026-06-29 | ✅ |
 | DEC-011 | Preliminary acceptance received | 2026-06-28 | ✅ |

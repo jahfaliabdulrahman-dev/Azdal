@@ -37,8 +37,8 @@ dependencies:
   go_router: ^14.0.0                    # Declarative routing (single route)
   
   # Local Storage
-  # isar_flutter_libs: ^3.1.0           # Isar local cache (Stage 2+ — needs AGP namespace fix)
-  # isar: ^3.1.0                        # Stage 2+ — needs AGP namespace fix
+  isar_flutter_libs: ^3.1.0             # Isar local cache
+  isar: ^3.1.0
   path_provider: ^2.1.0
 
 dev_dependencies:
@@ -51,17 +51,17 @@ flutter:
   uses-material-design: true
 
   # TODO(INIT-05): Uncomment Cairo fonts when font files are downloaded to assets/fonts/
-  # fonts:
-  #   - family: Cairo
-  #     fonts:
-  #       - asset: assets/fonts/Cairo-Regular.ttf
-  #         weight: 400
-  #       - asset: assets/fonts/Cairo-SemiBold.ttf
-  #         weight: 600
-  #       - asset: assets/fonts/Cairo-Bold.ttf
-  #         weight: 700
-  #       - asset: assets/fonts/Cairo-Black.ttf
-  #         weight: 900
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/Cairo-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Cairo-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Cairo-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Cairo-Black.ttf
+          weight: 900
 
   assets:
     - assets/branding/

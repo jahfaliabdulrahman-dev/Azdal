@@ -1,19 +1,17 @@
 /// Gemini AI service for Azdal.
 ///
 /// Wraps the google_generative_ai package for round-trip communication
-/// with Google's Gemini models. The API key is read from the environment
-/// variable `GEMINI_API_KEY` — never hardcoded.
+/// with Google's Gemini models.
 ///
-/// Usage:
-/// ```dart
-/// final service = GeminiService();
-/// final isAlive = await service.ping();
-/// ```
+/// The API key is injected at **compile time** via
+/// `--dart-define-from-file=.env`  — never read from the OS process
+/// environment (`Platform.environment` is useless on Android).
 library;
 
-import 'dart:io' show Platform;
-
 import 'package:google_generative_ai/google_generative_ai.dart';
+
+/// Compile-time Gemini API key (injected via --dart-define-from-file=.env).
+const _apiKey = String.fromEnvironment('GEMINI_API_KEY');
 
 /// Thin service wrapper around the Gemini generative AI SDK.
 ///
@@ -22,43 +20,33 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 /// add dedicated methods.
 final class GeminiService {
   /// The model identifier used for health checks.
-  /// Uses gemini-flash-latest (auto-resolves to newest Flash model).
+  /// `gemini-flash-latest` auto-resolves to the newest available Flash model.
   static const _pingModel = 'gemini-flash-latest';
 
-  /// The API key loaded from the `GEMINI_API_KEY` environment variable.
-  ///
-  /// Returns `null` when the variable is not set, signalling that the
-  /// service cannot make real API calls.
-  String? get _apiKey => Platform.environment['GEMINI_API_KEY'];
-
-  /// Whether a valid API key has been detected.
-  bool get isConfigured => _apiKey != null && _apiKey!.isNotEmpty;
+  /// Whether a valid API key was injected at compile time.
+  bool get isConfigured => _apiKey.isNotEmpty;
 
   /// Sends a minimal round-trip prompt to Gemini to verify connectivity.
   ///
   /// The prompt is "Reply with just: pong" — lightweight and deterministic.
   ///
   /// Returns `true` if Gemini responds successfully.
-  /// Returns `false` if the API key is missing, the network call fails,
-  /// or the response is blocked.
-  ///
-  /// Debug output is printed to the console with the `=== AZDAL DEBUG:`
-  /// prefix for easy log filtering.
+  /// Returns `false` if the compile-time key is empty, the network call
+  /// fails, or the response is blocked.
   Future<bool> ping() async {
-    final apiKey = _apiKey;
-
-    // ── Guard: no API key ──────────────────────────────────────────
-    if (apiKey == null || apiKey.isEmpty) {
+    // ── Guard: no compile-time key ─────────────────────────────────
+    if (_apiKey.isEmpty) {
       // ignore: avoid_print
       print('=== AZDAL DEBUG: Gemini ping SKIPPED — '
-          'GEMINI_API_KEY is not set.');
+          'GEMINI_API_KEY was not compiled into the APK.\n'
+          'Build with:  flutter build apk --dart-define-from-file=.env');
       return false;
     }
 
     try {
       final model = GenerativeModel(
         model: _pingModel,
-        apiKey: apiKey,
+        apiKey: _apiKey,
       );
 
       final response = await model.generateContent(
@@ -67,7 +55,6 @@ final class GeminiService {
 
       // ignore: avoid_print
       print('=== AZDAL DEBUG: Gemini ping response: ${response.text}');
-      // Trimmed comparison handles whitespace / newlines from the model.
       return response.text?.trim().toLowerCase() == 'pong';
     } on GenerativeAIException catch (e) {
       // ignore: avoid_print
