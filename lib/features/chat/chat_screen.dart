@@ -290,16 +290,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final chatNotifier = ref.read(chatProvider.notifier);
     final geminiService = ref.read(geminiServiceProvider);
 
-    // Add user message
-    chatNotifier.addUserMessage(text);
+    // Add user message and mark it immediately as "in-flight".
+    // This prevents it from leaking into the NEXT sendMessage's history
+    // before _tryAutoClassify has a chance to store the classification.
+    final userMsgId = chatNotifier.addUserMessage(text);
+    _storedClassifications[userMsgId] = <String, dynamic>{};
 
     // Get current state for history
     final allMessages = ref.read(chatProvider).messages;
 
-    // Layer 1 (MoA): filter out user messages whose transactions were
-    // already confirmed — Gemini must never see old transaction texts
-    // since it has no way to know they were handled (bot confirmations
-    // are stripped from history).
+    // Layer 1 (MoA): filter out user messages already in the pipeline.
+    // _storedClassifications is populated IMMEDIATELY on send (placeholder)
+    // and overwritten with real data by _tryAutoClassify. Any message
+    // with a map entry — even an empty one — is excluded from history.
+    // Gemini never sees old transaction texts regardless of whether
+    // classification has completed, failed, or is still in-flight.
     final filteredHistory = allMessages.where((m) {
       if (!m.isUser) return true;
       return !_storedClassifications.containsKey(m.id);
