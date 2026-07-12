@@ -61,3 +61,4 @@ test/.test_runner.dart
 # Hermes
 .hermes/sessions/
 .hermes/workspace/
+android/.kotlin/
