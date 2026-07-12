@@ -372,60 +372,84 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     try {
       // Quick check: does this look like it has a number?
-      if (!RegExp(r'\d+').hasMatch(text)) return null;
+      // Match both Western (0-9) and Arabic-Indic (٠-٩) numerals.
+      if (!RegExp(r'[0-9٠-٩]').hasMatch(text)) return null;
 
-      // Use Gemini to extract transaction details
+      // Use Gemini to extract transaction details.
+      // Explicit JSON instruction — the system prompt won't block this
+      // (it only blocks action_buttons widgets, not all JSON).
       final classifyPrompt = '''
-صنف المعاملة التالية واستخرج:
-- amount (رقم)
-- category (فئة)
-- subcategory (فئة فرعية)
-- tone (green/gray/red)
+أجب بصيغة JSON فقط، بدون أي نص آخر:
+{"amount": الرقم, "category": "الفئة", "subcategory": "الفئة الفرعية", "tone": "green أو gray أو red"}
 
-إذا كانت تحتوي على عدة عناصر، استخدم compound_split_card.
-إذا لم تكن معاملة مالية، أجب بـ "NOT_TRANSACTION".
+إذا كانت تحتوي على عدة عناصر، استخدم:
+{"widget": "compound_split_card", "splits": [{"category": "...", "amount": الرقم}]}
+
+إذا لم تكن معاملة مالية، أجب بـ:
+{"error": "NOT_TRANSACTION"}
 
 المعاملة: $text
 ''';
 
       final response = await geminiService.sendMessage(classifyPrompt);
 
-      if (response.widget != null) {
-        final widgetType = response.widget!['widget'] as String?;
+      // Parse classification result — priority order:
+      // 1. Parsed widget (JSON block from Gemini)
+      // 2. Raw text fallback (if JSON parsing failed)
 
-        if (widgetType == 'compound_split_card') {
-          return {'type': 'compound', 'widget': response.widget};
-        }
+      final data = response.widget;
 
-        // Try to find amount in response
-        final amountMatch = RegExp(r'(\d+)').firstMatch(response.text);
-        if (amountMatch != null) {
+      // Error: not a transaction
+      if (data != null && data.containsKey('error')) {
+        return null;
+      }
+
+      // Compound split
+      if (data != null && data['widget'] == 'compound_split_card') {
+        return {'type': 'compound', 'widget': data};
+      }
+
+      // Simple transaction with structured data
+      if (data != null && data.containsKey('amount')) {
+        final amount = data['amount'];
+        final amountNum = amount is int
+            ? amount
+            : (amount is String ? int.tryParse(amount) : null) ?? 0;
+        if (amountNum > 0) {
           return {
             'type': 'simple',
-            'amount': int.parse(amountMatch.group(1)!),
-            'category': 'متنوع',
-            'tone': 'gray',
+            'amount': amountNum,
+            'category': data['category'] as String? ?? 'متنوع',
+            'tone': data['tone'] as String? ?? 'gray',
             'response_text': response.text,
           };
         }
       }
 
-      // Check response for classification hints
-      if (response.text.contains('NOT_TRANSACTION') ||
-          response.text.contains('ليست معاملة')) {
+      // Fallback: parse raw text for amount
+      final rawText = response.text;
+      if (rawText.contains('NOT_TRANSACTION') ||
+          rawText.contains('ليست معاملة')) {
         return null;
       }
 
-      // Try to extract amount from original response
-      final amountMatch = RegExp(r'(\d+)').firstMatch(response.text);
+      // Match both Western and Arabic-Indic numerals
+      final amountMatch =
+          RegExp(r'([0-9٠-٩]+)').firstMatch(rawText);
       if (amountMatch != null) {
-        return {
-          'type': 'simple',
-          'amount': int.parse(amountMatch.group(1)!),
-          'category': 'متنوع',
-          'tone': 'gray',
-          'response_text': response.text,
-        };
+        final digits = amountMatch.group(1)!;
+        // Convert Arabic-Indic to Western numerals
+        final western = _arabicToWestern(digits);
+        final parsed = int.tryParse(western);
+        if (parsed != null && parsed > 0) {
+          return {
+            'type': 'simple',
+            'amount': parsed,
+            'category': 'متنوع',
+            'tone': 'gray',
+            'response_text': rawText,
+          };
+        }
       }
 
       return null;
@@ -434,6 +458,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       print('=== AZDAL DEBUG: Auto-classify FAILED — $e');
       return null;
     }
+  }
+
+  /// Convert Arabic-Indic numerals (٠-٩) to Western (0-9).
+  static String _arabicToWestern(String input) {
+    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    const western = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    var result = input;
+    for (var i = 0; i < 10; i++) {
+      result = result.replaceAll(arabic[i], western[i]);
+    }
+    return result;
   }
 
   // ── Widget action handler ──
