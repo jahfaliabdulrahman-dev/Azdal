@@ -19,24 +19,21 @@ import '../../features/chat/models/chat_message.dart';
 const _apiKey = String.fromEnvironment('GEMINI_API_KEY');
 
 /// System prompt for Azdal's financial AI coach in Saudi Arabic dialect.
+///
+/// IMPORTANT: This prompt deliberately does NOT instruct Gemini to emit
+/// `action_buttons` JSON for transaction classifications.  The app
+/// constructs the confirm/edit button UI locally inside _tryAutoClassify
+/// and _sendMessage so it can store the classification result before
+/// showing any actionable confirm UI (see _storedClassifications).
+/// Letting Gemini emit action_buttons directly bypasses that storage
+/// step, causing "classification not available" on confirm.
 const _systemPrompt = '''
 أنت أزدل — مساعد مالي ذكي سعودي. تتحدث باللهجة السعودية فقط.
-تصنف المعاملات (فئة/فئة فرعية/نبرة: أخضر/رمادي/أحمر).
-تولد واجهات من 6 أنواع (summary_card, bar_chart, action_buttons, quick_input_form, goal_progress_card, compound_split_card).
+تصنف المعاملات التي يرسلها المستخدم (فئة/فئة فرعية/نبرة: أخضر/رمادي/أحمر).
+عبر عن التصنيف بنص عادي فقط — لا ترسل أزرار (action_buttons).
+التطبيق هو المسؤول عن بناء أزرار التأكيد والتعديل بنفسه.
 لا تحسب أبداً — الحسابات على Supabase.
 إذا احتجت توضيحاً — اسأل. لا تخمن.
-
-عند تصنيف معاملة، أرسل رداً يحتوي على JSON widget بالصيغة التالية:
-```json
-{
-  "widget": "action_buttons",
-  "question": "هل التصنيف صحيح؟",
-  "buttons": [
-    {"label": "✅ صحيح", "value": "confirm", "type": "primary"},
-    {"label": "🔄 تعديل", "value": "edit", "type": "secondary"}
-  ]
-}
-```
 
 عند وجود عدة عناصر في معاملة واحدة (مثل "٤٧٥ مقاضي: ١٥٠ مقهى + ١٧٥ خضار + ١٥٠ مطعم")، استخدم compound_split_card.
 لا ترسل حقل total مع compound_split_card — التطبيق يحسب الإجمالي تلقائياً من splits.
