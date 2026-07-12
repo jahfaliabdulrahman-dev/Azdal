@@ -34,7 +34,7 @@ void main() {
             'GEMINI_API_KEY is compiled in.');
         return;
       }
-      expectLater(
+      await expectLater(
         service.ping(),
         throwsA(isA<AssertionError>()),
       );
