@@ -672,7 +672,6 @@ class _CompoundSplitCardWidgetState extends State<_CompoundSplitCardWidget> {
 
     final answered = widget.json['_answered'] == true;
     final selectedValue = widget.json['_selectedValue'] as String?;
-    final isCancelled = answered && selectedValue == 'compound_split_cancel';
     final isConfirmed = answered && selectedValue == 'compound_split_confirm';
 
     return Opacity(
@@ -772,7 +771,7 @@ class _CompoundSplitCardWidgetState extends State<_CompoundSplitCardWidget> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    onPressed: (answered && !isCancelled)
+                    onPressed: answered
                         ? null
                         : () => widget.onAction?.call({
                             'action': 'compound_split_cancel',
@@ -802,7 +801,7 @@ class _CompoundSplitCardWidgetState extends State<_CompoundSplitCardWidget> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    onPressed: (answered && !isConfirmed)
+                    onPressed: answered
                         ? null
                         : () => widget.onAction?.call({
                             'action': 'compound_split_confirm',
