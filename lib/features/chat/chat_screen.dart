@@ -59,6 +59,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   /// Whether Cold Start has been triggered for this session.
   bool _coldStartDone = false;
 
+  /// Guard against double-tap on confirm/save actions.
+  bool _isConfirming = false;
+
   @override
   void initState() {
     super.initState();
@@ -411,6 +414,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     switch (widgetType) {
       case 'action_buttons':
         final value = action['value'] as String?;
+        if (_isConfirming) break; // Guard: prevent double-tap
         if (value == 'confirm') {
           // Confirm transaction: save to Supabase
           await _confirmTransaction(chatNotifier);
@@ -437,39 +441,45 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _confirmTransaction(ChatProvider chatNotifier) async {
-    // Find the most recent user message and attempt to save
-    final messages = ref.read(chatProvider).messages;
-    final lastUserMsg = messages.reversed.firstWhere(
-      (m) => m.isUser,
-      orElse: () => ChatMessage(
-        id: '',
-        role: 'user',
-        content: '',
-        timestamp: DateTime(2000),
-      ),
-    );
-
-    if (lastUserMsg.content.isEmpty) return;
-
+    if (_isConfirming) return; // Guard: prevent double-tap
+    _isConfirming = true;
     try {
-      final txResult = await _tryAutoClassify(lastUserMsg.content);
-      if (txResult == null || txResult['type'] != 'simple') {
-        chatNotifier.addBotMessage(
-          'تم تسجيل المعاملة ✅',
-        );
-        return;
-      }
-
-      final txService = ref.read(transactionServiceProvider);
-      await txService.saveTransaction(
-        amount: (txResult['amount'] as num).toDouble(),
-        category: txResult['category'] as String? ?? 'متنوع',
-        tone: txResult['tone'] as String? ?? 'gray',
+      // Find the most recent user message and attempt to save
+      final messages = ref.read(chatProvider).messages;
+      final lastUserMsg = messages.reversed.firstWhere(
+        (m) => m.isUser,
+        orElse: () => ChatMessage(
+          id: '',
+          role: 'user',
+          content: '',
+          timestamp: DateTime(2000),
+        ),
       );
 
-      chatNotifier.addBotMessage('تم تسجيل المعاملة بنجاح ✅');
-    } catch (e) {
-      chatNotifier.setError(e.toString());
+      if (lastUserMsg.content.isEmpty) return;
+
+      try {
+        final txResult = await _tryAutoClassify(lastUserMsg.content);
+        if (txResult == null || txResult['type'] != 'simple') {
+          chatNotifier.addBotMessage(
+            'تم تسجيل المعاملة ✅',
+          );
+          return;
+        }
+
+        final txService = ref.read(transactionServiceProvider);
+        await txService.saveTransaction(
+          amount: (txResult['amount'] as num).toDouble(),
+          category: txResult['category'] as String? ?? 'متنوع',
+          tone: txResult['tone'] as String? ?? 'gray',
+        );
+
+        chatNotifier.addBotMessage('تم تسجيل المعاملة بنجاح ✅');
+      } catch (e) {
+        chatNotifier.setError(e.toString());
+      }
+    } finally {
+      _isConfirming = false;
     }
   }
 
