@@ -1,7 +1,22 @@
 /// Provider declarations for Azdal.
 ///
-/// Providers will be added in INIT-02 (Gemini integration) and subsequent tasks.
-/// This file exists so that main.dart can import it for the ProviderScope setup.
+/// This file centralises Riverpod providers used across the app.
+/// Each section groups providers by domain (services, features, etc.).
 library;
 
-// No providers defined yet — coming in INIT-02.
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../core/services/gemini_service.dart';
+
+// ─────────────────────────────────────────────────────────────────────
+// Services
+// ─────────────────────────────────────────────────────────────────────
+
+/// Singleton provider for the Gemini AI service.
+///
+/// The service reads its API key from the `GEMINI_API_KEY` environment
+/// variable at runtime.  If the key is not set, callers can check
+/// `geminiServiceProvider.isConfigured` or handle graceful fallback.
+final geminiServiceProvider = Provider<GeminiService>(
+  (ref) => GeminiService(),
+);
