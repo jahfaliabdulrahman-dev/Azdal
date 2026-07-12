@@ -484,9 +484,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     switch (widgetType) {
       case 'action_buttons':
         final value = action['value'] as String?;
+        final msgId = action['message_id'] as String?;
+        if (value == null || msgId == null) break;
         if (_isConfirming) break; // Guard: prevent double-tap
+
+        // Mark consumed FIRST — before any async work.
+        // The widget reads _answered and disables all buttons immediately.
+        chatNotifier.markWidgetAnswered(msgId, value);
+
         if (value == 'confirm') {
-          // Confirm transaction: save to Supabase
           await _confirmTransaction(chatNotifier);
         } else if (value == 'edit') {
           chatNotifier.addBotMessage('تمام — وش التصنيف الصح؟ اكتب التصنيف الجديد.');
@@ -507,11 +513,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         break;
 
       case 'compound_split_card':
+        final msgId = action['message_id'] as String?;
+        if (msgId == null) break;
+
         if (actionType == 'compound_split_cancel') {
-          // DEC-020: Cancel before confirm — no Supabase, just acknowledge.
+          // Mark consumed, then acknowledge — no Supabase call.
+          chatNotifier.markWidgetAnswered(msgId, 'compound_split_cancel');
           chatNotifier.addBotMessage('تم الإلغاء.');
           break;
         }
+
+        // Mark consumed before attempting the save.
+        chatNotifier.markWidgetAnswered(msgId, 'compound_split_confirm');
         await _handleCompoundSplit(action, chatNotifier);
         // Upload receipt to storage if this came from OCR
         if (_capturedReceiptPath != null) {
@@ -1214,7 +1227,12 @@ class _MessageBubble extends StatelessWidget {
                   if (message.hasWidget)
                     renderCatalogWidget(
                       message.widget!,
-                      onAction: onWidgetAction,
+                      onAction: onWidgetAction != null
+                          ? (action) => onWidgetAction!({
+                              ...action,
+                              'message_id': message.id,
+                            })
+                          : null,
                     ),
 
                   // Timestamp

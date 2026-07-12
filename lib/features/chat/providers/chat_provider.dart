@@ -109,6 +109,28 @@ final class ChatProvider extends StateNotifier<ChatState> {
     print('=== AZDAL DEBUG: Message removed — id=$id');
   }
 
+  /// Mark a message's widget as answered/consumed.
+  ///
+  /// Merges `_answered: true` and `_selectedValue` into the message's
+  /// widget map so renderers can disable all buttons and highlight the
+  /// selected one.  Used to prevent duplicate actions after the first tap.
+  void markWidgetAnswered(String messageId, String selectedValue) {
+    final index = state.messages.indexWhere((m) => m.id == messageId);
+    if (index == -1) return;
+    final message = state.messages[index];
+    final updatedWidget = <String, dynamic>{
+      ...?message.widget,
+      '_answered': true,
+      '_selectedValue': selectedValue,
+    };
+    final updated = <ChatMessage>[...state.messages];
+    updated[index] = message.copyWith(widget: updatedWidget);
+    state = state.copyWith(messages: updated);
+    // ignore: avoid_print
+    print('=== AZDAL DEBUG: Widget marked answered — id=$messageId '
+        'selected=$selectedValue');
+  }
+
   /// Set the error field (shown as ErrorBubble) without adding a message.
   /// The loading flag is cleared so the typing indicator disappears.
   void setError(String message) {

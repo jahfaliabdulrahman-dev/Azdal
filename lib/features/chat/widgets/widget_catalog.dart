@@ -282,6 +282,8 @@ class _ActionButtonsWidget extends StatelessWidget {
             ?.map((e) => e as Map<String, dynamic>)
             .toList() ??
         [];
+    final answered = json['_answered'] == true;
+    final selectedValue = json['_selectedValue'] as String?;
 
     return Container(
       margin: const EdgeInsets.only(top: 8),
@@ -291,62 +293,75 @@ class _ActionButtonsWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _cardBorder),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (question.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Text(
-                question,
-                style: const TextStyle(
-                  color: _white,
-                  fontSize: 14,
-                  fontFamily: 'Cairo',
+      child: Opacity(
+        opacity: answered ? 0.55 : 1.0,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (question.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  question,
+                  style: const TextStyle(
+                    color: _white,
+                    fontSize: 14,
+                    fontFamily: 'Cairo',
+                  ),
                 ),
               ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: buttons.map((btn) {
+                final type = btn['type'] as String? ?? 'primary';
+                final isPrimary = type == 'primary';
+                final value = btn['value'] as String?;
+                final isSelected = answered && value == selectedValue;
+                return SizedBox(
+                  height: 36,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isSelected
+                          ? _cyan
+                          : (isPrimary ? _cyan : Colors.transparent),
+                      foregroundColor: isSelected
+                          ? _navy
+                          : (isPrimary ? _navy : _cyan),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: isPrimary && !isSelected
+                            ? BorderSide.none
+                            : const BorderSide(color: _cyan),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    onPressed: answered
+                        ? null
+                        : () => onAction?.call({
+                            'action': 'button_tap',
+                            'widget': 'action_buttons',
+                            'value': value,
+                            'label': btn['label'],
+                            if (json.containsKey('tx_id'))
+                              'tx_id': json['tx_id'],
+                            if (json.containsKey('tx_type'))
+                              'tx_type': json['tx_type'],
+                          }),
+                    child: Text(
+                      btn['label'] as String? ?? '',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Cairo',
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: buttons.map((btn) {
-              final type = btn['type'] as String? ?? 'primary';
-              final isPrimary = type == 'primary';
-              return SizedBox(
-                height: 36,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isPrimary ? _cyan : Colors.transparent,
-                    foregroundColor: isPrimary ? _navy : _cyan,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: isPrimary
-                          ? BorderSide.none
-                          : const BorderSide(color: _cyan),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                  onPressed: () => onAction?.call({
-                    'action': 'button_tap',
-                    'widget': 'action_buttons',
-                    'value': btn['value'],
-                    'label': btn['label'],
-                    if (json.containsKey('tx_id')) 'tx_id': json['tx_id'],
-                    if (json.containsKey('tx_type')) 'tx_type': json['tx_type'],
-                  }),
-                  child: Text(
-                    btn['label'] as String? ?? '',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Cairo',
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -655,7 +670,14 @@ class _CompoundSplitCardWidgetState extends State<_CompoundSplitCardWidget> {
       (sum, s) => sum + ((s['amount'] as num?)?.toInt() ?? 0),
     );
 
-    return Container(
+    final answered = widget.json['_answered'] == true;
+    final selectedValue = widget.json['_selectedValue'] as String?;
+    final isCancelled = answered && selectedValue == 'compound_split_cancel';
+    final isConfirmed = answered && selectedValue == 'compound_split_confirm';
+
+    return Opacity(
+      opacity: answered ? 0.55 : 1.0,
+      child: Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -750,10 +772,12 @@ class _CompoundSplitCardWidgetState extends State<_CompoundSplitCardWidget> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    onPressed: () => widget.onAction?.call({
-                      'action': 'compound_split_cancel',
-                      'widget': 'compound_split_card',
-                    }),
+                    onPressed: (answered && !isCancelled)
+                        ? null
+                        : () => widget.onAction?.call({
+                            'action': 'compound_split_cancel',
+                            'widget': 'compound_split_card',
+                          }),
                     child: const Text(
                       '❌ إلغاء',
                       style: TextStyle(
@@ -772,18 +796,20 @@ class _CompoundSplitCardWidgetState extends State<_CompoundSplitCardWidget> {
                   height: 40,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _cyan,
+                      backgroundColor: isConfirmed ? _success : _cyan,
                       foregroundColor: _navy,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    onPressed: () => widget.onAction?.call({
-                      'action': 'compound_split_confirm',
-                      'widget': 'compound_split_card',
-                      'total': total,
-                      'splits': _splits,
-                    }),
+                    onPressed: (answered && !isConfirmed)
+                        ? null
+                        : () => widget.onAction?.call({
+                            'action': 'compound_split_confirm',
+                            'widget': 'compound_split_card',
+                            'total': total,
+                            'splits': _splits,
+                          }),
                     child: const Text(
                       '✅ تأكيد',
                       style: TextStyle(
@@ -799,6 +825,7 @@ class _CompoundSplitCardWidgetState extends State<_CompoundSplitCardWidget> {
           ),
         ],
       ),
+      ), // Opacity
     );
   }
 }
