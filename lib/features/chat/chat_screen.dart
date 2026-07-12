@@ -766,7 +766,7 @@ class _MessageBubble extends StatelessWidget {
 // Input Bar (fixed, 56px)
 // ─────────────────────────────────────────────────────────────────────
 
-class _InputBar extends StatelessWidget {
+class _InputBar extends StatefulWidget {
   const _InputBar({
     required this.controller,
     required this.focusNode,
@@ -786,6 +786,33 @@ class _InputBar extends StatelessWidget {
   final VoidCallback onCamera;
 
   @override
+  State<_InputBar> createState() => _InputBarState();
+}
+
+class _InputBarState extends State<_InputBar> {
+  bool _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _hasText = widget.controller.text.trim().isNotEmpty;
+    widget.controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTextChanged);
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    final hasText = widget.controller.text.trim().isNotEmpty;
+    if (hasText != _hasText) {
+      setState(() => _hasText = hasText);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -801,17 +828,17 @@ class _InputBar extends StatelessWidget {
           children: [
             // Send button (left in RTL = end)
             _SendButton(
-              isOnline: isOnline,
-              hasText: controller.text.trim().isNotEmpty,
-              onSend: onSend,
+              isOnline: widget.isOnline,
+              hasText: _hasText,
+              onSend: widget.onSend,
             ),
             const SizedBox(width: 8),
 
             // Text input
             Expanded(
               child: TextField(
-                controller: controller,
-                focusNode: focusNode,
+                controller: widget.controller,
+                focusNode: widget.focusNode,
                 textDirection: TextDirection.rtl,
                 style: const TextStyle(
                   fontSize: 14,
@@ -847,7 +874,7 @@ class _InputBar extends StatelessWidget {
                 maxLines: 3,
                 minLines: 1,
                 textInputAction: TextInputAction.send,
-                onSubmitted: (_) => onSend(),
+                onSubmitted: (_) => widget.onSend(),
               ),
             ),
             const SizedBox(width: 8),
@@ -855,9 +882,9 @@ class _InputBar extends StatelessWidget {
             // Mic button
             _IconButton(
               icon: Icons.mic,
-              isActive: isListening,
+              isActive: widget.isListening,
               activeColor: _cyan,
-              onTap: onMic,
+              onTap: widget.onMic,
             ),
             const SizedBox(width: 4),
 
@@ -866,7 +893,7 @@ class _InputBar extends StatelessWidget {
               icon: Icons.camera_alt_outlined,
               isActive: false,
               activeColor: _cyan,
-              onTap: onCamera,
+              onTap: widget.onCamera,
             ),
           ],
         ),
