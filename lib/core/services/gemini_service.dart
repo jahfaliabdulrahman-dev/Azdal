@@ -22,8 +22,8 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 /// add dedicated methods.
 final class GeminiService {
   /// The model identifier used for health checks.
-  /// Using flash for low-latency pings.
-  static const _pingModel = 'gemini-1.5-flash-latest';
+  /// Uses gemini-flash-latest (auto-resolves to newest Flash model).
+  static const _pingModel = 'gemini-flash-latest';
 
   /// The API key loaded from the `GEMINI_API_KEY` environment variable.
   ///
