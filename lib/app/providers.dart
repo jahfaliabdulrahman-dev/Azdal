@@ -7,16 +7,24 @@ library;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/services/gemini_service.dart';
+import '../features/chat/services/transaction_service.dart';
+import '../features/chat/services/voice_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────
 // Services
 // ─────────────────────────────────────────────────────────────────────
 
 /// Singleton provider for the Gemini AI service.
-///
-/// The service reads its API key from the `GEMINI_API_KEY` environment
-/// variable at runtime.  If the key is not set, callers can check
-/// `geminiServiceProvider.isConfigured` or handle graceful fallback.
 final geminiServiceProvider = Provider<GeminiService>(
   (ref) => GeminiService(),
+);
+
+/// Singleton provider for the voice input service.
+final voiceServiceProvider = Provider<VoiceService>(
+  (ref) => VoiceService(),
+);
+
+/// Singleton provider for the transaction persistence service.
+final transactionServiceProvider = Provider<TransactionService>(
+  (ref) => TransactionService(),
 );

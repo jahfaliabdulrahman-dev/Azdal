@@ -34,6 +34,29 @@ Future<void> main() async {
     publishableKey: _supabaseKey,
   );
 
+  // ── Guest-first RLS (DEC-017): Anonymous sign-in ──
+  // Creates a real auth.users row with is_anonymous=true. This gives every
+  // guest a real UUID → auth.uid() works → all 14 RLS policies work unchanged.
+  // Session persists on-device — guest data survives app restarts.
+  final supabase = Supabase.instance.client;
+  if (supabase.auth.currentSession == null) {
+    try {
+      await supabase.auth.signInAnonymously();
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: Anonymous sign-in successful — '
+          'user_id: ${supabase.auth.currentUser?.id}');
+    } catch (e) {
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: Anonymous sign-in FAILED — $e');
+      // Non-fatal: app still renders, but writes to Supabase will fail
+      // until the user is authenticated.
+    }
+  } else {
+    // ignore: avoid_print
+    print('=== AZDAL DEBUG: Existing session found — '
+        'user_id: ${supabase.auth.currentUser?.id}');
+  }
+
   runApp(const ProviderScope(child: AzdalApp()));
 }
 

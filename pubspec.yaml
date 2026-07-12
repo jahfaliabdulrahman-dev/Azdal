@@ -26,7 +26,9 @@ dependencies:
   # State Management
   flutter_riverpod: ^2.5.0              # Riverpod (recommended)
   
-  # Input (Stage 3 — OCR/receipt scanning)
+  # Input
+  speech_to_text: ^7.0.0               # Voice input (Android SpeechRecognizer) — DEC-016
+  connectivity_plus: ^6.0.0            # Offline detection for chat UI
   # receive_sharing_intent: ^1.6.0      # System share sheet (receipt images) — Stage 3
   # image_picker: ^1.0.0                # Camera / gallery picker — Stage 3
   
