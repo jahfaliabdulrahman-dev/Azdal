@@ -8,11 +8,25 @@
 
 ## Open Decisions
 
-None at Stage 2. All Stage 2 decisions below are closed.
+None at Stage 3. All decisions below are closed.
 
 ---
 
 ## Closed Decisions
+
+### DEC-019: "Can I Buy?" (BUY-01→04) Moved From Stage 3 to Stage 4
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-12 |
+| **Status** | ✅ Closed |
+| **Summary** | BUY-01→04 removed from Stage 3 and rescheduled into Stage 4, sequenced after the new COMMIT-01 and existing GOAL-01. Stage 3 is now OCR-only (OCR-01→04). |
+| **Rationale** | `01_prd.md:133` defines "Can I buy?" inputs as income + commitments + current spend + days-to-salary + active goals. Checked what actually exists: income is a single loosely-tagged row in `transactions` (usable but fragile), commitments has **no capture mechanism anywhere** — Cold Start (CHAT-07) asks the user for `monthly_commitments` and computes an insight ratio with it, then discards the value without saving it, and no commitments-tracking task existed anywhere in the original backlog despite the PRD listing it as a Tier 1 feature. Active goals depend on GOAL-01 (Stage 4, not built). Building BUY-01→04 in Stage 3 as originally scheduled would ship a verdict engine silently missing 2 of 4 required inputs — the kind of gap that looks like a working feature until a judge or teammate tests the exact scenario it can't actually reason about. |
+| **Alternatives** | (A) Build BUY-01 now with commitments/goals hardcoded to zero — rejected: produces a verdict engine that's systematically over-optimistic (always ignoring debt/goals), worse than not shipping it, especially since this is the product's core differentiator and a judge is likely to probe exactly this. (B) Leave BUY-01→04 in Stage 3 as originally scheduled and just accept the gap — rejected, same reasoning as (A). |
+| **Impact** | `16_implementation_backlog.md`: Stage 3 is now OCR-only; Stage 4 gains COMMIT-01 (new task — commitments CRUD, seeded from the Cold Start estimate instead of re-asking the user) and BUY-01→04, resequenced so BUY-01 depends on COMMIT-01 + GOAL-01. SIM-01 already depended on BUY-01 in the original backlog, so this also fixes a latent same-stage ordering problem, not just a stage-boundary one. |
+| **Related** | `01_prd.md:133`, `16_implementation_backlog.md §Stage 3, §Stage 4`, `05_data_model_erd.md` (commitments table, already deployed), `lib/features/chat/chat_screen.dart` (`_handleColdStartSubmit` — where the commitments value currently gets discarded) |
+
+---
 
 ### DEC-018: Voice Input UX — Mic Button Added to Input Bar
 
@@ -266,6 +280,7 @@ None at Stage 2. All Stage 2 decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-019 | "Can I buy?" (BUY-01→04) moved from Stage 3 to Stage 4 | 2026-07-12 | ✅ |
 | DEC-018 | Voice input UX — mic button added to input bar | 2026-07-12 | ✅ |
 | DEC-017 | Guest-first RLS resolution — Supabase Anonymous Sign-In | 2026-07-12 | ✅ |
 | DEC-016 | Voice/TTS platform corrected — iOS-only → cross-platform Android-first | 2026-07-12 | ✅ |

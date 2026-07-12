@@ -56,9 +56,12 @@ As of today, `lib/` and `test/` are still empty and `pubspec.yaml` is a stub —
 
 ---
 
-## Stage 3 — OCR + "Can I Buy?" (July 13-14)
+## Stage 3 — OCR (July 13-14)
 
-**Goal:** Receipt scanning + purchase decision engine
+**Goal:** Receipt scanning only. "Can I Buy?" (BUY-01→04) moved to Stage 4 —
+see DEC-019. It needs commitments + active goals data that don't exist
+until Stage 4's COMMIT-01/GOAL-01 land; building it here would ship a
+verdict engine silently missing half its inputs.
 
 | ID | Task | Assignee | Depends On | Est. |
 |----|------|----------|-----------|------|
@@ -66,24 +69,36 @@ As of today, `lib/` and `test/` are still empty and `pubspec.yaml` is a stub —
 | OCR-02 | System share sheet (receive_sharing_intent) | State Engineer | OCR-01 | 1h |
 | OCR-03 | Gemini Vision OCR integration | State Engineer | OCR-01 | 3h |
 | OCR-04 | Receipt line items extraction → compound split card | State Engineer | OCR-03, CHAT-06 | 3h |
-| BUY-01 | "Can I buy?" domain logic (Riverpod provider) | State Engineer | None | 4h |
-| BUY-02 | Supabase Edge Function: purchase_calculation | Backend Architect | BUY-01 | 2h |
-| BUY-03 | Verdict widget (YES/WAIT/NO) with Arabic explanation | State Engineer | BUY-01 | 3h |
-| BUY-04 | Integration test: full "Can I buy?" flow | QA Tester | BUY-03 | 2h |
 
 ---
 
-## Stage 4 — Goals + Integrity + Polish (July 14-15)
+## Stage 4 — Commitments + Goals + Integrity + "Can I Buy?" + Polish (July 14-15)
 
-**Goal:** Savings goals, integrity score, Tier 2 simulation
+**Goal:** Savings goals, commitments tracking, integrity score, purchase
+decision engine, Tier 2 simulation
+
+**Reconciled 2026-07-12 (DEC-019):** BUY-01→04 moved in from Stage 3 —
+"Can I buy?" needs commitments + active goals as inputs (01_prd.md:133),
+neither existed until now. COMMIT-01 added — no commitments-tracking task
+existed anywhere in the original backlog despite the PRD listing it as a
+Tier 1 feature (gap flagged by Product Steward during the Stage 2 handoff).
+COMMIT-01 must reuse the `monthly_commitments` estimate the user already
+gave during Cold Start (CHAT-07) instead of asking again — that value is
+currently computed for the initial insight message and then discarded;
+fix that as part of this task, not as an afterthought.
 
 | ID | Task | Assignee | Depends On | Est. |
 |----|------|----------|-----------|------|
+| COMMIT-01 | Commitments CRUD (reuses deployed `commitments` table/RLS). Seed from the Cold Start `monthly_commitments` estimate as a starting value the user can refine into itemized commitments, instead of re-asking from scratch | State Engineer | CHAT-07 | 3h |
 | GOAL-01 | Goals CRUD + UI (quick_input_form widget) | State Engineer | CHAT-01 | 3h |
 | GOAL-02 | Goal progress tracking (goal_progress_card) | State Engineer | GOAL-01 | 2h |
 | GOAL-03 | Gap detection: data vs reality reconciliation | State Engineer | GOAL-02 | 3h |
 | INTG-01 | Integrity Score calculator (Edge Function) | Backend Architect | None | 2h |
 | INTG-02 | Integrity Score display widget (summary_card) | State Engineer | INTG-01 | 2h |
+| BUY-01 | "Can I buy?" domain logic (Riverpod provider) — income + commitments + current spend + days-to-salary + active goals | State Engineer | COMMIT-01, GOAL-01 | 4h |
+| BUY-02 | Supabase Edge Function: purchase_calculation | Backend Architect | BUY-01 | 2h |
+| BUY-03 | Verdict widget (YES/WAIT/NO) with Arabic explanation | State Engineer | BUY-01 | 3h |
+| BUY-04 | Integration test: full "Can I buy?" flow | QA Tester | BUY-03 | 2h |
 | SIM-01 | Tier 2 gateway simulation logic | State Engineer | BUY-01, INTG-01 | 3h |
 | SIM-02 | Demo script wiring ("show me Tier 2 readiness") | State Engineer | SIM-01 | 2h |
 | POL-01 | Silent Triage logic (Green/Gray/Red) | State Engineer | CHAT-05 | 2h |
@@ -116,15 +131,17 @@ As of today, `lib/` and `test/` are still empty and `pubspec.yaml` is a stub —
 
 ```
 INIT-01 → CHAT-01 → CHAT-02 → CHAT-03 → CHAT-05 → CHAT-06
-                                    → CHAT-07
+                                    → CHAT-07 → COMMIT-01
                                     → CHAT-04
                                     → OCR-01 → OCR-02, OCR-03 → OCR-04
 
-CHAT-01, CHAT-03 → BUY-01 → BUY-03 → BUY-04
-                → SIM-01 → SIM-02
-                → GOAL-01 → GOAL-02 → GOAL-03
+CHAT-01 → GOAL-01 → GOAL-02 → GOAL-03
+
+COMMIT-01, GOAL-01 → BUY-01 → BUY-02
+                   → BUY-03 → BUY-04
 
 INTG-01 → INTG-02 → SIM-01
+BUY-01 → SIM-01 → SIM-02
 
 Stage 2-4 → QA-01, QA-02, QA-03, QA-04
         → AUD-01
@@ -138,8 +155,8 @@ Stage 2-4 → QA-01, QA-02, QA-03, QA-04
 | Window | Parallel Tasks |
 |--------|---------------|
 | July 12-13 (Stage 2) | CHAT-01 (+ QA CHAT-08 in parallel) |
-| July 13-14 (Stage 3) | OCR-01/02 + BUY-01 (in parallel) |
-| July 14-15 (Stage 4) | GOAL-01 + INTG-01 (in parallel) |
+| July 13-14 (Stage 3) | OCR-01/02 (OCR only — BUY moved to Stage 4, DEC-019) |
+| July 14-15 (Stage 4) | COMMIT-01 + GOAL-01 + INTG-01 (in parallel), then BUY-01 once COMMIT-01/GOAL-01 land |
 | July 16-18 (Stage 5) | QA + Audit + Demo (all parallel) |
 
 ---
