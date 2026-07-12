@@ -544,7 +544,7 @@ Before executing any SQL, gather these from your Supabase dashboard:
 | **Auth → JWT expiry** | 3600 seconds (1 hour) | Balance security and UX |
 | **Database → Extensions** | Ensure `pgcrypto` is ON | Required for `gen_random_uuid()` |
 | **API → Realtime** | OFF (not needed for MVP) | Simpler setup |
-| **Storage** | Create a bucket named `receipts` | For `receipt_url` in transactions |
+| **Storage** | Create bucket `receipts` + RLS policies | For receipt image uploads. See §8 below for full SQL and manual steps. |
 
 ### 4.4 — Environment Variables for Flutter App
 
@@ -777,11 +777,161 @@ After this schema is executed:
    - `can-i-buy` — Purchase decision endpoint
    - `process-commitment` — Commitment lifecycle management
 
-2. **INIT-05**: Set up Supabase Storage bucket `receipts` with RLS policies.
+2. **Storage Bucket**: Set up the `receipts` bucket with RLS policies — see §8 below.
 
 3. **INIT-06**: Configure Flutter Supabase client with `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
 
 4. **Application work**: Implement the soft-delete cascade trigger for compound transactions (see Issue 4 in the issues section above).
+
+---
+
+## 8. Storage Bucket Setup: `receipts`
+
+> **Classification:** Medium sensitivity (receipt line items — per `08_security_privacy.md` §2)
+> **Access:** Private — each user sees only their own uploaded files via RLS
+> **Compatibility:** Works with Anonymous Sign-In (`auth.uid()` returns the guest UUID)
+
+### 8.1 — Bucket Configuration
+
+| Property | Value | Reason |
+|----------|-------|--------|
+| **Name** | `receipts` | Matches `transactions.receipt_url` path |
+| **Public** | ❌ No (private) | Receipts contain spend data — per-user isolation required |
+| **File size limit** | 10 MB (10,485,760 bytes) | Sufficient for phone camera photos; rejects large videos |
+| **Allowed MIME types** | `image/jpeg`, `image/png`, `image/webp` | Common mobile photo formats; blocks non-image uploads |
+| **RLS** | Enabled on `storage.objects` | Restricts access to `auth.uid() = owner` |
+
+### 8.2 — Method A: SQL (Run in Supabase SQL Editor)
+
+Paste this block into the **Supabase SQL Editor** (`https://app.supabase.com/project/<ref>/sql/new`):
+
+```sql
+-- ============================================================================
+-- INIT-03: Azdal Storage Setup — receipts bucket + RLS
+-- ============================================================================
+
+-- 1. Create the bucket (if not already created via Dashboard)
+--    The SQL Editor runs as postgres → has permission to insert into storage.buckets.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'receipts',
+  'receipts',
+  false,           -- private bucket
+  10485760,        -- 10 MB
+  ARRAY['image/jpeg', 'image/png', 'image/webp']
+)
+ON CONFLICT (id) DO UPDATE
+  SET file_size_limit    = 10485760,
+      allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp'],
+      public             = false;
+
+-- 2. Ensure RLS is enabled on storage.objects (idempotent — safe if already enabled)
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+-- 3. RLS Policies on storage.objects for the receipts bucket
+--    All policies use auth.uid() = owner — same pattern as the database RLS policies.
+--    Anonymous Sign-In users get a real UUID, so these work without modification.
+
+-- 3a. SELECT: Users can list/view their own uploaded receipt files
+CREATE POLICY "receipts_select_own" ON storage.objects
+  FOR SELECT
+  USING (bucket_id = 'receipts' AND auth.uid() = owner);
+
+-- 3b. INSERT: Users can upload files to the receipts bucket
+--     The Supabase client SDK auto-sets 'owner' to auth.uid() on upload.
+CREATE POLICY "receipts_insert_own" ON storage.objects
+  FOR INSERT
+  WITH CHECK (bucket_id = 'receipts' AND auth.uid() = owner);
+
+-- 3c. DELETE: Users can delete their own receipt files
+--     Soft-delete pattern (anti-ghost) does NOT apply to Storage — files are binary
+--     and receipts are Medium sensitivity. Physical delete is acceptable per spec.
+CREATE POLICY "receipts_delete_own" ON storage.objects
+  FOR DELETE
+  USING (bucket_id = 'receipts' AND auth.uid() = owner);
+
+-- NOTE: No UPDATE policy. Receipt images are immutable once uploaded.
+--       If OCR re-processing is needed, delete + re-upload is the pattern.
+```
+
+If the `INSERT INTO storage.buckets` fails with a permission error (some Supabase projects restrict direct bucket manipulation via SQL), use **Method B** instead and skip the `INSERT` statement — the RLS policies are still valid and must be run via SQL.
+
+### 8.3 — Method B: Dashboard UI (If SQL bucket creation fails)
+
+1. Go to **Supabase Dashboard** → **Storage** → **New Bucket**
+2. Name: `receipts`
+3. Toggle **Public bucket**: OFF
+4. **File size limit**: `10 MB`
+5. **Allowed MIME types**: Add `image/jpeg`, `image/png`, `image/webp`
+6. Click **Create bucket**
+7. Then **run the RLS policies SQL from §8.2** (steps 2–3 only) in the SQL Editor
+
+### 8.4 — How RLS Works for Anonymous Users
+
+The app uses **Supabase Anonymous Sign-In** (`signInAnonymously()`). Here's why Storage RLS works transparently:
+
+| Step | What Happens |
+|------|-------------|
+| 1. App launches | `supabase.auth.signInAnonymously()` → Supabase creates a real `auth.users` row |
+| 2. User gets a JWT | `auth.uid()` returns a real UUID (e.g., `d7b2f...`) — same as a registered user |
+| 3. User uploads photo | Flutter code: `supabase.storage.from('receipts').upload('d7b2f.../photo.jpg', file)` |
+| 4. Storage API | Creates `storage.objects` row with `owner = auth.uid()` (= `d7b2f...`) |
+| 5. RLS check (INSERT) | `auth.uid() = owner` → both are `d7b2f...` → ✅ allowed |
+| 6. Same user lists files | SELECT filtered by `auth.uid() = owner` → sees only their own files |
+| 7. Different user tries | Their `auth.uid()` ≠ the file's `owner` → ❌ denied |
+
+**No special policy is needed for anonymous users** — `auth.uid()` works the same whether the user is anonymous or registered.
+
+### 8.5 — File Path Convention (Recommended)
+
+Store files under a per-user prefix to make ownership obvious and enable future bucket-level operations:
+
+```
+/{user_id}/{timestamp}_{filename}
+```
+
+Example:
+```
+/d7b2fc1f-.../2026-07-12T14-30-00_receipt.jpg
+```
+
+Flutter upload code:
+```dart
+final userId = supabase.auth.currentUser!.id;
+final fileName = '${DateTime.now().toIso8601String()}_receipt.jpg';
+final path = '$userId/$fileName';
+
+await supabase.storage.from('receipts').upload(path, fileBytes);
+```
+
+The `receipt_url` stored in `transactions` would be the full path including user prefix.
+
+### 8.6 — Verification Queries
+
+Run these in the SQL Editor after setup to confirm the bucket and policies exist:
+
+```sql
+-- Check bucket exists
+SELECT id, name, public, file_size_limit, allowed_mime_types
+FROM storage.buckets
+WHERE id = 'receipts';
+
+-- Check RLS is enabled on storage.objects
+SELECT tablename, rowsecurity
+FROM pg_tables
+WHERE schemaname = 'storage'
+  AND tablename = 'objects';
+
+-- List all storage policies for the receipts bucket
+SELECT policyname, cmd, qual, with_check
+FROM pg_policies
+WHERE schemaname = 'storage'
+  AND tablename = 'objects'
+  AND policyname LIKE 'receipts%'
+ORDER BY cmd;
+```
+
+Expected result: 3 policies (SELECT, INSERT, DELETE) all referencing `bucket_id = 'receipts'` and `auth.uid() = owner`.
 
 ---
 
