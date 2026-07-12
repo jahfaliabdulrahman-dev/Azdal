@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// OCR-02: System share sheet — disabled (receive_sharing_intent broken)
+// OCR-02: System share sheet (Stage 3)
 // import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -62,28 +62,12 @@ Future<void> main() async {
   }
 
   // ── System Share Sheet (Stage 3 OCR) ── DISABLED
-  // receive_sharing_intent package has a kotlin() build error with AGP 8.x.
-  // Will be re-enabled when we find a working version or alternative package.
-  // When re-enabled, uncomment the stream listener below.
-  /*
-  ReceiveSharingIntent.getMediaStream().listen(
-    (List<SharedMediaFile> files) {
-      if (files.isNotEmpty) {
-        final file = files.first;
-        if (file.path.isNotEmpty) {
-          // ignore: avoid_print
-          print('=== AZDAL DEBUG: Shared image received — '
-              'path=${file.path}');
-          _pendingSharedImage = file.path;
-        }
-      }
-    },
-    onError: (Object err) {
-      // ignore: avoid_print
-      print('=== AZDAL DEBUG: Share intent stream error — $err');
-    },
-  );
-  */
+  // receive_sharing_intent has kotlin() build error with AGP 8.x.
+  // Will re-enable when fixed.
+  // ReceiveSharingIntent.instance.getMediaStream().listen(
+  //   (List<SharedMediaFile> files) { ... },
+  //   onError: (Object err) { ... },
+  // );
 
   runApp(const ProviderScope(child: AzdalApp()));
 }

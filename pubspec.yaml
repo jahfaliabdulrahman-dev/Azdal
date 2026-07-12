@@ -42,6 +42,7 @@ dependencies:
   # isar_flutter_libs: ^3.1.0           # Isar local cache — deferred DEC-015
   # isar: ^3.1.0                        # Isar — deferred DEC-015
   path_provider: ^2.1.0
+  receive_sharing_intent: 1.8.0
 
 dev_dependencies:
   flutter_test:
