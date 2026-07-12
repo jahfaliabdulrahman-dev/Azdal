@@ -174,6 +174,132 @@ Split transaction card with +/- adjusters per category.
 - Quick input form widget for: income, major commitments, approximate monthly spend
 - Instant insight displayed after submission
 
+### OCR State 1 — Uploading / Processing
+**Trigger:** User captures photo via camera button or share sheet.
+**Visual:** Image thumbnail displayed with processing overlay — NOT a full-screen spinner.
+
+```
+┌─────────────────────────────┐
+│                             │
+│  ┌─────────────────────┐   │
+│  │                     │   │
+│  │   [image thumbnail] │   │  ← Card White #FFFFFF, 16px radius
+│  │                     │   │
+│  │  ⬤◉⬤  جاري تحليل    │   │  ← Navy semi-transparent overlay
+│  │      الإيصال...     │   │     (Navy #001F5E at 70% opacity)
+│  │                     │   │     3 animated dots (Cyan #32C2FF, pulse)
+│  └─────────────────────┘   │
+│                             │
+└─────────────────────────────┘
+```
+
+| Property | Value |
+|----------|-------|
+| Thumbnail container | Card White `#FFFFFF`, border-radius 16px, subtle shadow |
+| Overlay BG | Navy `#001F5E` at 70% opacity, covers bottom 30% of image |
+| Processing text | Arabic: "جاري تحليل الإيصال…" — Body 14px, Card White `#FFFFFF` |
+| Dots animation | 3 dots, Cyan `#32C2FF`, pulse 800ms stagger — reuses typing indicator pattern |
+| Dismissible | No — auto-transitions to next state |
+| Timeout | After 10s, transitions to State 3 (failure) |
+
+**Behavior:**
+- Thumbnail appears as a user message bubble (Light Navy Tint `#E3E8F5` BG) with the image inside
+- Processing overlay slides up from bottom of thumbnail (300ms ease-out)
+- AI response arrives as a bot message when processing completes → transitions to compound_split_card (State 2) or failure message (State 3)
+
+---
+
+### OCR State 2 — Low-Confidence / Partial Extraction
+**Trigger:** Gemini Vision extracted SOME items successfully but flagged others as uncertain (e.g., smudged text, ambiguous amounts).
+**Visual:** compound_split_card widget variant — confirmed items editable + uncertain items highlighted with manual entry fields.
+
+```
+┌───────────────────────────────────┐
+│  📄 تحليل الإيصال               │  ← Title 18px Bold
+│                                   │
+│  ┌─ Confirmed ────────────────┐  │
+│  │ 🍽️ مطعم          150  ✓  │  │  ← Normal rows, Success green check
+│  │ 🛒 مقاضي          200  ✓  │  │     Editable — tap to modify
+│  └─────────────────────────────┘  │
+│                                   │
+│  ┌─ Uncertain ⚠️ ─────────────┐  │  ← Amber #B7791F left border
+│  │ ??? _______________ [✓]   │  │  ← Manual entry field, dotted placeholder
+│  │     اكتب المبلغ             │  │     Caption 12px Muted below field
+│  │ ??? _______________ [✓]   │  │
+│  │     اكتب المبلغ             │  │
+│  └─────────────────────────────┘  │
+│                                   │
+│  المجموع: 350 + ?? ريال         │  ← Partial total, Muted `#6B7280`
+│                                   │
+│  [ تأكيد الكل ✓ ]               │  ← Primary button, Cyan fill
+└───────────────────────────────────┘
+```
+
+| Property | Value |
+|----------|-------|
+| Card container | Card White `#FFFFFF`, 16px radius, border `#E1E4E8` |
+| Title | "تحليل الإيصال" — Title 18px Bold, On Surface `#1B1B1F` |
+| Confirmed section header | Caption 12px SemiBold, Success `#2E7D32` |
+| Confirmed rows | Body 14px, editable (tap to modify), ✓ checkmark in Success green |
+| Uncertain section header | Caption 12px SemiBold, Warning `#B7791F`, ⚠️ icon |
+| Uncertain left border | 3px solid Amber `#B7791F` on the section card |
+| Uncertain row field | Input 24px pill, Border Gray `#E1E4E8`, placeholder "???", fills with user entry |
+| Hint text | Caption 12px, Muted `#6B7280`: "اكتب المبلغ" |
+| Confirm button | Pill button, Cyan `#32C2FF` fill, Button 13px SemiBold: "تأكيد الكل ✓" |
+| Partial total | Body 14px, Muted `#6B7280`: "المجموع: 350 + ?? ريال" |
+
+**Behavior:**
+- Confirmed items can be tapped to edit (inline TextField replaces row value)
+- Uncertain rows: each has a number-pad input field. User fills missing amounts → ✓ appears green
+- "تأكيد الكل" button disabled (Muted, 40% opacity) until all uncertain fields are filled
+- On confirm → AI processes the completed data → summary_card confirmation bot message
+
+---
+
+### OCR State 3 — "Couldn't Read" Failure Fallback
+**Trigger:** Photo too blurry, not a receipt, or Gemini returned zero usable data after timeout.
+**Visual:** Error message bubble in chat + inline quick_input_form for manual entry. Implements PRD Cold Start Intelligence principle — never say "no data."
+
+```
+┌───────────────────────────────────┐
+│                                   │
+│  ⚠️ لم أستطع قراءة الإيصال      │  ← Bot bubble, Danger Red #D32F2F icon
+│     الصورة مش واضحة أو مو فاتورة │     Body 14px, On Surface #1B1B1F
+│                                   │
+│  ┌─────────────────────────────┐  │
+│  │ أدخل المبلغ يدوياً:        │  │  ← quick_input_form widget
+│  │                             │  │     Card White #FFFFFF, 16px radius
+│  │ المبلغ                       │  │
+│  │ [  ____________ ]  ريال    │  │  ← Number input, 24px pill
+│  │                             │  │
+│  │ التصنيف                      │  │
+│  │ [  ____________ ]          │  │  ← Text input, optional
+│  │                             │  │
+│  │ [ سجل العملية ✓ ]          │  │  ← Primary button, Cyan fill
+│  └─────────────────────────────┘  │
+│                                   │
+└───────────────────────────────────┘
+```
+
+| Property | Value |
+|----------|-------|
+| Error bubble | Bot bubble (Navy `#001F5E` BG), 16px radius, Danger Red `#D32F2F` ⚠️ icon |
+| Error title | "لم أستطع قراءة الإيصال" — Body 14px Bold, On Surface text |
+| Error subtitle | "الصورة مش واضحة أو مو فاتورة" — Body 14px Regular, Muted `#6B7280` |
+| Form container | Card White `#FFFFFF`, 16px radius, border `#E1E4E8` — reuses quick_input_form widget |
+| Form title | "أدخل المبلغ يدوياً:" — Title 18px Bold, On Surface `#1B1B1F` |
+| Amount field | Number input, 24px pill, key: `amount`, required, keyboard type: number |
+| Category field | Text input, 24px pill, key: `category`, optional, placeholder: "مطاعم، مقاضي…" |
+| Submit button | "سجل العملية ✓" — Pill 20px, Cyan `#32C2FF` fill, Button 13px SemiBold |
+| Submit disabled | Until amount field is non-empty |
+
+**Behavior:**
+- Error bubble appears as bot message with Danger Red ⚠️ icon
+- quick_input_form rendered inline below — user NEVER hits a dead end
+- User fills amount → taps "سجل العملية" → AI processes → confirms with standard transaction confirmation: "تم تسجيل ١٥٠ ريال — عشاء 🍽️"
+- User can also tap 📷 to retake photo — error bubble remains visible as context
+- Fallback form always available even if retake succeeds — user can switch between OCR and manual
+
 ---
 
 ## Flow: "Can I Buy?" Purchase Decision
