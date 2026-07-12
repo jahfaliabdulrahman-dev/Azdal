@@ -42,6 +42,8 @@
          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <!-- Required for network access (API calls to Gemini + Supabase) -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Voice input: speech_to_text requires RECORD_AUDIO -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <!-- OCR: Camera capture for receipt scanning (Stage 3) -->
