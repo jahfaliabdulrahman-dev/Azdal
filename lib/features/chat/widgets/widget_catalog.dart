@@ -7,6 +7,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'ocr_widgets.dart';
+
 // ─────────────────────────────────────────────────────────────────────
 // Design token constants
 // ─────────────────────────────────────────────────────────────────────
@@ -53,6 +55,15 @@ Widget renderCatalogWidget(
       ),
     'goal_progress_card' => _GoalProgressCardWidget(json: widgetJson),
     'compound_split_card' => _CompoundSplitCardWidget(
+        json: widgetJson,
+        onAction: onAction,
+      ),
+    'ocr_processing' => const OcrProcessingOverlay(),
+    'ocr_failure' => _OcrFailureWidgetAdapter(
+        json: widgetJson,
+        onAction: onAction,
+      ),
+    'ocr_partial' => _OcrPartialExtractionAdapter(
         json: widgetJson,
         onAction: onAction,
       ),
@@ -775,6 +786,69 @@ class _AdjustButton extends StatelessWidget {
         ),
         child: Icon(icon, color: _cyan, size: 18),
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// OCR Widget Adapters (bridge ocr_widgets.dart → widget catalog)
+// ─────────────────────────────────────────────────────────────────────
+
+/// Adapter for OcrPartialExtractionWidget — extracts data from JSON
+/// and routes button taps through the catalog's [onAction] callback.
+class _OcrPartialExtractionAdapter extends StatelessWidget {
+  const _OcrPartialExtractionAdapter({
+    required this.json,
+    this.onAction,
+  });
+  final Map<String, dynamic> json;
+  final void Function(Map<String, dynamic>)? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = (json['items'] as List<dynamic>?)
+            ?.map((e) => e as Map<String, dynamic>)
+            .toList() ??
+        [];
+    final uncertainCount = (json['uncertain_count'] as num?)?.toInt() ?? 0;
+    final total = (json['total'] as num?)?.toInt() ?? 0;
+
+    return OcrPartialExtractionWidget(
+      confirmedItems: items,
+      uncertainCount: uncertainCount,
+      confirmedTotal: total,
+      onConfirmAll: () => onAction?.call({
+        'action': 'ocr_partial_confirm',
+        'widget': 'ocr_partial',
+        'items': items,
+        'total': total,
+      }),
+    );
+  }
+}
+
+/// Adapter for OcrFailureWidget — extracts form action through catalog.
+class _OcrFailureWidgetAdapter extends StatelessWidget {
+  const _OcrFailureWidgetAdapter({
+    required this.json,
+    this.onAction,
+  });
+  final Map<String, dynamic> json;
+  final void Function(Map<String, dynamic>)? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return OcrFailureWidget(
+      onSubmit: (values) => onAction?.call({
+        'action': 'ocr_failure_submit',
+        'widget': 'ocr_failure',
+        'amount': values['amount'],
+        'category': values['category'],
+      }),
+      onRetake: () => onAction?.call({
+        'action': 'ocr_retake',
+        'widget': 'ocr_failure',
+      }),
     );
   }
 }

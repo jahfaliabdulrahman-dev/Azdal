@@ -22,6 +22,7 @@ import '../../app/providers.dart';
 import 'models/chat_message.dart';
 import 'providers/chat_provider.dart';
 import 'widgets/chat_widgets.dart';
+import 'widgets/ocr_widgets.dart';
 import 'widgets/widget_catalog.dart';
 
 // ─────────────────────────────────────────────────────────────────────

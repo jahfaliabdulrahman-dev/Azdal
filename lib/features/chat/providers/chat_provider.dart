@@ -52,11 +52,13 @@ final class ChatProvider extends StateNotifier<ChatState> {
   ChatProvider() : super(const ChatState());
 
   /// Append a user message and enter loading state.
-  void addUserMessage(String text) {
+  /// [imagePath] optionally attaches a receipt photo (Stage 3 OCR).
+  void addUserMessage(String text, {String? imagePath}) {
     final message = ChatMessage(
       id: _uuid(),
       role: 'user',
       content: text,
+      imagePath: imagePath,
       timestamp: DateTime.now(),
     );
     state = state.copyWith(
@@ -66,6 +68,7 @@ final class ChatProvider extends StateNotifier<ChatState> {
     );
     // ignore: avoid_print
     print('=== AZDAL DEBUG: User message added — id=${message.id} '
+        'hasImage=${message.hasImage} '
         'content="${message.content.length > 40 ? '${message.content.substring(0, 40)}...' : message.content}"');
   }
 

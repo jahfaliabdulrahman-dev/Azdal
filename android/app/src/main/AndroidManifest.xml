@@ -24,6 +24,12 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- System share sheet: receive images from other apps (Stage 3 OCR) -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="image/*"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
@@ -38,6 +44,8 @@
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <!-- Voice input: speech_to_text requires RECORD_AUDIO -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- OCR: Camera capture for receipt scanning (Stage 3) -->
+    <uses-permission android:name="android.permission.CAMERA"/>
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>

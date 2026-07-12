@@ -29,8 +29,8 @@ dependencies:
   # Input
   speech_to_text: ^7.0.0               # Voice input (Android SpeechRecognizer) — DEC-016
   connectivity_plus: ^6.0.0            # Offline detection for chat UI
-  # receive_sharing_intent: ^1.6.0      # System share sheet (receipt images) — Stage 3
-  # image_picker: ^1.0.0                # Camera / gallery picker — Stage 3
+  receive_sharing_intent: ^1.6.0        # System share sheet (receipt images) — Stage 3
+  image_picker: ^1.0.0                  # Camera / gallery picker — Stage 3
   
   # UI / Font
   google_fonts: ^6.1.0                  # Cairo font

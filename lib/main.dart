@@ -1,5 +1,9 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app_router.dart';
@@ -59,6 +63,13 @@ Future<void> main() async {
 
   runApp(const ProviderScope(child: AzdalApp()));
 }
+
+/// Global stream controller to notify ChatScreen of incoming shared images.
+/// This is set up in main() before the app starts and read by ChatScreen.
+StreamController<String>? _sharedImageController;
+
+/// Provider that holds the path of a system-shared image, consumed by ChatScreen.
+final sharedImagePathProvider = StateProvider<String?>((ref) => null);
 
 /// Root widget — RTL, light theme, MaterialApp.router + go_router.
 class AzdalApp extends StatelessWidget {

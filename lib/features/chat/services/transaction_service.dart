@@ -22,7 +22,7 @@ final class TransactionService {
   ///
   /// Returns the created row as a Map on success, or throws on failure.
   /// Required fields: [amount], [category].
-  /// Optional: [subcategory], [description], [type], [tone], [groupId].
+  /// Optional: [subcategory], [description], [type], [tone], [groupId], [receiptUrl].
   Future<Map<String, dynamic>> saveTransaction({
     required double amount,
     required String category,
@@ -31,6 +31,7 @@ final class TransactionService {
     String type = 'expense',
     String tone = 'gray',
     String? groupId,
+    String? receiptUrl,
   }) async {
     final uid = userId;
     if (uid == null) {
@@ -50,6 +51,7 @@ final class TransactionService {
     if (subcategory != null) data['subcategory'] = subcategory;
     if (description != null) data['description'] = description;
     if (groupId != null) data['group_id'] = groupId;
+    if (receiptUrl != null) data['receipt_url'] = receiptUrl;
 
     // ignore: avoid_print
     print('=== AZDAL DEBUG: Saving transaction — '

@@ -9,6 +9,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:google_generative_ai/google_generative_ai.dart';
 
@@ -45,9 +46,13 @@ const _systemPrompt = '''
 
 /// Thin service wrapper around the Gemini generative AI SDK.
 final class GeminiService {
-  /// The model identifier.
+  /// The model identifier for text chat.
   /// `gemini-flash-latest` auto-resolves to the newest available Flash model.
-  static const _modelName = 'gemini-flash-latest';
+  static const _chatModel = 'gemini-flash-latest';
+
+  /// The model identifier for vision (OCR).
+  /// `gemini-2.5-flash` supports vision/image inputs.
+  static const _visionModel = 'gemini-2.5-flash';
 
   /// Whether a valid API key was injected at compile time.
   bool get isConfigured => _apiKey.isNotEmpty;
@@ -65,7 +70,7 @@ final class GeminiService {
 
     try {
       final model = GenerativeModel(
-        model: _modelName,
+        model: _chatModel,
         apiKey: _apiKey,
       );
       final response = await model.generateContent(
@@ -112,7 +117,7 @@ final class GeminiService {
 
     try {
       final model = GenerativeModel(
-        model: _modelName,
+        model: _chatModel,
         apiKey: _apiKey,
         systemInstruction: Content.system(_systemPrompt),
       );
@@ -201,6 +206,101 @@ final class GeminiService {
   /// Remove the JSON code block from the text to get clean display text.
   String _stripJsonBlock(String text) {
     return text.replaceAll(RegExp(r'```json[\s\S]*?```', multiLine: true), '').trim();
+  }
+
+  // ── OCR (Stage 3) ─────────────────────────────────────────────────
+
+  /// OCR a receipt image using Gemini Vision.
+  ///
+  /// [imageBytes] is the raw JPEG/PNG bytes of the receipt photo.
+  ///
+  /// Returns a parsed JSON map with `items`, `total`, and `currency` on
+  /// success, or an error map with `error` key on failure.
+  ///
+  /// The Arabic prompt instructs Gemini to extract each line item — product
+  /// name and price — and return a structured JSON response.
+  Future<Map<String, dynamic>> ocrReceipt(Uint8List imageBytes) async {
+    assert(_apiKey.isNotEmpty, 'GEMINI_API_KEY is empty.');
+
+    if (_apiKey.isEmpty) {
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: OCR SKIPPED — no API key');
+      return {'error': 'GEMINI_API_KEY is empty'};
+    }
+
+    // ignore: avoid_print
+    print('=== AZDAL DEBUG: OCR started — '
+        'image size=${imageBytes.length} bytes');
+
+    try {
+      final model = GenerativeModel(
+        model: _visionModel,
+        apiKey: _apiKey,
+      );
+
+      const prompt =
+          'استخرج جميع بنود هذا الإيصال. '
+          'لكل بند: اسم المنتج/الخدمة، السعر. '
+          'أعد النتيجة بصيغة JSON فقط بدون أي نص آخر: '
+          '{"items": [{"name": "...", "price": 0}], "total": 0, "currency": "SAR"}';
+
+      final imagePart = DataPart('image/jpeg', imageBytes);
+
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: OCR — sending to $_visionModel...');
+
+      final response = await model.generateContent([
+        Content.multi([imagePart, TextPart(prompt)]),
+      ]);
+
+      final rawText = response.text ?? '';
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: OCR raw response — '
+          '"${rawText.length > 200 ? '${rawText.substring(0, 200)}...' : rawText}"');
+
+      // Extract JSON from response (may be wrapped in ```json blocks)
+      final jsonMatch = RegExp(
+        r'(\{[\s\S]*"items"[\s\S]*\})',
+        multiLine: true,
+      ).firstMatch(rawText);
+
+      final jsonStr = jsonMatch?.group(1)?.trim() ?? rawText.trim();
+
+      try {
+        final result = jsonDecode(jsonStr) as Map<String, dynamic>;
+
+        final items = result['items'];
+        if (items == null || items is! List || items.isEmpty) {
+          // ignore: avoid_print
+          print('=== AZDAL DEBUG: OCR — no items extracted');
+          return {
+            'error': 'no_items',
+            'raw_response': rawText,
+          };
+        }
+
+        // ignore: avoid_print
+        print('=== AZDAL DEBUG: OCR success — '
+            '${items.length} items, total=${result['total']}');
+        return result;
+      } catch (e) {
+        // ignore: avoid_print
+        print('=== AZDAL DEBUG: OCR JSON parse FAILED — $e');
+        return {
+          'error': 'parse_failed',
+          'raw_response': rawText,
+          'detail': e.toString(),
+        };
+      }
+    } on GenerativeAIException catch (e) {
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: OCR Gemini FAILED — $e');
+      return {'error': 'gemini_error', 'detail': e.toString()};
+    } catch (e) {
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: OCR FAILED (unexpected) — $e');
+      return {'error': 'unexpected', 'detail': e.toString()};
+    }
   }
 }
 
