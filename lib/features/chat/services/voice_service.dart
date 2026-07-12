@@ -60,9 +60,15 @@ final class VoiceService {
 
   /// Start listening for Arabic speech.
   ///
-  /// Transcripts accumulate in [lastResult] as the user speaks.
+  /// [onResult] is called on every recognition result (interim and final)
+  /// with the recognized text and whether this is a final result.
+  /// Use this to provide live feedback in the text field as the user speaks.
+  ///
+  /// Transcripts also accumulate in [lastResult].
   /// Call [stopListening] to finalize and retrieve the text.
-  Future<bool> startListening() async {
+  Future<bool> startListening({
+    void Function(String text, bool isFinal)? onResult,
+  }) async {
     if (!_speech.isAvailable) {
       // ignore: avoid_print
       print('=== AZDAL DEBUG: Voice startListening SKIPPED — '
@@ -76,9 +82,12 @@ final class VoiceService {
       await _speech.listen(
         listenOptions: stt.SpeechListenOptions(
           localeId: 'ar_SA',
+          partialResults: true,
+          pauseFor: const Duration(seconds: 2),
         ),
         onResult: (result) {
           _lastResult = result.recognizedWords;
+          onResult?.call(result.recognizedWords, result.finalResult);
         },
       );
       // ignore: avoid_print

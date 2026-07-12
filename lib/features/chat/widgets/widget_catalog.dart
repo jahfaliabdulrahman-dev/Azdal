@@ -634,7 +634,13 @@ class _CompoundSplitCardWidgetState extends State<_CompoundSplitCardWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final total = (widget.json['total'] as num?)?.toInt() ?? 0;
+    // Compute total locally from _splits — never trust LLM math (DEC-003).
+    // This recalculates on every build, so it stays correct when the user
+    // adjusts amounts via the +/- buttons.
+    final total = _splits.fold<int>(
+      0,
+      (sum, s) => sum + ((s['amount'] as num?)?.toInt() ?? 0),
+    );
 
     return Container(
       margin: const EdgeInsets.only(top: 8),

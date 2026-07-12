@@ -62,6 +62,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   /// Guard against double-tap on confirm/save actions.
   bool _isConfirming = false;
 
+  /// Stored classification results from the first _tryAutoClassify call,
+  /// keyed by user message id. Used by _confirmTransaction to avoid a
+  /// second (non-deterministic) Gemini call — matching the one that
+  /// decided to show the confirm/edit buttons in the first place.
+  final Map<String, Map<String, dynamic>> _storedClassifications = {};
+
   @override
   void initState() {
     super.initState();
@@ -126,7 +132,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
       }
     } else {
-      final started = await voiceService.startListening();
+      final started = await voiceService.startListening(
+        onResult: (text, _) {
+          if (mounted) {
+            _textController.text = text;
+            _textController.selection = TextSelection.fromPosition(
+              TextPosition(offset: text.length),
+            );
+          }
+        },
+      );
       if (!started && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -299,6 +314,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         // Check if this looks like a transaction entry
         final txResult = await _tryAutoClassify(text);
         if (txResult != null && mounted) {
+          // Store classification for later confirm — avoids
+          // a second (non-deterministic) Gemini call in _confirmTransaction
+          final lastUserMsgId = ref.read(chatProvider).messages
+              .lastWhere((m) => m.isUser)
+              .id;
+          _storedClassifications[lastUserMsgId] = txResult;
+
           chatNotifier.addBotMessage(
             response.text.isNotEmpty
                 ? response.text
@@ -444,7 +466,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (_isConfirming) return; // Guard: prevent double-tap
     _isConfirming = true;
     try {
-      // Find the most recent user message and attempt to save
+      // Find the most recent user message
       final messages = ref.read(chatProvider).messages;
       final lastUserMsg = messages.reversed.firstWhere(
         (m) => m.isUser,
@@ -458,26 +480,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       if (lastUserMsg.content.isEmpty) return;
 
-      try {
-        final txResult = await _tryAutoClassify(lastUserMsg.content);
-        if (txResult == null || txResult['type'] != 'simple') {
-          chatNotifier.addBotMessage(
-            'تم تسجيل المعاملة ✅',
-          );
-          return;
-        }
-
-        final txService = ref.read(transactionServiceProvider);
-        await txService.saveTransaction(
-          amount: (txResult['amount'] as num).toDouble(),
-          category: txResult['category'] as String? ?? 'متنوع',
-          tone: txResult['tone'] as String? ?? 'gray',
+      // Use stored classification from the FIRST _tryAutoClassify call —
+      // never call Gemini again (LLM output isn't deterministic).
+      final txResult = _storedClassifications[lastUserMsg.id];
+      if (txResult == null || txResult['type'] != 'simple') {
+        chatNotifier.setError(
+          'تعذر حفظ المعاملة — التصنيف غير متوفر. حاول مرة أخرى.',
         );
-
-        chatNotifier.addBotMessage('تم تسجيل المعاملة بنجاح ✅');
-      } catch (e) {
-        chatNotifier.setError(e.toString());
+        return;
       }
+
+      final txService = ref.read(transactionServiceProvider);
+      await txService.saveTransaction(
+        amount: (txResult['amount'] as num).toDouble(),
+        category: txResult['category'] as String? ?? 'متنوع',
+        tone: txResult['tone'] as String? ?? 'gray',
+      );
+
+      chatNotifier.addBotMessage('تم تسجيل المعاملة بنجاح ✅');
+    } catch (e) {
+      chatNotifier.setError('فشل حفظ المعاملة: $e');
     } finally {
       _isConfirming = false;
     }

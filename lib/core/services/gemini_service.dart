@@ -38,6 +38,7 @@ const _systemPrompt = '''
 ```
 
 عند وجود عدة عناصر في معاملة واحدة (مثل "٤٧٥ مقاضي: ١٥٠ مقهى + ١٧٥ خضار + ١٥٠ مطعم")، استخدم compound_split_card.
+لا ترسل حقل total مع compound_split_card — التطبيق يحسب الإجمالي تلقائياً من splits.
 
 عند السؤال عن ملخص المصاريف، استخدم summary_card أو bar_chart.
 ''';
