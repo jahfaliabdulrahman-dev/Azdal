@@ -13,14 +13,20 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/providers.dart';
+import '../../core/services/gemini_service.dart';
+import '../../main.dart';
 import 'models/chat_message.dart';
 import 'providers/chat_provider.dart';
+import 'services/transaction_service.dart';
 import 'widgets/chat_widgets.dart';
 import 'widgets/ocr_widgets.dart';
 import 'widgets/widget_catalog.dart';
@@ -75,6 +81,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _initConnectivity();
     _initVoice();
     _checkColdStart();
+    // Check for shared images from system share sheet
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPendingSharedImage();
+    });
   }
 
   @override
@@ -461,6 +471,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       case 'compound_split_card':
         await _handleCompoundSplit(action, chatNotifier);
+        // Upload receipt to storage if this came from OCR
+        if (_capturedReceiptPath != null) {
+          final receiptUrl =
+              await _uploadReceiptToStorage(_capturedReceiptPath!);
+          if (receiptUrl != null) {
+            // ignore: avoid_print
+            print('=== AZDAL DEBUG: Receipt stored — url=$receiptUrl');
+          }
+          _capturedReceiptPath = null;
+        }
+        break;
+
+      case 'ocr_failure':
+        final ocrAction = action['action'] as String?;
+        if (ocrAction == 'ocr_failure_submit') {
+          // Manual entry from OCR failure
+          await _handleOcrFailureSubmit(action, chatNotifier);
+        } else if (ocrAction == 'ocr_retake') {
+          _pickReceiptImage();
+        }
         break;
     }
   }
@@ -534,6 +564,267 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     } catch (e) {
       chatNotifier.setError(e.toString());
     }
+  }
+
+  /// Handle OCR failure manual entry — save as simple transaction.
+  Future<void> _handleOcrFailureSubmit(
+    Map<String, dynamic> action,
+    ChatProvider chatNotifier,
+  ) async {
+    final amountStr = action['amount'] as String?;
+    final category = action['category'] as String? ?? 'متنوع';
+
+    if (amountStr == null || amountStr.isEmpty) return;
+
+    final amount = double.tryParse(amountStr) ?? 0;
+    if (amount <= 0) return;
+
+    try {
+      final txService = ref.read(transactionServiceProvider);
+
+      // Try to upload receipt first (if we still have it)
+      String? receiptUrl;
+      if (_capturedReceiptPath != null) {
+        receiptUrl = await _uploadReceiptToStorage(_capturedReceiptPath!);
+        _capturedReceiptPath = null;
+      }
+
+      await txService.saveTransaction(
+        amount: amount,
+        category: category,
+        description: 'إدخال يدوي (فشل OCR)',
+        receiptUrl: receiptUrl,
+      );
+
+      chatNotifier.addBotMessage(
+        'تم تسجيل $amount ريال — $category ✅',
+      );
+    } catch (e) {
+      chatNotifier.setError('فشل حفظ المعاملة: $e');
+    }
+  }
+
+  // ── OCR Camera / Gallery / Share Sheet ──────────────────────────
+
+  /// Path of the captured or selected receipt image (temporary file).
+  String? _capturedReceiptPath;
+
+  /// Show a bottom sheet to pick receipt from camera or gallery.
+  Future<void> _pickReceiptImage() async {
+    final picker = ImagePicker();
+
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: _navy),
+              title: const Text('تصوير الإيصال',
+                  style: TextStyle(fontFamily: 'Cairo')),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: _navy),
+              title: const Text('اختيار من المعرض',
+                  style: TextStyle(fontFamily: 'Cairo')),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    try {
+      final xFile = await picker.pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 1920,
+      );
+      if (xFile != null && mounted) {
+        // ignore: avoid_print
+        print('=== AZDAL DEBUG: Receipt image picked — '
+            'path=${xFile.path}');
+        await _processReceiptImage(xFile.path);
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: Image pick FAILED — $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر التقاط الصورة. تأكد من الصلاحيات.')),
+        );
+      }
+    }
+  }
+
+  /// Process a receipt image: show in chat, trigger OCR, handle result.
+  Future<void> _processReceiptImage(String imagePath) async {
+    final chatNotifier = ref.read(chatProvider.notifier);
+
+    // Display the image as a user message
+    chatNotifier.addUserMessage('📷 إيصال', imagePath: imagePath);
+
+    // Show OCR processing overlay
+    chatNotifier.addBotMessage(
+      '',
+      widget: const {'widget': 'ocr_processing'},
+    );
+
+    try {
+      // Read image bytes
+      final imageFile = File(imagePath);
+      if (!await imageFile.exists()) {
+        chatNotifier.setError('الصورة غير موجودة.');
+        return;
+      }
+
+      final imageBytes = await imageFile.readAsBytes();
+
+      // Run OCR with timeout
+      final geminiService = ref.read(geminiServiceProvider);
+      final ocrResult = await geminiService
+          .ocrReceipt(imageBytes)
+          .timeout(const Duration(seconds: 10));
+
+      if (!mounted) return;
+
+      // Check result
+      if (ocrResult.containsKey('error')) {
+        // State 3: OCR failure → show manual entry
+        _showOcrFailure(chatNotifier, ocrResult);
+        return;
+      }
+
+      final items = ocrResult['items'] as List<dynamic>? ?? [];
+      final total = ocrResult['total'];
+
+      if (items.isEmpty) {
+        // State 3: No items extracted
+        _showOcrFailure(chatNotifier, ocrResult);
+        return;
+      }
+
+      // State 2 or full success: show compound_split_card
+      _showOcrResult(chatNotifier, items, total, imagePath);
+    } on TimeoutException {
+      if (!mounted) return;
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: OCR timed out after 10s');
+      _showOcrFailure(chatNotifier, {'error': 'timeout'});
+    } catch (e) {
+      if (!mounted) return;
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: OCR process FAILED — $e');
+      _showOcrFailure(chatNotifier, {'error': 'unexpected', 'detail': e.toString()});
+    }
+  }
+
+  /// Show OCR failure state (State 3) with manual entry form.
+  void _showOcrFailure(
+    ChatProvider chatNotifier,
+    Map<String, dynamic> ocrResult,
+  ) {
+    // Remove the processing bubble and add failure widget
+    chatNotifier.addBotMessage(
+      '',
+      widget: const {
+        'widget': 'ocr_failure',
+      },
+    );
+  }
+
+  /// Show OCR result as compound_split_card or partial extraction.
+  void _showOcrResult(
+    ChatProvider chatNotifier,
+    List<dynamic> items,
+    dynamic total,
+    String imagePath,
+  ) {
+    // Convert items to compound_split_card format
+    final splits = items.map<Map<String, dynamic>>((item) {
+      final map = item as Map<String, dynamic>;
+      final name = map['name'] as String? ?? '';
+      final price = (map['price'] as num?)?.toInt() ?? 0;
+      return {
+        'category': name,
+        'amount': price,
+      };
+    }).toList();
+
+    final totalAmount = (total is num) ? total.toInt() : 0;
+
+    // Store receipt path for later upload
+    _capturedReceiptPath = imagePath;
+
+    chatNotifier.addBotMessage(
+      'تم استخراج ${items.length} بنود من الإيصال:',
+      widget: {
+        'widget': 'compound_split_card',
+        'splits': splits,
+        'total': totalAmount,
+      },
+    );
+  }
+
+  /// Upload receipt image to Supabase Storage.
+  /// Path: /{user_id}/{timestamp}_receipt.jpg
+  Future<String?> _uploadReceiptToStorage(String localPath) async {
+    try {
+      final client = Supabase.instance.client;
+      final uid = client.auth.currentUser?.id;
+      if (uid == null) {
+        // ignore: avoid_print
+        print('=== AZDAL DEBUG: Receipt upload SKIPPED — no user');
+        return null;
+      }
+
+      final timestamp = DateTime.now()
+          .toIso8601String()
+          .replaceAll(':', '-')
+          .replaceAll('.', '-');
+      final fileName = '${timestamp}_receipt.jpg';
+      final storagePath = '$uid/$fileName';
+
+      final file = File(localPath);
+      if (!await file.exists()) return null;
+
+      await client.storage.from('receipts').upload(
+            storagePath,
+            file,
+            fileOptions: const FileOptions(
+              contentType: 'image/jpeg',
+            ),
+          );
+
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: Receipt uploaded — path=$storagePath');
+      return storagePath;
+    } catch (e) {
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: Receipt upload FAILED — $e');
+      return null;
+    }
+  }
+
+  /// Check for pending shared image (from system share sheet).
+  /// Called once on init. Consumes and clears the pending path.
+  void _checkPendingSharedImage() {
+    final pendingPath = _getPendingSharedImage();
+    if (pendingPath != null && mounted) {
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: Processing pending shared image — '
+          'path=$pendingPath');
+      _processReceiptImage(pendingPath);
+    }
+  }
+
+  /// Thread-safe accessor for the module-level pending shared image.
+  /// Consumed once, then cleared.
+  static String? _getPendingSharedImage() {
+    return consumePendingSharedImage();
   }
 
   // ── Build ──
@@ -619,7 +910,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             onSend: _sendMessage,
             onMic: _toggleVoice,
             onCamera: () {
-              // NOT IMPLEMENTED — Stage 3 OCR
+              _pickReceiptImage();
             },
           ),
         ],
@@ -721,6 +1012,35 @@ class _MessageBubble extends StatelessWidget {
                 crossAxisAlignment:
                     isUser ? CrossAxisAlignment.start : CrossAxisAlignment.end,
                 children: [
+                  // Image thumbnail (receipt photo) — user messages only
+                  if (message.isUser && message.hasImage)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: _userBubbleBg,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(
+                          File(message.imagePath!),
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: 180,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              height: 120,
+                              color: _userBubbleBg,
+                              child: const Center(
+                                child: Icon(Icons.broken_image,
+                                    color: _muted, size: 32),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+
                   // Text bubble
                   if (message.content.isNotEmpty)
                     Container(

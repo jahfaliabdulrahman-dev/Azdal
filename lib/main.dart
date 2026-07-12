@@ -61,7 +61,42 @@ Future<void> main() async {
         'user_id: ${supabase.auth.currentUser?.id}');
   }
 
+  // ── System Share Sheet (Stage 3 OCR) ──
+  // Listen for incoming shared images from other apps.
+  // On Android, the stream emits the initial intent immediately.
+  // We store the path and let ChatScreen pick it up.
+  ReceiveSharingIntent.instance.getMediaStream().listen(
+    (List<SharedMediaFile> files) {
+      if (files.isNotEmpty) {
+        final file = files.first;
+        if (file.path.isNotEmpty) {
+          // ignore: avoid_print
+          print('=== AZDAL DEBUG: Shared image received — '
+              'path=${file.path}');
+          // The ChatScreen handles this via the provider.
+          _pendingSharedImage = file.path;
+        }
+      }
+    },
+    onError: (err) {
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: Share intent stream error — $err');
+    },
+  );
+
   runApp(const ProviderScope(child: AzdalApp()));
+}
+
+/// Pending shared image path — set by the share intent stream,
+/// consumed once by ChatScreen, then cleared.
+String? _pendingSharedImage;
+
+/// Public accessor for pending shared image.
+/// Called once by ChatScreen, then clears the pending value.
+String? consumePendingSharedImage() {
+  final path = _pendingSharedImage;
+  _pendingSharedImage = null;
+  return path;
 }
 
 /// Global stream controller to notify ChatScreen of incoming shared images.
