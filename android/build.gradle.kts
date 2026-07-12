@@ -19,15 +19,6 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
-// Force consistent JVM target across all subprojects (fixes JVM mismatch in plugins like receive_sharing_intent)
-allprojects {
-    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-        }
-    }
-}
-
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
