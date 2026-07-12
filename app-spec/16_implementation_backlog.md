@@ -69,6 +69,7 @@ verdict engine silently missing half its inputs.
 | OCR-02 | System share sheet (receive_sharing_intent) | State Engineer | OCR-01 | 1h |
 | OCR-03 | Gemini Vision OCR integration | State Engineer | OCR-01 | 3h |
 | OCR-04 | Receipt line items extraction → compound split card | State Engineer | OCR-03, CHAT-06 | 3h |
+| OCR-05 | Cancel-before-confirm on compound_split_card + transaction undo (soft-delete) on the confirmation message — DEC-020, found during live testing | State Engineer | OCR-04 | 2h |
 
 ---
 

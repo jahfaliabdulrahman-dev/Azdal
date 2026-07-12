@@ -1,6 +1,6 @@
 # Azdal — Active Capabilities
 
-> **Status:** 🟢 Stage 2 complete, device-verified — Stage 3 (OCR) starting  
+> **Status:** 🟢 Stage 3 (OCR) complete, device-verified — one small gap open (OCR-05)  
 > **Last Updated:** 2026-07-12
 
 ---
@@ -53,6 +53,17 @@
 | Cold Start Intelligence | 3 questions → instant insight, income saved to `transactions`. **Known gap:** the `monthly_commitments` answer is used for the insight ratio then discarded — Stage 4's COMMIT-01 must reuse it, not re-ask (DEC-019) | `lib/features/chat/chat_screen.dart` |
 | Tests | 16/16 passing (`chat_provider_test.dart`, `gemini_service_test.dart`, `widget_test.dart`) | `test/` |
 
+### ✅ COMPLETE — Stage 3 (OCR), device-verified with a real photographed receipt
+
+| Capability | Evidence | File |
+|------------|----------|------|
+| Camera/gallery picker | Bottom sheet — photograph or pick from gallery | `lib/features/chat/chat_screen.dart` |
+| Supabase Storage | `receipts` bucket, private, 10MB limit, 3 RLS policies (select/insert/delete own) — verified directly via SQL, not just trusted from a report | `app-spec/INIT-03_supabase_schema.md` |
+| Gemini Vision OCR | Real receipt photographed on-device → correct line items + total extracted. Was broken on first real test (`gemini-2.5-flash` deprecated, rejected by the live API) — fixed by unifying to `gemini-flash-latest` (same alias already proven for chat) | `lib/core/services/gemini_service.dart` |
+| OCR failure fallback (State 3) | Confirmed on a real non-receipt image — correctly detected, manual-entry form shown | `lib/features/chat/widgets/ocr_widgets.dart` |
+| Processing bubble lifecycle | Was leaving a stuck "جاري تحليل..." bubble behind on both success and failure — fixed via `ChatProvider.removeMessage(id)`, confirmed one bubble only after processing | `lib/features/chat/providers/chat_provider.dart` |
+| System share sheet (OCR-02) | **Not wired up** — `receive_sharing_intent` package builds fine at the pinned version (1.8.0), so it's not actually build-blocked despite earlier reports; the handler code in `main.dart` is just still commented out and untested. `pubspec.yaml` also has a leftover duplicate declaration (one commented, one active) that should be cleaned up | `lib/main.dart` |
+
 ### ✅ COMPLETE — Design
 
 | Capability | Evidence | File |
@@ -85,7 +96,7 @@
 
 | Capability | Status | Next Action |
 |------------|--------|-------------|
-| Stage 3 — OCR | Not yet started | `CAMERA` permission not declared, no Supabase Storage bucket exists yet — both needed before OCR-01/03 |
+| OCR-05 — cancel-before-confirm + transaction undo | Not yet built (DEC-020) | Found during live testing: no way to discard a wrong image upload before it's saved, or undo after. `is_deleted`/`deleted_at` already exist on `transactions` — this is UI wiring, not a schema change |
 
 ---
 
@@ -93,9 +104,7 @@
 
 | Capability | Required For Stage | Notes |
 |------------|-------------------|-------|
-| Camera/gallery + share sheet | Stage 3 | `image_picker` + `receive_sharing_intent`, OCR-01/02 |
-| Gemini Vision OCR | Stage 3 | Verify the vision API call works before building the pipeline on top of it — never exercised yet |
-| Supabase Storage bucket | Stage 3 | Zero buckets currently exist; required for receipt images per `08_security_privacy.md` |
+| System share sheet (OCR-02) | Stage 3 | Deferred — package builds fine, just never wired up or tested. Not urgent for MVP since the camera/gallery path already covers the core flow |
 | Commitments tracking (CRUD) | Stage 4 | No task existed for this anywhere until DEC-019 — PRD lists it as Tier 1 but it was never scheduled. Must seed from the Cold Start estimate, not re-ask |
 | Goals + gap detection | Stage 4 | `goals` table deployed, empty — no CRUD yet |
 | Integrity Score tracker | Stage 4 | Moved here from an earlier "Stage 3" label — see `16_implementation_backlog.md` |

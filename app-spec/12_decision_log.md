@@ -14,6 +14,20 @@ None at Stage 3. All decisions below are closed.
 
 ## Closed Decisions
 
+### DEC-020: Cancel-Before-Confirm + Transaction Undo (Hackathon MVP Scope)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-12 |
+| **Status** | ✅ Closed |
+| **Summary** | Two additions to close a real gap found during live OCR testing: (1) `compound_split_card` gets a "❌ إلغاء" discard action alongside "✅ تأكيد الكل" — lets the user drop a wrong/bad receipt upload before anything is written to Supabase. (2) A short-lived "تراجع" (undo) quick-action attached to the "تم تسجيل بنجاح ✅" confirmation message, soft-deleting that specific transaction (`is_deleted = true`) if tapped. Both target the moment a mistaken image upload can turn into a duplicated transaction. |
+| **Rationale** | Live device testing surfaced a real scenario: user uploads a wrong/miscropped image, has no way to discard it before confirming, and if they confirm-then-reupload-correct, both get saved as separate transactions — a genuine duplicate-data risk, not just a UI annoyance. Fix (1) prevents bad data from ever reaching the database — cheapest, highest-leverage fix, since it stops the problem at its source. Fix (2) covers the case where the mistake is only noticed after confirming; it costs almost nothing to add since `transactions.is_deleted`/`deleted_at` already exist and are already used everywhere else in the schema (anti-ghost, no-hard-delete principle) — this is wiring up a UI trigger for a capability the data model already has, not new infrastructure. |
+| **Alternatives** | (A) Full transaction list/edit/delete management view — rejected for now: real feature, bigger scope than this bug warrants, not what actually broke during testing. Revisit in Stage 4/5 if full transaction management becomes a real product need, not as a fix for this. (B) Do nothing, rely on users being careful — rejected: this is a hackathon MVP demoed live in front of judges; a stuck bad transaction with no recovery path is a real risk during a live demo, not a hypothetical edge case. |
+| **Impact** | `lib/features/chat/widgets/widget_catalog.dart` (compound_split_card cancel action), `lib/features/chat/chat_screen.dart` (undo quick-action wiring + soft-delete call), `lib/features/chat/services/transaction_service.dart` (needs a `deleteTransaction(id)` / soft-delete method — doesn't exist yet). No schema change — `is_deleted`/`deleted_at` already deployed. Scoped to the OCR/image flow where the bug was found; the undo mechanism itself is generic enough to reuse for any confirmed transaction later, not OCR-specific. |
+| **Related** | `16_implementation_backlog.md §Stage 3` (OCR-05 added), `app-spec/INIT-03_supabase_schema.md` (existing soft-delete columns), `lib/features/chat/widgets/widget_catalog.dart` |
+
+---
+
 ### DEC-019: "Can I Buy?" (BUY-01→04) Moved From Stage 3 to Stage 4
 
 | Field | Value |
@@ -280,6 +294,7 @@ None at Stage 3. All decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-020 | Cancel-before-confirm (compound split) + transaction undo | 2026-07-12 | ✅ |
 | DEC-019 | "Can I buy?" (BUY-01→04) moved from Stage 3 to Stage 4 | 2026-07-12 | ✅ |
 | DEC-018 | Voice input UX — mic button added to input bar | 2026-07-12 | ✅ |
 | DEC-017 | Guest-first RLS resolution — Supabase Anonymous Sign-In | 2026-07-12 | ✅ |
