@@ -26,9 +26,9 @@ dependencies:
   # State Management
   flutter_riverpod: ^2.5.0              # Riverpod (recommended)
   
-  # Input
-  receive_sharing_intent: ^1.6.0        # System share sheet (receipt images)
-  image_picker: ^1.0.0                  # Camera / gallery picker
+  # Input (Stage 3 — OCR/receipt scanning)
+  # receive_sharing_intent: ^1.6.0      # System share sheet (receipt images) — Stage 3
+  # image_picker: ^1.0.0                # Camera / gallery picker — Stage 3
   
   # UI / Font
   google_fonts: ^6.1.0                  # Cairo font
@@ -37,8 +37,8 @@ dependencies:
   go_router: ^14.0.0                    # Declarative routing (single route)
   
   # Local Storage
-  isar_flutter_libs: ^3.1.0             # Isar local cache
-  isar: ^3.1.0
+  # isar_flutter_libs: ^3.1.0           # Isar local cache (Stage 2+ — needs AGP namespace fix)
+  # isar: ^3.1.0                        # Stage 2+ — needs AGP namespace fix
   path_provider: ^2.1.0
 
 dev_dependencies:
