@@ -172,7 +172,7 @@ class _OcrFailureWidgetState extends State<OcrFailureWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
               const Icon(Icons.warning_amber_rounded, color: _danger, size: 24),
               const SizedBox(width: 8),
@@ -478,7 +478,7 @@ class _OcrPartialExtractionWidgetState
               margin: const EdgeInsets.only(bottom: 6),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                border: Border(
+                border: const Border(
                   left: const BorderSide(color: _success, width: 3),
                 ),
                 color: _success.withAlpha(15),
@@ -542,7 +542,7 @@ class _OcrPartialExtractionWidgetState
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  border: Border(
+                  border: const Border(
                     left: const BorderSide(color: _warning, width: 3),
                   ),
                   color: _warning.withAlpha(15),
@@ -575,7 +575,7 @@ class _OcrPartialExtractionWidgetState
                       ),
                     ),
                     const SizedBox(width: 8),
-                    SizedBox(
+                    const SizedBox(
                       width: 60,
                       child: TextField(
                         keyboardType: TextInputType.number,

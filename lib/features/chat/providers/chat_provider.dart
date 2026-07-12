@@ -53,7 +53,8 @@ final class ChatProvider extends StateNotifier<ChatState> {
 
   /// Append a user message and enter loading state.
   /// [imagePath] optionally attaches a receipt photo (Stage 3 OCR).
-  void addUserMessage(String text, {String? imagePath}) {
+  /// Returns the generated message id.
+  String addUserMessage(String text, {String? imagePath}) {
     final message = ChatMessage(
       id: _uuid(),
       role: 'user',
@@ -70,10 +71,12 @@ final class ChatProvider extends StateNotifier<ChatState> {
     print('=== AZDAL DEBUG: User message added — id=${message.id} '
         'hasImage=${message.hasImage} '
         'content="${message.content.length > 40 ? '${message.content.substring(0, 40)}...' : message.content}"');
+    return message.id;
   }
 
   /// Append a bot message (optionally with a widget payload) and exit loading.
-  void addBotMessage(String text, {Map<String, dynamic>? widget}) {
+  /// Returns the generated message id.
+  String addBotMessage(String text, {Map<String, dynamic>? widget}) {
     final message = ChatMessage(
       id: _uuid(),
       role: 'bot',
@@ -89,6 +92,21 @@ final class ChatProvider extends StateNotifier<ChatState> {
     // ignore: avoid_print
     print('=== AZDAL DEBUG: Bot message added — id=${message.id} '
         'hasWidget=${message.hasWidget}');
+    return message.id;
+  }
+
+  /// Remove a message by its [id].
+  ///
+  /// If no message with that id exists, this is a no-op.
+  /// The UI rebuilds reactively — the bubble disappears from the list.
+  void removeMessage(String id) {
+    final index = state.messages.indexWhere((m) => m.id == id);
+    if (index == -1) return;
+    final updated = <ChatMessage>[...state.messages];
+    updated.removeAt(index);
+    state = state.copyWith(messages: updated);
+    // ignore: avoid_print
+    print('=== AZDAL DEBUG: Message removed — id=$id');
   }
 
   /// Set the error field (shown as ErrorBubble) without adding a message.

@@ -666,8 +666,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // Display the image as a user message
     chatNotifier.addUserMessage('📷 إيصال', imagePath: imagePath);
 
-    // Show OCR processing overlay
-    chatNotifier.addBotMessage(
+    // Show OCR processing overlay — capture its id so we can remove it
+    // when the result (or failure) arrives.
+    final processingId = chatNotifier.addBotMessage(
       '',
       widget: const {'widget': 'ocr_processing'},
     );
@@ -693,7 +694,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       // Check result
       if (ocrResult.containsKey('error')) {
         // State 3: OCR failure → show manual entry
-        _showOcrFailure(chatNotifier, ocrResult);
+        _showOcrFailure(chatNotifier, ocrResult, processingId);
         return;
       }
 
@@ -702,22 +703,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       if (items.isEmpty) {
         // State 3: No items extracted
-        _showOcrFailure(chatNotifier, ocrResult);
+        _showOcrFailure(chatNotifier, ocrResult, processingId);
         return;
       }
 
       // State 2 or full success: show compound_split_card
-      _showOcrResult(chatNotifier, items, total, imagePath);
+      _showOcrResult(chatNotifier, items, total, imagePath, processingId);
     } on TimeoutException {
       if (!mounted) return;
       // ignore: avoid_print
       print('=== AZDAL DEBUG: OCR timed out after 10s');
-      _showOcrFailure(chatNotifier, {'error': 'timeout'});
+      _showOcrFailure(chatNotifier, {'error': 'timeout'}, processingId);
     } catch (e) {
       if (!mounted) return;
       // ignore: avoid_print
       print('=== AZDAL DEBUG: OCR process FAILED — $e');
-      _showOcrFailure(chatNotifier, {'error': 'unexpected', 'detail': e.toString()});
+      _showOcrFailure(chatNotifier, {'error': 'unexpected', 'detail': e.toString()}, processingId);
     }
   }
 
@@ -725,8 +726,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void _showOcrFailure(
     ChatProvider chatNotifier,
     Map<String, dynamic> ocrResult,
+    String processingId,
   ) {
-    // Remove the processing bubble and add failure widget
+    // Remove the processing bubble, then add failure widget
+    chatNotifier.removeMessage(processingId);
     chatNotifier.addBotMessage(
       '',
       widget: const {
@@ -741,7 +744,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     List<dynamic> items,
     dynamic total,
     String imagePath,
+    String processingId,
   ) {
+    // Remove the processing bubble — one bubble only, not three
+    chatNotifier.removeMessage(processingId);
     // Convert items to compound_split_card format
     final splits = items.map<Map<String, dynamic>>((item) {
       final map = item as Map<String, dynamic>;

@@ -46,13 +46,10 @@ const _systemPrompt = '''
 
 /// Thin service wrapper around the Gemini generative AI SDK.
 final class GeminiService {
-  /// The model identifier for text chat.
+  /// The model identifier for all Gemini calls (chat + vision/OCR).
   /// `gemini-flash-latest` auto-resolves to the newest available Flash model.
-  static const _chatModel = 'gemini-flash-latest';
-
-  /// The model identifier for vision (OCR).
-  /// `gemini-2.5-flash` supports vision/image inputs.
-  static const _visionModel = 'gemini-2.5-flash';
+  /// Gemini Flash is natively multimodal — no separate vision model needed.
+  static const _modelName = 'gemini-flash-latest';
 
   /// Whether a valid API key was injected at compile time.
   bool get isConfigured => _apiKey.isNotEmpty;
@@ -70,7 +67,7 @@ final class GeminiService {
 
     try {
       final model = GenerativeModel(
-        model: _chatModel,
+        model: _modelName,
         apiKey: _apiKey,
       );
       final response = await model.generateContent(
@@ -117,7 +114,7 @@ final class GeminiService {
 
     try {
       final model = GenerativeModel(
-        model: _chatModel,
+        model: _modelName,
         apiKey: _apiKey,
         systemInstruction: Content.system(_systemPrompt),
       );
@@ -234,7 +231,7 @@ final class GeminiService {
 
     try {
       final model = GenerativeModel(
-        model: _visionModel,
+        model: _modelName,
         apiKey: _apiKey,
       );
 
@@ -247,7 +244,7 @@ final class GeminiService {
       final imagePart = DataPart('image/jpeg', imageBytes);
 
       // ignore: avoid_print
-      print('=== AZDAL DEBUG: OCR — sending to $_visionModel...');
+      print('=== AZDAL DEBUG: OCR — sending to $_modelName...');
 
       final response = await model.generateContent([
         Content.multi([imagePart, TextPart(prompt)]),
