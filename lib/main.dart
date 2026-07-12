@@ -64,7 +64,7 @@ Future<void> main() async {
   // Listen for incoming shared images from other apps.
   // On Android, the stream emits the initial intent immediately.
   // We store the path and let ChatScreen pick it up.
-  ReceiveSharingIntent.instance.getMediaStream().listen(
+  ReceiveSharingIntent.getMediaStream().listen(
     (List<SharedMediaFile> files) {
       if (files.isNotEmpty) {
         final file = files.first;
