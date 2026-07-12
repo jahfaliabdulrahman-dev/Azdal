@@ -22,19 +22,15 @@ const _apiKey = String.fromEnvironment('GEMINI_API_KEY');
 ///
 /// IMPORTANT: This prompt deliberately does NOT instruct Gemini to emit
 /// `action_buttons` or `compound_split_card` JSON for transaction
-/// classifications.  The app constructs ALL transaction widgets
-/// (confirm/edit buttons AND compound split cards) locally from the
-/// _tryAutoClassify call, which runs without conversation history so
-/// it cannot conflate a prior transaction with the current one.
-/// Letting Gemini emit these widgets directly from the main chat
-/// response bypasses that safety, causing stale confirm data and
-/// "history-aware" compound splits that bundle wrong items together.
+/// classifications.  The app constructs ALL transaction widgets locally
+/// from the dedicated `classifyTransaction` call, which runs without
+/// conversation history so it cannot conflate a prior transaction with
+/// the current one.  The main chat response should just describe in
+/// plain Arabic — the app handles the widget generation.
 const _systemPrompt = '''
 أنت أزدل — مساعد مالي ذكي سعودي. تتحدث باللهجة السعودية فقط.
 تصنف المعاملات التي يرسلها المستخدم (فئة/فئة فرعية/نبرة: أخضر/رمادي/أحمر).
-لا ترسل أبداً زر التأكيد (action_buttons widget JSON).
-لا ترسل أبداً واجهة تقسيم المصروف (compound_split_card widget JSON).
-التطبيق هو المسؤول عن بناء الأزرار وواجهات التقسيم بنفسه.
+عبر عن التصنيف بنص عادي. التطبيق يتولى بناء الأزرار والواجهات بنفسه.
 لا تحسب أبداً — الحسابات على Supabase.
 إذا احتجت توضيحاً — اسأل. لا تخمن.
 
@@ -173,6 +169,74 @@ final class GeminiService {
     }
 
     return contents;
+  }
+
+  // ── Classification (dedicated — no main _systemPrompt interference) ──
+
+  /// Classification-specific system prompt.
+  ///
+  /// Separate from [_systemPrompt] so the classification instructions
+  /// (compound_split_card, JSON extraction) don't conflict with the main
+  /// chat prompt's "express in plain text" directive.
+  /// Only used by [classifyTransaction] — the main chat response uses
+  /// [_systemPrompt] and will never see these widget instructions.
+  static const _classifySystemPrompt = '''
+أنت نظام تصنيف معاملات مالية. مهمتك الوحيدة: تحليل النص واستخراج البيانات.
+أجب بصيغة JSON فقط، بدون أي نص آخر — لا تقدم شرحاً ولا اعتذاراً.
+
+للمعاملة الواحدة:
+{"amount": الرقم, "category": "الفئة", "subcategory": "الفئة الفرعية", "tone": "green أو gray أو red"}
+
+لعدة عناصر في نفس الرسالة:
+{"widget": "compound_split_card", "splits": [{"category": "...", "amount": الرقم}]}
+
+إذا لم تكن معاملة مالية:
+{"error": "NOT_TRANSACTION"}
+''';
+
+  /// Classify a single user message as a transaction.
+  ///
+  /// Uses [_classifySystemPrompt] — NOT [_systemPrompt] — so Gemini
+  /// receives explicit JSON-formatting instructions without conflicting
+  /// with the main chat prompt's "express in plain text" directive.
+  ///
+  /// No conversation history is sent — each classification is isolated
+  /// to the current message, preventing prior transactions from leaking in.
+  Future<GeminiResponse> classifyTransaction(String userText) async {
+    assert(_apiKey.isNotEmpty, 'GEMINI_API_KEY is empty.');
+
+    if (_apiKey.isEmpty) {
+      return const GeminiResponse(text: '{}');
+    }
+
+    // ignore: avoid_print
+    print('=== AZDAL DEBUG: classifyTransaction — '
+        '"${userText.length > 50 ? '${userText.substring(0, 50)}...' : userText}"');
+
+    try {
+      final model = GenerativeModel(
+        model: _modelName,
+        apiKey: _apiKey,
+        systemInstruction: Content.system(_classifySystemPrompt),
+      );
+
+      final response = await model.generateContent([
+        Content.text(userText),
+      ]);
+
+      final rawText = response.text ?? '';
+      final widget = _extractWidget(rawText);
+
+      return GeminiResponse(text: rawText, widget: widget);
+    } on GenerativeAIException catch (e) {
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: classifyTransaction FAILED — $e');
+      return GeminiResponse(text: '{}', error: e.toString());
+    } catch (e) {
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: classifyTransaction FAILED (unexpected) — $e');
+      return GeminiResponse(text: '{}', error: e.toString());
+    }
   }
 
   /// Extract a JSON widget block from the response text.

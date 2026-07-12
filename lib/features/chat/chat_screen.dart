@@ -390,22 +390,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (!RegExp(r'[0-9٠-٩]').hasMatch(text)) return null;
 
       // Use Gemini to extract transaction details.
-      // Explicit JSON instruction — the system prompt won't block this
-      // (it only blocks action_buttons widgets, not all JSON).
-      final classifyPrompt = '''
-أجب بصيغة JSON فقط، بدون أي نص آخر:
-{"amount": الرقم, "category": "الفئة", "subcategory": "الفئة الفرعية", "tone": "green أو gray أو red"}
-
-إذا كانت تحتوي على عدة عناصر، استخدم:
-{"widget": "compound_split_card", "splits": [{"category": "...", "amount": الرقم}]}
-
-إذا لم تكن معاملة مالية، أجب بـ:
-{"error": "NOT_TRANSACTION"}
-
-المعاملة: $text
-''';
-
-      final response = await geminiService.sendMessage(classifyPrompt);
+      // Uses dedicated classifyTransaction method — separate system prompt,
+      // no conversation history → cannot conflate prior messages.
+      final response = await geminiService.classifyTransaction(text);
 
       // Parse classification result — priority order:
       // 1. Parsed widget (JSON block from Gemini)
