@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Light-mode theme for Azdal.
 ///
 /// Navy (#001F5E) as primary/seed, Cyan (#32C2FF) as secondary.
-/// Cairo font family is referenced here; actual font loading happens
-/// in INIT-05 when font files are downloaded.
+/// Cairo font is loaded via google_fonts package — no local font files needed.
 class AppTheme {
   AppTheme._();
 
@@ -22,7 +22,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      fontFamily: 'Cairo',
+      textTheme: GoogleFonts.cairoTextTheme(),
       scaffoldBackgroundColor: colorScheme.surface,
       appBarTheme: const AppBarTheme(
         backgroundColor: _navy,

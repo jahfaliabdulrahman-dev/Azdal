@@ -1,0 +1,32 @@
+# =============================================================================
+# Azdal CI — Stage 1: Lint Only
+# =============================================================================
+# This workflow runs static analysis (`flutter analyze`) on every push and
+# pull request to the `main` branch.
+#
+# STAGE 1 SCOPE: Lint only. No test runner, no build, no deploy, no release.
+#   - Test runner (flutter test)  → Stage 2
+#   - Build (flutter build)       → Stage 3
+#   - Deploy / release            → Stage 4
+# =============================================================================
+
+name: Azdal CI — Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  analyze:
+    name: Flutter Analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24'
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter analyze
