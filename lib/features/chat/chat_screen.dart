@@ -327,34 +327,48 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         // Check if this looks like a transaction entry
         final txResult = await _tryAutoClassify(text);
         if (txResult != null && mounted) {
-          // Store classification for later confirm — avoids
-          // a second (non-deterministic) Gemini call in _confirmTransaction
-          final lastUserMsgId = ref.read(chatProvider).messages
-              .lastWhere((m) => m.isUser)
-              .id;
-          _storedClassifications[lastUserMsgId] = txResult;
+          final txType = txResult['type'] as String?;
 
-          chatNotifier.addBotMessage(
-            response.text.isNotEmpty
-                ? response.text
-                : 'تم تسجيل ${txResult['amount']} ريال — ${txResult['category']}',
-            widget: {
-              'widget': 'action_buttons',
-              'question': 'هل التصنيف صحيح؟',
-              'buttons': [
-                {
-                  'label': '✅ صحيح',
-                  'value': 'confirm',
-                  'type': 'primary',
-                },
-                {
-                  'label': '🔄 تعديل',
-                  'value': 'edit',
-                  'type': 'secondary',
-                },
-              ],
-            },
-          );
+          if (txType == 'compound') {
+            // Multi-item compound split — show the widget directly.
+            // The splits come from _tryAutoClassify's own Gemini call
+            // (no conversation history → cannot conflate prior items).
+            // Confirm reads splits from the widget action payload, not
+            // from _storedClassifications.
+            chatNotifier.addBotMessage(
+              response.text.isNotEmpty ? response.text : 'تم استخراج العناصر:',
+              widget: txResult['widget'] as Map<String, dynamic>,
+            );
+          } else {
+            // Simple transaction — store for later confirm, build
+            // action_buttons UI locally (single path, same as always).
+            final lastUserMsgId = ref.read(chatProvider).messages
+                .lastWhere((m) => m.isUser)
+                .id;
+            _storedClassifications[lastUserMsgId] = txResult;
+
+            chatNotifier.addBotMessage(
+              response.text.isNotEmpty
+                  ? response.text
+                  : 'تم تسجيل ${txResult['amount']} ريال — ${txResult['category']}',
+              widget: {
+                'widget': 'action_buttons',
+                'question': 'هل التصنيف صحيح؟',
+                'buttons': [
+                  {
+                    'label': '✅ صحيح',
+                    'value': 'confirm',
+                    'type': 'primary',
+                  },
+                  {
+                    'label': '🔄 تعديل',
+                    'value': 'edit',
+                    'type': 'secondary',
+                  },
+                ],
+              },
+            );
+          }
         } else {
           chatNotifier.addBotMessage(response.text, widget: response.widget);
         }
