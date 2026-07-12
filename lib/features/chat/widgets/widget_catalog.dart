@@ -331,6 +331,8 @@ class _ActionButtonsWidget extends StatelessWidget {
                     'widget': 'action_buttons',
                     'value': btn['value'],
                     'label': btn['label'],
+                    if (json.containsKey('tx_id')) 'tx_id': json['tx_id'],
+                    if (json.containsKey('tx_type')) 'tx_type': json['tx_type'],
                   }),
                   child: Text(
                     btn['label'] as String? ?? '',
@@ -734,32 +736,66 @@ class _CompoundSplitCardWidgetState extends State<_CompoundSplitCardWidget> {
             );
           }),
           const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            height: 40,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _cyan,
-                foregroundColor: _navy,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+          Row(
+            children: [
+              // Cancel button
+              Expanded(
+                child: SizedBox(
+                  height: 40,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _muted,
+                      side: const BorderSide(color: _cardBorder),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    onPressed: () => widget.onAction?.call({
+                      'action': 'compound_split_cancel',
+                      'widget': 'compound_split_card',
+                    }),
+                    child: const Text(
+                      '❌ إلغاء',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Cairo',
+                      ),
+                    ),
+                  ),
                 ),
               ),
-              onPressed: () => widget.onAction?.call({
-                'action': 'compound_split_confirm',
-                'widget': 'compound_split_card',
-                'total': total,
-                'splits': _splits,
-              }),
-              child: const Text(
-                'تأكيد التقسيم',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Cairo',
+              const SizedBox(width: 8),
+              // Confirm button
+              Expanded(
+                child: SizedBox(
+                  height: 40,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _cyan,
+                      foregroundColor: _navy,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    onPressed: () => widget.onAction?.call({
+                      'action': 'compound_split_confirm',
+                      'widget': 'compound_split_card',
+                      'total': total,
+                      'splits': _splits,
+                    }),
+                    child: const Text(
+                      '✅ تأكيد',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Cairo',
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),

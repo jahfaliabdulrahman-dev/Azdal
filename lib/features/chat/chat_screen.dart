@@ -66,6 +66,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   /// Guard against double-tap on confirm/save actions.
   bool _isConfirming = false;
 
+  /// Guard against double-tap on undo action.
+  bool _isUndoing = false;
+
   /// Stored classification results from the first _tryAutoClassify call,
   /// keyed by user message id. Used by _confirmTransaction to avoid a
   /// second (non-deterministic) Gemini call — matching the one that
@@ -452,6 +455,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           await _confirmTransaction(chatNotifier);
         } else if (value == 'edit') {
           chatNotifier.addBotMessage('تمام — وش التصنيف الصح؟ اكتب التصنيف الجديد.');
+        } else if (value == 'undo_transaction') {
+          await _undoTransaction(action, chatNotifier);
         }
         break;
 
@@ -467,6 +472,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         break;
 
       case 'compound_split_card':
+        if (actionType == 'compound_split_cancel') {
+          // DEC-020: Cancel before confirm — no Supabase, just acknowledge.
+          chatNotifier.addBotMessage('تم الإلغاء.');
+          break;
+        }
         await _handleCompoundSplit(action, chatNotifier);
         // Upload receipt to storage if this came from OCR
         if (_capturedReceiptPath != null) {
@@ -523,17 +533,75 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
 
       final txService = ref.read(transactionServiceProvider);
-      await txService.saveTransaction(
+      final saved = await txService.saveTransaction(
         amount: (txResult['amount'] as num).toDouble(),
         category: txResult['category'] as String? ?? 'متنوع',
         tone: txResult['tone'] as String? ?? 'gray',
       );
+      final txId = saved['id'] as String;
 
-      chatNotifier.addBotMessage('تم تسجيل المعاملة بنجاح ✅');
+      // DEC-020: Attach undo button — single transaction
+      chatNotifier.addBotMessage(
+        'تم تسجيل المعاملة بنجاح ✅',
+        widget: {
+          'widget': 'action_buttons',
+          'question': 'تم تسجيل المعاملة بنجاح ✅',
+          'buttons': [
+            {
+              'label': '↩️ تراجع',
+              'value': 'undo_transaction',
+              'type': 'secondary',
+            }
+          ],
+          'tx_id': txId,
+          'tx_type': 'simple',
+        },
+      );
     } catch (e) {
       chatNotifier.setError('فشل حفظ المعاملة: $e');
     } finally {
       _isConfirming = false;
+    }
+  }
+
+  /// Soft-delete a confirmed transaction (simple or compound group).
+  ///
+  /// Called when the user taps "↩️ تراجع" on a success message.
+  /// Reads the transaction id and type from [action].
+  /// Removes the undo-button message and replaces it with plain text
+  /// so the button is gone after use.
+  Future<void> _undoTransaction(
+    Map<String, dynamic> action,
+    ChatProvider chatNotifier,
+  ) async {
+    if (_isUndoing) return; // Guard: prevent double-tap
+    _isUndoing = true;
+    try {
+      final txId = action['tx_id'] as String?;
+      final txType = action['tx_type'] as String?;
+      if (txId == null) return;
+
+      final txService = ref.read(transactionServiceProvider);
+
+      if (txType == 'group') {
+        await txService.softDeleteTransactionGroup(txId);
+      } else {
+        await txService.softDeleteTransaction(txId);
+      }
+
+      // Find the message with the undo button and replace it
+      final messages = ref.read(chatProvider).messages;
+      for (final msg in messages.reversed) {
+        if (msg.hasWidget && msg.widget!['tx_id'] == txId) {
+          chatNotifier.removeMessage(msg.id);
+          break;
+        }
+      }
+      chatNotifier.addBotMessage('تم التراجع ✅');
+    } catch (e) {
+      chatNotifier.setError('فشل التراجع: $e');
+    } finally {
+      _isUndoing = false;
     }
   }
 
@@ -556,9 +624,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         };
       }).toList();
 
-      await txService.saveCompoundSplits(splits: splitData);
+      final results = await txService.saveCompoundSplits(splits: splitData);
+      final groupId = results.first['id'] as String;
+
+      // DEC-020: Attach undo button — compound split (group id)
       chatNotifier.addBotMessage(
         'تم تسجيل ${splits.length} معاملات بنجاح ✅',
+        widget: {
+          'widget': 'action_buttons',
+          'question': 'تم تسجيل ${splits.length} معاملات بنجاح ✅',
+          'buttons': [
+            {
+              'label': '↩️ تراجع',
+              'value': 'undo_transaction',
+              'type': 'secondary',
+            }
+          ],
+          'tx_id': groupId,
+          'tx_type': 'group',
+        },
       );
     } catch (e) {
       chatNotifier.setError(e.toString());
@@ -588,15 +672,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _capturedReceiptPath = null;
       }
 
-      await txService.saveTransaction(
+      final saved = await txService.saveTransaction(
         amount: amount,
         category: category,
         description: 'إدخال يدوي (فشل OCR)',
         receiptUrl: receiptUrl,
       );
+      final txId = saved['id'] as String;
 
       chatNotifier.addBotMessage(
         'تم تسجيل $amount ريال — $category ✅',
+        widget: {
+          'widget': 'action_buttons',
+          'question': 'تم تسجيل $amount ريال — $category ✅',
+          'buttons': [
+            {
+              'label': '↩️ تراجع',
+              'value': 'undo_transaction',
+              'type': 'secondary',
+            }
+          ],
+          'tx_id': txId,
+          'tx_type': 'simple',
+        },
       );
     } catch (e) {
       chatNotifier.setError('فشل حفظ المعاملة: $e');

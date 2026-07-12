@@ -158,4 +158,51 @@ final class TransactionService {
       return false;
     }
   }
+
+  /// Soft-delete a single transaction by [id].
+  ///
+  /// Sets `is_deleted = true` and `deleted_at = now()`.
+  /// No-op if the transaction doesn't belong to the current user.
+  Future<void> softDeleteTransaction(String id) async {
+    final uid = userId;
+    if (uid == null) {
+      throw StateError('Cannot soft-delete: no authenticated user.');
+    }
+
+    // ignore: avoid_print
+    print('=== AZDAL DEBUG: Soft-deleting transaction — id=$id');
+
+    await _client
+        .from('transactions')
+        .update({'is_deleted': true, 'deleted_at': DateTime.now().toIso8601String()})
+        .eq('id', id)
+        .eq('user_id', uid);
+
+    // ignore: avoid_print
+    print('=== AZDAL DEBUG: Transaction soft-deleted — id=$id');
+  }
+
+  /// Soft-delete a compound split group.
+  ///
+  /// The first inserted row's id IS the group_id for its children
+  /// (see [saveCompoundSplits]). This method soft-deletes the parent
+  /// AND all children in one call: `WHERE id = :groupId OR group_id = :groupId`.
+  Future<void> softDeleteTransactionGroup(String groupId) async {
+    final uid = userId;
+    if (uid == null) {
+      throw StateError('Cannot soft-delete group: no authenticated user.');
+    }
+
+    // ignore: avoid_print
+    print('=== AZDAL DEBUG: Soft-deleting transaction group — groupId=$groupId');
+
+    await _client
+        .from('transactions')
+        .update({'is_deleted': true, 'deleted_at': DateTime.now().toIso8601String()})
+        .or('id.eq.$groupId,group_id.eq.$groupId')
+        .eq('user_id', uid);
+
+    // ignore: avoid_print
+    print('=== AZDAL DEBUG: Transaction group soft-deleted — groupId=$groupId');
+  }
 }
