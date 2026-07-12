@@ -539,6 +539,7 @@ Before executing any SQL, gather these from your Supabase dashboard:
 
 | Setting | Recommended Value | Why |
 |---------|-------------------|-----|
+| **Auth → Providers → Anonymous Sign-ins** | **ENABLE** | Required for guest-first MVP. `signInAnonymously()` creates real auth.users rows → all RLS policies work with `auth.uid()`. See DEC-017. |
 | **Auth → Email Auth** | Disable email confirmations (for MVP/dev) | Faster testing |
 | **Auth → JWT expiry** | 3600 seconds (1 hour) | Balance security and UX |
 | **Database → Extensions** | Ensure `pgcrypto` is ON | Required for `gen_random_uuid()` |

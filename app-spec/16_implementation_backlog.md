@@ -48,7 +48,7 @@ As of today, `lib/` and `test/` are still empty and `pubspec.yaml` is a stub —
 | CHAT-01 | Build Chat UI (input bar, bubbles, typing indicator) | State Engineer | INIT-01 | 4h |
 | CHAT-02 | Implement ChatProvider (Riverpod) | State Engineer | CHAT-01 | 3h |
 | CHAT-03 | Integrate Gemini Flash — system prompt, response parsing | State Engineer | INIT-02 | 3h |
-| CHAT-04 | Implement voice input (Apple Speech on-device) | State Engineer | CHAT-01 | 2h |
+| CHAT-04 | Implement voice input (speech_to_text, cross-platform per DEC-016) | State Engineer | CHAT-01 | 2h |
 | CHAT-05 | Build transaction entry flow: AI classification → confirmation | State Engineer | CHAT-03 | 4h |
 | CHAT-06 | Compound transaction splitting (group_id) | State Engineer | CHAT-05 | 2h |
 | CHAT-07 | Cold Start Intelligence — 3 questions → instant insight | State Engineer | CHAT-03 | 2h |

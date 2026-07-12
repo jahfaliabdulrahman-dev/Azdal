@@ -8,11 +8,25 @@
 
 ## Open Decisions
 
-None at Stage 0. All Stage 0 decisions below are closed.
+None at Stage 2. All Stage 2 decisions below are closed.
 
 ---
 
 ## Closed Decisions
+
+### DEC-018: Voice Input UX — Mic Button Added to Input Bar
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-12 |
+| **Status** | ✅ Closed |
+| **Summary** | Add a dedicated microphone button 🎤 to the input bar alongside the existing camera button 📷. Layout (RTL): `↑ │ text │ 🎤 📷`. Voice is the primary input method for Arabic users per PRD — it must be always visible, one-tap, no hidden gestures. |
+| **Rationale** | PRD §Tier 1 Coach declares "Zero-friction tracking: Voice, OCR, chat — no manual entry" with voice listed FIRST. Arabic-speaking users overwhelmingly prefer voice over typing. DEC-016 already corrected the platform from iOS-only to cross-platform Android-first with `speech_to_text`. But the UX spec (`03_user_flows_navigation.md`) still showed the old camera-only input bar with no mic. Four options were evaluated: (A) replace camera with mic, (B) add mic as 4th element, (C) long-press on send, (D) toggle between camera/mic. Option B chosen because: voice deserves its own dedicated always-visible button (not hidden behind long-press or toggle), camera is also core to Tier 1 for receipt OCR and cannot be removed, and a 4-element bar is clean enough on modern phones. |
+| **Alternatives** | (A) Replace camera with mic — rejected: camera/OCR is also a core Tier 1 feature. (C) Long-press on send ↑ — rejected: not discoverable for non-tech-savvy Arabic users. (D) Toggle between 📷 and 🎤 — rejected: adds extra tap friction, contradicts "zero-friction" principle. |
+| **Impact** | `03_user_flows_navigation.md` input bar section updated. CHAT-01 (Build Chat UI) must implement this 4-element layout. CHAT-04 (voice input) now has a defined trigger point. |
+| **Related** | `03_user_flows_navigation.md`, `16_implementation_backlog.md §CHAT-01, CHAT-04`, `DEC-016` |
+
+---
 
 ### DEC-012: Hala Joins Team as Presentations & Forms Lead
 
@@ -234,10 +248,26 @@ None at Stage 0. All Stage 0 decisions below are closed.
 
 ---
 
+### DEC-017: Guest-First RLS Resolution — Anonymous Auth
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-12 |
+| **Status** | ✅ Closed |
+| **Summary** | Resolve the RLS guest-write deadlock by enabling **Supabase Anonymous Sign-In** (`signInAnonymously`). The app calls `supabase.auth.signInAnonymously()` on first launch — Supabase creates a real `auth.users` row with `is_anonymous: true`. This gives every guest user a real UUID-backed JWT, so `auth.uid()` returns a valid value and all 14 existing RLS policies (`auth.uid() = user_id`) work unchanged. No DDL changes, no new columns, no RLS policy modifications needed. |
+| **Rationale** | **The Problem:** All 5 tables (transactions, commitments, goals, integrity_scores, purchase_decisions) have FK `user_id REFERENCES auth.users(id)` and RLS policies using `auth.uid() = user_id`. For unauthenticated users, `auth.uid()` returns NULL — blocking ALL writes. **Why not alternatives:** (A) Drop FK + add anon RLS policies with device-generated UUID — breaks referential integrity, requires ALTER on all 5 tables, and creates two code paths (auth vs guest) forever. (B) Edge Function with `service_role` bypass — bypasses RLS entirely, loses per-user data isolation, adds server-side complexity and latency for every write. (C) Add `guest_id` column + modify RLS — same complexity as (A) with worse data model. **Why anonymous auth wins:** Zero DDL changes (no ALTER TABLE risk on deployed data), all FK constraints remain valid, all 14 RLS policies work as-is, clean upgrade path (`linkIdentity()` converts anonymous → email/phone for Tier 2 lending), transparent UX (no form, no registration — just open app and use it). This is the Supabase-recommended pattern for guest-first apps. |
+| **Alternatives** | (A) Drop FK to auth.users + anon RLS policies with client-generated UUID — rejected: schema changes on already-deployed tables, breaks referential integrity, creates dual code paths. (B) Edge Function with service_role — rejected: loses per-user isolation, adds server-side complexity, overkill for MVP writes. (C) Shared guest user_id — rejected: no data isolation, all guests share one row namespace. |
+| **Impact** | **Database (zero changes):** No DDL, no RLS policy changes needed. All 5 tables and 14 policies work as-is. **Supabase dashboard:** Enable "Anonymous Sign-ins" in Authentication → Providers. **Flutter app:** Add `supabase.auth.signInAnonymously()` call on first launch (when `currentSession == null`). Session persists on-device — guest data survives app restarts. **Security:** Anonymous users get real JWT tokens with `is_anonymous: true` claim. Data is isolated per anonymous user. Accepted risk for MVP: anonymous users can't recover data if they clear app data (no email/password to sign back in). This is acceptable per PRD hackathon exceptions: "No real PII collected — demo data only." **Upgrade path:** When Tier 2 requires real identity (`linkIdentity()` or `signUp()`), existing anonymous data is preserved under the same `user_id`. |
+| **Related** | `08_security_privacy.md`, `INIT-03_supabase_schema.md`, `01_prd.md §68-74` (Phase 0: no registration), `05_data_model_erd.md` |
+
+---
+
 ## Decision Summary
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-018 | Voice input UX — mic button added to input bar | 2026-07-12 | ✅ |
+| DEC-017 | Guest-first RLS resolution — Supabase Anonymous Sign-In | 2026-07-12 | ✅ |
 | DEC-016 | Voice/TTS platform corrected — iOS-only → cross-platform Android-first | 2026-07-12 | ✅ |
 | DEC-015 | Isar local storage deferred (post-hackathon) | 2026-07-12 | ✅ |
 | DEC-014 | Gemini API key shipped client-side (hackathon MVP accepted risk) | 2026-07-12 | ✅ |

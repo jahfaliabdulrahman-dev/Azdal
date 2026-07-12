@@ -27,7 +27,7 @@ Everything (cards, charts, buttons, forms) are **widgets embedded inline in the 
 │  [cards, charts, buttons]  │
 │                             │
 ├─────────────────────────────┤
-│ 📷 │  اكتب مصروف...    │ ↑ │  ← input bar (fixed, 56px)
+│ ↑ │  اكتب مصروف...    │ 🎤 📷 │  ← input bar (fixed, 56px)
 └─────────────────────────────┘
 ```
 
@@ -38,8 +38,9 @@ Everything (cards, charts, buttons, forms) are **widgets embedded inline in the 
 | Element | Position | Behavior |
 |---------|----------|----------|
 | Camera button `📷` | Start (RTL: right) | Opens camera or gallery. Accepts share sheet images. |
+| Mic button `🎤` | Start-adjacent (RTL: right, next to camera) | Activates voice input via `speech_to_text`. One-tap to start recording, tap again to stop. Primary input method for Arabic users. |
 | Text input | Center (flex) | Placeholder: "اكتب مصروف... أو اسأل سؤال". Rounded 24px. |
-| Send button `↑` | End (RTL: left) | Cyan circle. Sends text and/or image to AI. |
+| Send button `↑` | End (RTL: left) | Cyan circle. Sends text, transcribed voice, and/or image to AI. |
 
 ---
 

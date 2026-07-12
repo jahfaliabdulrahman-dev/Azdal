@@ -57,6 +57,49 @@ CREATE POLICY "Partners query by hash"
 
 ---
 
+## 3a. RLS & Guest-First (Anonymous Auth)
+
+Azdal MVP is **guest-first** — no registration, no login forms. The user opens the app and starts tracking immediately (per Phase 0 §68-74 of PRD).
+
+### How It Works
+
+Supabase **Anonymous Sign-In** (`signInAnonymously()`) provides transparent auth:
+
+1. **First launch:** App calls `supabase.auth.signInAnonymously()`
+2. **Supabase creates a real `auth.users` row** with `is_anonymous: true`
+3. **User gets a real JWT** — `auth.uid()` returns their UUID
+4. **All 14 RLS policies work unchanged** — `auth.uid() = user_id` matches
+5. **Session persists on-device** — guest data survives app restarts
+6. **Upgrade path:** `linkIdentity()` converts anonymous → email/phone account
+
+### Why Not Alternatives
+
+| Approach | Why Rejected |
+|----------|-------------|
+| Drop FK + anon RLS with client UUID | Requires ALTER on all 5 deployed tables, breaks referential integrity, dual code paths forever |
+| Edge Function with `service_role` | Bypasses RLS entirely, loses per-user data isolation, adds server-side complexity |
+| Add `guest_id` column | Schema change on deployed tables, worse data model |
+| Shared guest UUID | No data isolation — all guests share one row namespace |
+
+### Security Implications (Accepted MVP Risk)
+
+| Risk | Mitigation |
+|------|-----------|
+| Data loss on app clear | MVP: demo data only (per PRD). Post-MVP: prompt upgrade to real account |
+| Infinite anonymous accounts | MVP: no rate limit needed. Post-MVP: device fingerprinting |
+| No identity verification | MVP: no lending — Tier 2 requires real identity via `linkIdentity()` |
+| Anonymous token theft | JWT expiry (1 hour), TLS in transit |
+
+### Supabase Dashboard Setup
+
+```
+Authentication → Providers → Anonymous Sign-ins → Enable
+```
+
+No database changes needed. See DEC-017 for the full decision record.
+
+---
+
 ## 4. API Security
 
 | Layer | Protection |
