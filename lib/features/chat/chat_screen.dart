@@ -306,8 +306,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // Gemini never sees old transaction texts regardless of whether
     // classification has completed, failed, or is still in-flight.
     final filteredHistory = allMessages.where((m) {
-      if (!m.isUser) return true;
-      return !_storedClassifications.containsKey(m.id);
+      if (!m.isUser) return true;                    // keep bot messages
+      if (m.id == userMsgId) return true;            // always include current
+      return !_storedClassifications.containsKey(m.id); // exclude classified
     }).toList();
 
     try {
