@@ -122,8 +122,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _toggleVoice() async {
     final voiceService = ref.read(voiceServiceProvider);
+    final voiceListening = ref.read(voiceListeningProvider);
 
-    if (voiceService.isListening) {
+    if (voiceListening.isListening) {
       final text = await voiceService.stopListening();
       if (text.isNotEmpty && mounted) {
         _textController.text = text;
@@ -150,7 +151,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
       }
     }
-    if (mounted) setState(() {});
+    // No setState() — voiceListeningProvider rebuilds the icon
+    // reactively whenever onStatus fires from the recognizer.
   }
 
   // ── Cold Start ──
@@ -538,7 +540,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final chatState = ref.watch(chatProvider);
-    final voiceService = ref.watch(voiceServiceProvider);
+    final voiceListeningState = ref.watch(voiceListeningProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
@@ -612,7 +614,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             controller: _textController,
             focusNode: _focusNode,
             isOnline: _isOnline,
-            isListening: voiceService.isListening,
+            isListening: voiceListeningState.isListening,
             onSend: _sendMessage,
             onMic: _toggleVoice,
             onCamera: () {
