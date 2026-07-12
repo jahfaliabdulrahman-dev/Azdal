@@ -50,17 +50,18 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  fonts:
-    - family: Cairo
-      fonts:
-        - asset: fonts/Cairo-Regular.ttf
-          weight: 400
-        - asset: fonts/Cairo-SemiBold.ttf
-          weight: 600
-        - asset: fonts/Cairo-Bold.ttf
-          weight: 700
-        - asset: fonts/Cairo-Black.ttf
-          weight: 900
+  # TODO(INIT-05): Uncomment Cairo fonts when font files are downloaded to assets/fonts/
+  # fonts:
+  #   - family: Cairo
+  #     fonts:
+  #       - asset: assets/fonts/Cairo-Regular.ttf
+  #         weight: 400
+  #       - asset: assets/fonts/Cairo-SemiBold.ttf
+  #         weight: 600
+  #       - asset: assets/fonts/Cairo-Bold.ttf
+  #         weight: 700
+  #       - asset: assets/fonts/Cairo-Black.ttf
+  #         weight: 900
 
   assets:
     - assets/branding/
