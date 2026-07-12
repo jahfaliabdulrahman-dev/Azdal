@@ -22,13 +22,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/providers.dart';
-import '../../core/services/gemini_service.dart';
 import '../../main.dart';
 import 'models/chat_message.dart';
 import 'providers/chat_provider.dart';
-import 'services/transaction_service.dart';
 import 'widgets/chat_widgets.dart';
-import 'widgets/ocr_widgets.dart';
 import 'widgets/widget_catalog.dart';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -489,7 +486,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           // Manual entry from OCR failure
           await _handleOcrFailureSubmit(action, chatNotifier);
         } else if (ocrAction == 'ocr_retake') {
-          _pickReceiptImage();
+          // ignore: avoid_print
+          print('=== AZDAL DEBUG: OCR retake requested');
+          unawaited(_pickReceiptImage());
         }
         break;
     }

@@ -21,7 +21,6 @@ const _cardBg = Color(0xFF161B22);
 const _cardBorder = Color(0xFF30363D);
 const _muted = Color(0xFF6B7280);
 const _white = Colors.white;
-const _userBubbleBg = Color(0xFFE3E8F5);
 
 // ─────────────────────────────────────────────────────────────────────
 // OCR State 1 — Uploading/Processing Overlay

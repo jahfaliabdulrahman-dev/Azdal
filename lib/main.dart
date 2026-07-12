@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -78,7 +77,7 @@ Future<void> main() async {
         }
       }
     },
-    onError: (err) {
+    onError: (Object err) {
       // ignore: avoid_print
       print('=== AZDAL DEBUG: Share intent stream error — $err');
     },
@@ -98,10 +97,6 @@ String? consumePendingSharedImage() {
   _pendingSharedImage = null;
   return path;
 }
-
-/// Global stream controller to notify ChatScreen of incoming shared images.
-/// This is set up in main() before the app starts and read by ChatScreen.
-StreamController<String>? _sharedImageController;
 
 /// Provider that holds the path of a system-shared image, consumed by ChatScreen.
 final sharedImagePathProvider = StateProvider<String?>((ref) => null);
