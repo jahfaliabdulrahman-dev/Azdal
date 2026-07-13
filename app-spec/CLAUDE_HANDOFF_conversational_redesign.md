@@ -4,7 +4,7 @@
 > **Designed by:** Opus 4.8 (3 rounds), reviewed by Claude  
 > **Implemented by:** Sulaiman (DeepSeek-v4-pro)  
 > **Device:** Tecno LJ7 — deployed via `adb`  
-> **Commit:** `0d1a84d` — 438 insertions, 565 deletions (net negative)  
+> **Commits:** `0d1a84d` (main redesign) + `52b6ee8` (camera fix) — 439 insertions, 568 deletions (net negative)  
 
 ---
 
@@ -209,6 +209,16 @@ These must not be violated by any future change:
 3. **No prompt contains anti-merge language** ("ignore previous messages", "only the last number", etc.) — three prior attempts proved fragile. Merge safety comes from code structure (history isolation).
 4. **LLM never performs arithmetic** (DEC-003) — every sum/total is Dart-computed.
 5. **All LLM-authored text follows BRP** (DEC-022) — single named JSON field, bounded, few-shot examples, Dart fallback.
+
+---
+
+## Post-Deployment Fix — Camera Button
+
+**Bug:** Camera button (📷) appeared grayed out and non-functional after the conversational redesign deployment.  
+**Root cause:** The `build()` method's `_InputBar` widget wiring inadvertently replaced `onCamera: _pickReceiptImage` with an empty lambda `onCamera: () { // NOT IMPLEMENTED }` during the chat_screen.dart rewrite.  
+**Fix:** Restored `onCamera: _pickReceiptImage` — single-line change.  
+**Commit:** `52b6ee8`  
+**Verification:** Deployed to Tecno LJ7 via `adb install -r`. Camera button active, bottom sheet appears with camera/gallery options.
 
 ---
 
