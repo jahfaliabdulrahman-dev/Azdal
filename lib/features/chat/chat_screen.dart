@@ -911,9 +911,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             isListening: voiceListeningState.isListening,
             onSend: _sendMessage,
             onMic: _toggleVoice,
-            onCamera: () {
-              // NOT IMPLEMENTED — Stage 3 OCR
-            },
+            onCamera: _pickReceiptImage,
           ),
         ],
       ),
