@@ -59,7 +59,6 @@ final class CommitmentService {
     await _client.from('commitments').update({
       'remaining': 0,
       'status': 'completed',
-      'completed_at': DateTime.now().toUtc().toIso8601String(),
     }).eq('id', id);
   }
 
