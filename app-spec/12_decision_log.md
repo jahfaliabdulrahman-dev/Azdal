@@ -50,6 +50,35 @@ None at Stage 3. All decisions below are closed.
 | **Impact** | Applies to: router `reply` (3 kinds), coach prompt replies, `reactToColdStart`, `ocrReceipt`'s new `reply` field. Does NOT apply to structural/systemic strings (loading states, error boundaries, button labels, undo/cancel acks) — those stay hardcoded permanently by design, not as an oversight. |
 | **Related** | DEC-003 (LLM never calculates), DEC-020 (undo), DEC-021 (auto-save) |
 
+### DEC-023: `financial_profile` Table — Durable Home for Cold Start Estimates
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-13 |
+| **Status** | ✅ Closed |
+| **Summary** | New table stores income, commitments estimate, weekly-spend estimate, and an unused-for-now salary_day, one row per user. Cold Start now persists all 3 submitted answers here instead of discarding 2 of them. |
+| **Rationale** | Income was only a loosely-tagged transaction row; commitments/weekly-spend estimates were computed for the insight message and thrown away, breaking DEC-019's promise that commitments would reuse them. Without this, COMMIT-01/BUY-01 silently block. |
+| **Alternatives** | (A) On-device key-value store — rejected, loses Supabase single-source-of-truth. |
+
+### DEC-033: Commitment/Goal Setup Intent — Pre-Router Heuristic
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-13 |
+| **Status** | ✅ Closed |
+| **Summary** | Cheap local keyword heuristic runs before the existing digit-gate router; on match, isolated history-free `classifySetupIntent` decides `commitment_add|view|edit`, `goal_add|view|edit`, or `none`. On `none`/failure, falls through to unmodified existing router. |
+| **Rationale** | Closes entry-point gap for commitments/goals without touching `_classifySystemPrompt` (stabilized over 3 MoA rounds). Digit-bearing commitment phrases are intercepted by digit gate first — a real blind spot. |
+| **Impact** | New prompt + method + handlers; zero changes to existing router/coach prompts. |
+
+### DEC-034: `quick_input_form` — Optional `prefill` + `_form_kind`
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-13 |
+| **Status** | ✅ Closed |
+| **Summary** | Fields gain optional `prefill` (TextEditingController). Widget JSON gains optional `_form_kind` echoed as `form_kind` in submit payload. Both default to today's behavior when absent. |
+| **Rationale** | Needed for LLM-draft pre-filling and clean form routing. Replaces fragile key-sniffing that doesn't scale past one form. |
+
 ---
 
 ### DEC-019: "Can I Buy?" (BUY-01→04) Moved From Stage 3 to Stage 4
