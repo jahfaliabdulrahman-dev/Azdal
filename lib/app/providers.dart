@@ -5,8 +5,12 @@
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/services/gemini_service.dart';
+import '../features/chat/services/commitment_service.dart';
+import '../features/chat/services/financial_profile_service.dart';
+import '../features/chat/services/goal_service.dart';
 import '../features/chat/services/transaction_service.dart';
 import '../features/chat/services/voice_service.dart';
 
@@ -20,21 +24,12 @@ final geminiServiceProvider = Provider<GeminiService>(
 );
 
 /// Reactive provider for voice listening state.
-///
-/// Updated internally by [VoiceService] from the speech recognizer's
-/// `onStatus` callback — every status transition automatically pushes
-/// a new state. Widgets that `ref.watch` this rebuild when the mic
-/// is activated or deactivated from any cause (tap, timeout, internal
-/// recognizer event).
 final voiceListeningProvider =
     StateNotifierProvider<VoiceListeningNotifier, VoiceListeningState>(
   (ref) => VoiceListeningNotifier(),
 );
 
 /// Singleton provider for the voice input service.
-///
-/// Injected with [VoiceListeningNotifier] so the service can push
-/// listening-state updates reactively.
 final voiceServiceProvider = Provider<VoiceService>(
   (ref) => VoiceService(ref.read(voiceListeningProvider.notifier)),
 );
@@ -42,4 +37,19 @@ final voiceServiceProvider = Provider<VoiceService>(
 /// Singleton provider for the transaction persistence service.
 final transactionServiceProvider = Provider<TransactionService>(
   (ref) => TransactionService(),
+);
+
+/// Singleton provider for the financial-profile persistence service.
+final financialProfileServiceProvider = Provider<FinancialProfileService>(
+  (ref) => FinancialProfileService(Supabase.instance.client),
+);
+
+/// Singleton provider for the commitment persistence service.
+final commitmentServiceProvider = Provider<CommitmentService>(
+  (ref) => CommitmentService(Supabase.instance.client),
+);
+
+/// Singleton provider for the goal persistence service.
+final goalServiceProvider = Provider<GoalService>(
+  (ref) => GoalService(Supabase.instance.client),
 );

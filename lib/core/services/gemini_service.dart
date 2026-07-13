@@ -368,6 +368,89 @@ final class GeminiService {
     }
   }
 
+  // ── Setup-intent detection (commitments/goals) ──────────────────
+
+  /// System prompt for commitment/goal setup-intent detection.
+  ///
+  /// Separate from both the coach and router prompts. Only invoked when
+  /// the local keyword heuristic matches — cheaper than a round-trip
+  /// on every message. Any failure resolves to `{"kind":"none"}` so
+  /// this feature can never be the reason an ordinary message fails.
+  static const _setupIntentSystemPrompt = '''
+أنت محرّك اكتشاف نية "الإعداد" لتطبيق "أزدل" المالي — منفصل تماماً عن محرّك تصنيف المصاريف. مهمتك: تحدد هل رسالة المستخدم الحالية نية لتسجيل أو عرض أو تعديل التزام مالي متكرر (قسط، اشتراك، إيجار، قرض) أو هدف ادخار. أخرج JSON واحد فقط، بدون أي نص خارجه وبدون أسيجة ```.
+
+تنبيه مهم: مصروف عادي لمرة وحدة (مثل "150 عشاء" أو "50 بيض") ليس من اختصاصك إطلاقاً — أرجع "none" له دائماً.
+
+اختر kind واحد فقط:
+
+1) "commitment_add" — إعلان عن التزام مالي متكرر جديد (قسط تقسيط، اشتراك شهري، إيجار، قرض) يبيه المستخدم يسجله:
+{"kind":"commitment_add","draft":{"name":"اسم مختصر أو نص فاضي إذا ما ذُكر","provider":"اسم الجهة إن ذُكر (تمارا، تابي...) أو نص فاضي","amount_monthly":الرقم أو null,"amount_total":الرقم أو null},"reply":"جملة قصيرة تصف الالتزام اللي فهمته بدون أي تأكيد حفظ"}
+
+2) "commitment_view" — سؤال عن الالتزامات الحالية أو عن التزام معين:
+{"kind":"commitment_view","name_hint":"اسم أو مزوّد إن ذُكر أو نص فاضي"}
+
+3) "commitment_edit" — إعلان إن التزام انسدد/انتهى، أو رغبة تعديل مبلغه المتبقي:
+{"kind":"commitment_edit","name_hint":"اسم أو مزوّد الالتزام المقصود أو نص فاضي"}
+
+4) "goal_add" — إعلان عن هدف ادخار جديد يبيه المستخدم يسجله:
+{"kind":"goal_add","draft":{"name":"اسم الهدف أو نص فاضي","amount_monthly":الرقم أو null,"amount_total":الرقم أو null},"reply":"جملة قصيرة تصف الهدف اللي فهمته بدون أي تأكيد حفظ"}
+
+5) "goal_view" — سؤال عن الأهداف الحالية أو التقدم فيها:
+{"kind":"goal_view","name_hint":"اسم الهدف إن ذُكر أو نص فاضي"}
+
+6) "goal_edit" — إعلان إن هدف تحقق، أو رغبة تعديل تفاصيله:
+{"kind":"goal_edit","name_hint":"اسم الهدف إن ذُكر أو نص فاضي"}
+
+7) "none" — أي شيء غير ما سبق (مصروف عادي، سؤال عام، دردشة، شكوى):
+{"kind":"none"}
+
+قواعد ثابتة:
+- لا تخترع أي رقم لم يُذكر صراحة — إذا ما وصلك رقم استخدم null.
+- لا تحسب أي مجموع أو ناتج جمع إطلاقاً — التطبيق هو اللي يحسب.
+- reply مطلوب فقط لـ commitment_add و goal_add: جملة أو جملتين بالكثير، لهجة سعودية دافئة، بدون تكرار حرفي، وبدون ذكر أي رقم لم يصلك بالضبط.
+- لبقية الأنواع لا تضف حقل reply إطلاقاً.
+- أخرج JSON واحد فقط.
+
+أمثلة:
+- "عندي قسط تمارا ١٠٠٠ ياخذون ٢٠٠ كل شهر" ⟶ {"kind":"commitment_add","draft":{"name":"تمارا","provider":"تمارا","amount_monthly":200,"amount_total":1000},"reply":"تمام، فهمت — قسط تمارا الشهري 200 ريال من إجمالي 1000. راجع التفاصيل قبل الحفظ 👇"}
+- "أبي أسجل إيجار الشقة 3000 الشهر" ⟶ {"kind":"commitment_add","draft":{"name":"إيجار الشقة","provider":"","amount_monthly":3000,"amount_total":null},"reply":"سجّلت مسودة إيجار الشقة — كمّل الباقي وأكد 🏠"}
+- "كم باقي علي في تمارا؟" ⟶ {"kind":"commitment_view","name_hint":"تمارا"}
+- "خلصت قسط السيارة" ⟶ {"kind":"commitment_edit","name_hint":"السيارة"}
+- "أبي أوفر 5000 لهدف الزواج، أقدر أحط 500 بالشهر" ⟶ {"kind":"goal_add","draft":{"name":"الزواج","amount_monthly":500,"amount_total":5000},"reply":"حلو! هدف الزواج بـ 5000 ريال وتوفير 500 شهرياً — راجع وأكد 👇"}
+- "وش أهدافي الحالية؟" ⟶ {"kind":"goal_view","name_hint":""}
+- "150 عشاء" ⟶ {"kind":"none"}
+- "وفرت 200 ريال هالأسبوع" ⟶ {"kind":"none"}
+''';
+
+  /// Detect a commitment/goal setup intent.
+  ///
+  /// Isolated from [classifyTransaction] — different prompt, different
+  /// call, never shares history or state. Only invoked when
+  /// [_looksLikeSetupIntent] matches (chat_screen.dart pre-filter),
+  /// to avoid a round-trip on every message. Any failure resolves to
+  /// `{"kind":"none"}` so this feature can never be the reason an
+  /// ordinary message fails to process.
+  Future<GeminiResponse> classifySetupIntent(String userText) async {
+    assert(_apiKey.isNotEmpty, 'GEMINI_API_KEY is empty.');
+    if (_apiKey.isEmpty) return const GeminiResponse(text: '{"kind":"none"}');
+
+    try {
+      final model = GenerativeModel(
+        model: _modelName,
+        apiKey: _apiKey,
+        systemInstruction: Content.system(_setupIntentSystemPrompt),
+      );
+      final response = await model.generateContent([Content.text(userText)]);
+      final rawText = response.text ?? '';
+      final map = _extractJsonObject(rawText) ?? const {'kind': 'none'};
+      return GeminiResponse(text: rawText, widget: map);
+    } catch (e) {
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: classifySetupIntent FAILED — $e');
+      return const GeminiResponse(text: '{"kind":"none"}', error: 'setup_intent_failed');
+    }
+  }
+
   // ── Legacy helpers ──────────────────────────────────────────────
 
   /// Extract a JSON widget block from the response text.

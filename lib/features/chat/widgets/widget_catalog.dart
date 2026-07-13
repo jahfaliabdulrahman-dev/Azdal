@@ -382,6 +382,20 @@ class _QuickInputFormWidget extends StatefulWidget {
 
 class _QuickInputFormWidgetState extends State<_QuickInputFormWidget> {
   final _values = <String, String>{};
+  final Map<String, TextEditingController> _controllers = {};
+
+  TextEditingController _controllerFor(String key, String initial) {
+    return _controllers.putIfAbsent(key, () {
+      _values[key] = initial;
+      return TextEditingController(text: initial);
+    });
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers.values) { c.dispose(); }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -420,6 +434,7 @@ class _QuickInputFormWidgetState extends State<_QuickInputFormWidget> {
             final key = field['key'] as String? ?? '';
             final label = field['label'] as String? ?? '';
             final placeholder = field['placeholder'] as String? ?? '';
+            final prefill = field['prefill'] as String? ?? '';
             final isNumeric = field['type'] == 'number';
 
             return Padding(
@@ -440,6 +455,7 @@ class _QuickInputFormWidgetState extends State<_QuickInputFormWidget> {
                       ),
                     ),
                   TextField(
+                    controller: _controllerFor(key, prefill),
                     keyboardType:
                         isNumeric ? TextInputType.number : TextInputType.text,
                     onChanged: (v) => _values[key] = v,
@@ -494,6 +510,12 @@ class _QuickInputFormWidgetState extends State<_QuickInputFormWidget> {
                 'action': 'form_submit',
                 'widget': 'quick_input_form',
                 'values': Map<String, String>.from(_values),
+                if (widget.json.containsKey('_form_kind'))
+                  'form_kind': widget.json['_form_kind'],
+                if (widget.json.containsKey('commitment_id'))
+                  'commitment_id': widget.json['commitment_id'],
+                if (widget.json.containsKey('goal_id'))
+                  'goal_id': widget.json['goal_id'],
               }),
               child: Text(
                 submitLabel,
