@@ -63,16 +63,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   /// Whether Cold Start has been triggered for this session.
   bool _coldStartDone = false;
 
-  /// Guard against double-tap on confirm/save actions.
-  bool _isConfirming = false;
-
   /// Guard against double-tap on undo action.
   bool _isUndoing = false;
 
-  /// Stored classification results from the first _tryAutoClassify call,
-  /// keyed by user message id. Used by _confirmTransaction to avoid a
-  /// second (non-deterministic) Gemini call — matching the one that
-  /// decided to show the confirm/edit buttons in the first place.
+  /// Layer 1 history filter — every sent message is marked immediately
+  /// so it won't leak into future sendMessage history. Classification
+  /// results overwrite the placeholder later. Keyed by user message id.
   final Map<String, Map<String, dynamic>> _storedClassifications = {};
 
   @override
@@ -115,10 +111,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       setState(() => _isOnline = online);
       // ignore: avoid_print
       print('=== AZDAL DEBUG: Connectivity changed — online=$online');
-      // Auto-send queued messages when connectivity returns
-      if (online && _isOnline) {
-        // Future: process queued messages
-      }
     }
   }
 
@@ -162,8 +154,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
       }
     }
-    // No setState() — voiceListeningProvider rebuilds the icon
-    // reactively whenever onStatus fires from the recognizer.
   }
 
   // ── Cold Start ──
@@ -171,11 +161,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _checkColdStart() async {
     if (_coldStartDone) return;
 
-    // Don't check cold start until chat provider is available
     final chatState = ref.read(chatProvider);
     if (chatState.messages.isNotEmpty) return;
 
-    // Check if user has existing transactions in Supabase
     try {
       final txService = ref.read(transactionServiceProvider);
       final hasTransactions = await txService.hasExistingTransactions();
@@ -228,7 +216,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final commitments = values['monthly_commitments'] ?? '0';
     final weeklySpend = values['weekly_spend'] ?? '0';
 
-    // Calculate rough insight
     final monthlyIncome = double.tryParse(income.toString()) ?? 0;
     final monthlyCommitments = double.tryParse(commitments.toString()) ?? 0;
     final monthlySpend = (double.tryParse(weeklySpend.toString()) ?? 0) * 4;
@@ -238,18 +225,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ? (monthlySpend / disposableAfterCommitments * 100).round()
         : 100;
 
+    // DEC-022 (BRP): use LLM for personalized reaction, with hardcoded fallback
+    final geminiService = ref.read(geminiServiceProvider);
     String insight;
-    if (spendRatio >= 70) {
-      insight =
-          'تصرف $spendRatio% من دخلك قبل منتصف الشهر. خليني أساعدك — سجل أول عملية بالصوت أو الكتابة.';
-    } else {
-      insight =
-          'وضعك المالي معقول حالياً. تبي نبدأ نسجل أول عملية؟ اكتب أو استخدم الصوت 🎤';
+    try {
+      final reaction = await geminiService.reactToColdStart(
+        spendRatio: spendRatio,
+        disposableAfterCommitments: disposableAfterCommitments,
+      );
+      insight = (reaction.error == null && reaction.text.trim().isNotEmpty)
+          ? reaction.text.trim()
+          : _coldStartFallback(spendRatio);
+    } catch (e) {
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: Cold start reaction FAILED — $e');
+      insight = _coldStartFallback(spendRatio);
     }
 
     chatNotifier.addBotMessage(insight);
 
-    // Store the cold start data as a transaction (income marker)
     if (monthlyIncome > 0) {
       try {
         final txService = ref.read(transactionServiceProvider);
@@ -268,14 +262,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  // ── Message send ──
+  String _coldStartFallback(int spendRatio) {
+    if (spendRatio >= 70) {
+      return 'تصرف $spendRatio% من دخلك قبل منتصف الشهر. خليني أساعدك — سجل أول عملية بالصوت أو الكتابة.';
+    }
+    return 'وضعك المالي معقول حالياً. تبي نبدأ نسجل أول عملية؟ اكتب أو استخدم الصوت 🎤';
+  }
+
+  // ── Message send (router-first — DEC-021 auto-save) ──
 
   Future<void> _sendMessage() async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
     if (!_isOnline) {
-      // Offline: show a message but don't clear input
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('أنت غير متصل. حاول مرة أخرى عند عودة الاتصال.')),
@@ -289,222 +289,164 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     final chatNotifier = ref.read(chatProvider.notifier);
     final geminiService = ref.read(geminiServiceProvider);
+    final hasDigit = RegExp(r'[0-9٠-٩]').hasMatch(text);
 
-    // Add user message and mark it immediately as "in-flight".
-    // This prevents it from leaking into the NEXT sendMessage's history
-    // before _tryAutoClassify has a chance to store the classification.
+    // Add user message and mark for history filter
     final userMsgId = chatNotifier.addUserMessage(text);
     _storedClassifications[userMsgId] = <String, dynamic>{};
 
-    // Get current state for history
     final allMessages = ref.read(chatProvider).messages;
-
-    // Layer 1 (MoA): filter out user messages already in the pipeline.
-    // _storedClassifications is populated IMMEDIATELY on send (placeholder)
-    // and overwritten with real data by _tryAutoClassify. Any message
-    // with a map entry — even an empty one — is excluded from history.
-    // Gemini never sees old transaction texts regardless of whether
-    // classification has completed, failed, or is still in-flight.
     final filteredHistory = allMessages.where((m) {
-      if (!m.isUser) return true;                    // keep bot messages
-      if (m.id == userMsgId) return true;            // always include current
-      return !_storedClassifications.containsKey(m.id); // exclude classified
+      if (!m.isUser) return true;
+      if (m.id == userMsgId) return true;
+      return !_storedClassifications.containsKey(m.id);
     }).toList();
 
     try {
-      // Call Gemini with filtered history
-      final response = await geminiService.sendMessage(
-        text,
-        history: filteredHistory,
-      );
+      if (!hasDigit) {
+        // ── Conversational coach path (no digit) ──
+        final response = await geminiService.sendMessage(
+          text,
+          history: filteredHistory,
+        );
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      if (response.hasError) {
-        chatNotifier.setError(response.error!);
+        if (response.hasError) {
+          chatNotifier.setError(response.error!);
+          _storedClassifications.remove(userMsgId);
+          return;
+        }
+
+        if (response.widget != null) {
+          final widgetType = response.widget!['widget'] as String?;
+          final isTransactionWidget =
+              widgetType == 'compound_split_card' || widgetType == 'action_buttons';
+
+          if (!isTransactionWidget) {
+            chatNotifier.addBotMessage(response.text, widget: response.widget);
+            _storedClassifications.remove(userMsgId);
+            return;
+          }
+          // Drop transaction widget — but this shouldn't happen on coach path
+        }
+
+        chatNotifier.addBotMessage(response.text);
+        _storedClassifications.remove(userMsgId); // re-enter history
         return;
       }
 
-      // Handle widget-based response
-      if (response.widget != null) {
-        final widgetType = response.widget!['widget'] as String?;
+      // ── Router path (message contains a digit) ──
+      final classifyResponse = await geminiService.classifyTransaction(text);
 
-        // Layer 2 (MoA): NEVER trust the main chat response for
-        // transaction widgets. These MUST come through _tryAutoClassify.
-        // Only non-transaction widgets (summary_card, bar_chart,
-        // quick_input_form) pass through here.
-        final isTransactionWidget =
-            widgetType == 'compound_split_card' ||
-            widgetType == 'action_buttons';
+      if (!mounted) return;
 
-        if (isTransactionWidget) {
-          // Drop the widget — fall through to classification path.
-          // The response.text is still used for the bot message.
-        } else if (widgetType == 'quick_input_form' &&
-            response.widget!['title'] == 'معلوماتك المالية') {
-          // Cold start form — handled specially
-          chatNotifier.addBotMessage(
-            response.text,
-            widget: response.widget,
+      final data = classifyResponse.widget;
+      final kind = data?['kind'] as String?;
+
+      switch (kind) {
+        case 'transaction':
+          final amount = data!['amount'];
+          final amountNum = amount is int
+              ? amount
+              : (amount is String ? int.tryParse(amount) : null) ?? 0;
+          final category = data['category'] as String? ?? 'متنوع';
+          final tone = data['tone'] as String? ?? 'gray';
+          final reply = data['reply'] as String?;
+
+          await _saveAndAnnounceTransaction(
+            chatNotifier,
+            txResult: {
+              'type': 'simple',
+              'amount': amountNum,
+              'category': category,
+              'tone': tone,
+            },
+            replyText: (reply != null && reply.isNotEmpty)
+                ? reply
+                : 'تم تسجيل $amountNum ريال — $category',
           );
-        } else {
-          // Non-transaction widget — safe to show directly
+          break;
+
+        case 'compound':
+          // Keep placeholder in _storedClassifications — confirm reads
+          // splits from widget action payload, not this map.
+          final reply = data!['reply'] as String?;
+          final splits = data['splits'] as List<dynamic>? ?? [];
+          final widgetData = <String, dynamic>{
+            'widget': 'compound_split_card',
+            'splits': splits,
+          };
+
           chatNotifier.addBotMessage(
-            response.text,
-            widget: response.widget,
+            (reply != null && reply.isNotEmpty)
+                ? reply
+                : 'قسمت مصروفك 👇',
+            widget: widgetData,
           );
-        }
+          break;
 
-        // Only return if we actually showed a widget (not a dropped transaction widget)
-        if (!isTransactionWidget) return;
-      }
+        case 'clarify':
+          final reply = data!['reply'] as String?;
+          chatNotifier.addBotMessage(
+            (reply != null && reply.isNotEmpty) ? reply : 'وش تقصد بالضبط؟',
+          );
+          _storedClassifications.remove(userMsgId); // re-enter history
+          break;
 
-      // ── Classification path (always reached for transactions) ──
-      // Check if this looks like a transaction entry
-        final txResult = await _tryAutoClassify(text);
-        if (txResult != null && mounted) {
-          final txType = txResult['type'] as String?;
-
-          if (txType == 'compound') {
-            // Multi-item compound split — show the widget directly.
-            // The splits come from _tryAutoClassify's own Gemini call
-            // (no conversation history → cannot conflate prior items).
-            // Confirm reads splits from the widget action payload, not
-            // from _storedClassifications.
-            chatNotifier.addBotMessage(
-              response.text.isNotEmpty ? response.text : 'تم استخراج العناصر:',
-              widget: txResult['widget'] as Map<String, dynamic>,
-            );
-          } else {
-            // Simple transaction — store for later confirm, build
-            // action_buttons UI locally (single path, same as always).
-            final lastUserMsgId = ref.read(chatProvider).messages
-                .lastWhere((m) => m.isUser)
-                .id;
-            _storedClassifications[lastUserMsgId] = txResult;
-
-            chatNotifier.addBotMessage(
-              response.text.isNotEmpty
-                  ? response.text
-                  : 'تم تسجيل ${txResult['amount']} ريال — ${txResult['category']}',
-              widget: {
-                'widget': 'action_buttons',
-                'question': 'هل التصنيف صحيح؟',
-                'buttons': [
-                  {
-                    'label': '✅ صحيح',
-                    'value': 'confirm',
-                    'type': 'primary',
-                  },
-                  {
-                    'label': '🔄 تعديل',
-                    'value': 'edit',
-                    'type': 'secondary',
-                  },
-                ],
-              },
-            );
+        case 'chat':
+        default:
+          // Fall through to coach path — re-enter history
+          _storedClassifications.remove(userMsgId);
+          final response = await geminiService.sendMessage(
+            text,
+            history: filteredHistory,
+          );
+          if (!mounted) return;
+          if (response.hasError) {
+            chatNotifier.setError(response.error!);
+            return;
           }
-        } else {
           chatNotifier.addBotMessage(response.text, widget: response.widget);
-        }
+          break;
+      }
     } catch (e) {
       if (!mounted) return;
       chatNotifier.setError(e.toString());
     }
   }
 
-  /// Attempt to auto-classify a transaction entry via Gemini.
-  /// Returns parsed data or null if it doesn't look like a transaction.
-  Future<Map<String, dynamic>?> _tryAutoClassify(String text) async {
-    final geminiService = ref.read(geminiServiceProvider);
-
+  /// Save a classified simple transaction and announce it immediately
+  /// with the DEC-020 undo bubble. Auto-save — no confirm tap (DEC-021).
+  Future<void> _saveAndAnnounceTransaction(
+    ChatProvider chatNotifier, {
+    required Map<String, dynamic> txResult,
+    required String replyText,
+  }) async {
     try {
-      // Quick check: does this look like it has a number?
-      // Match both Western (0-9) and Arabic-Indic (٠-٩) numerals.
-      if (!RegExp(r'[0-9٠-٩]').hasMatch(text)) return null;
+      final txService = ref.read(transactionServiceProvider);
+      final saved = await txService.saveTransaction(
+        amount: (txResult['amount'] as num).toDouble(),
+        category: txResult['category'] as String? ?? 'متنوع',
+        tone: txResult['tone'] as String? ?? 'gray',
+      );
+      final txId = saved['id'] as String;
 
-      // Use Gemini to extract transaction details.
-      // Uses dedicated classifyTransaction method — separate system prompt,
-      // no conversation history → cannot conflate prior messages.
-      final response = await geminiService.classifyTransaction(text);
-
-      // Parse classification result — priority order:
-      // 1. Parsed widget (JSON block from Gemini)
-      // 2. Raw text fallback (if JSON parsing failed)
-
-      final data = response.widget;
-
-      // Error: not a transaction
-      if (data != null && data.containsKey('error')) {
-        return null;
-      }
-
-      // Compound split
-      if (data != null && data['widget'] == 'compound_split_card') {
-        return {'type': 'compound', 'widget': data};
-      }
-
-      // Simple transaction with structured data
-      if (data != null && data.containsKey('amount')) {
-        final amount = data['amount'];
-        final amountNum = amount is int
-            ? amount
-            : (amount is String ? int.tryParse(amount) : null) ?? 0;
-        if (amountNum > 0) {
-          return {
-            'type': 'simple',
-            'amount': amountNum,
-            'category': data['category'] as String? ?? 'متنوع',
-            'tone': data['tone'] as String? ?? 'gray',
-            'response_text': response.text,
-          };
-        }
-      }
-
-      // Fallback: parse raw text for amount
-      final rawText = response.text;
-      if (rawText.contains('NOT_TRANSACTION') ||
-          rawText.contains('ليست معاملة')) {
-        return null;
-      }
-
-      // Match both Western and Arabic-Indic numerals
-      final amountMatch =
-          RegExp(r'([0-9٠-٩]+)').firstMatch(rawText);
-      if (amountMatch != null) {
-        final digits = amountMatch.group(1)!;
-        // Convert Arabic-Indic to Western numerals
-        final western = _arabicToWestern(digits);
-        final parsed = int.tryParse(western);
-        if (parsed != null && parsed > 0) {
-          return {
-            'type': 'simple',
-            'amount': parsed,
-            'category': 'متنوع',
-            'tone': 'gray',
-            'response_text': rawText,
-          };
-        }
-      }
-
-      return null;
+      chatNotifier.addBotMessage(
+        replyText,
+        widget: {
+          'widget': 'action_buttons',
+          'question': replyText,
+          'buttons': [
+            {'label': '↩️ تراجع', 'value': 'undo_transaction', 'type': 'secondary'},
+          ],
+          'tx_id': txId,
+          'tx_type': 'simple',
+        },
+      );
     } catch (e) {
-      // ignore: avoid_print
-      print('=== AZDAL DEBUG: Auto-classify FAILED — $e');
-      return null;
+      if (mounted) chatNotifier.setError('فشل حفظ المعاملة: $e');
     }
-  }
-
-  /// Convert Arabic-Indic numerals (٠-٩) to Western (0-9).
-  static String _arabicToWestern(String input) {
-    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    const western = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-    var result = input;
-    for (var i = 0; i < 10; i++) {
-      result = result.replaceAll(arabic[i], western[i]);
-    }
-    return result;
   }
 
   // ── Widget action handler ──
@@ -522,17 +464,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         final value = action['value'] as String?;
         final msgId = action['message_id'] as String?;
         if (value == null || msgId == null) break;
-        if (_isConfirming) break; // Guard: prevent double-tap
 
-        // Mark consumed FIRST — before any async work.
-        // The widget reads _answered and disables all buttons immediately.
-        chatNotifier.markWidgetAnswered(msgId, value);
-
-        if (value == 'confirm') {
-          await _confirmTransaction(chatNotifier);
-        } else if (value == 'edit') {
-          chatNotifier.addBotMessage('تمام — وش التصنيف الصح؟ اكتب التصنيف الجديد.');
-        } else if (value == 'undo_transaction') {
+        // Only undo_transaction survives DEC-021 (confirm/edit deleted).
+        if (value == 'undo_transaction') {
           await _undoTransaction(action, chatNotifier);
         }
         break;
@@ -540,7 +474,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       case 'quick_input_form':
         final values = action['values'] as Map<String, dynamic>?;
         if (values != null) {
-          // Could be Cold Start or other form
           if (values.containsKey('monthly_income')) {
             await _handleColdStartSubmit(values);
           }
@@ -553,16 +486,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         if (msgId == null) break;
 
         if (actionType == 'compound_split_cancel') {
-          // Mark consumed, then acknowledge — no Supabase call.
           chatNotifier.markWidgetAnswered(msgId, 'compound_split_cancel');
           chatNotifier.addBotMessage('تم الإلغاء.');
           break;
         }
 
-        // Mark consumed before attempting the save.
         chatNotifier.markWidgetAnswered(msgId, 'compound_split_confirm');
         await _handleCompoundSplit(action, chatNotifier);
-        // Upload receipt to storage if this came from OCR
         if (_capturedReceiptPath != null) {
           final receiptUrl =
               await _uploadReceiptToStorage(_capturedReceiptPath!);
@@ -577,7 +507,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       case 'ocr_failure':
         final ocrAction = action['action'] as String?;
         if (ocrAction == 'ocr_failure_submit') {
-          // Manual entry from OCR failure
           await _handleOcrFailureSubmit(action, chatNotifier);
         } else if (ocrAction == 'ocr_retake') {
           // ignore: avoid_print
@@ -588,77 +517,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Future<void> _confirmTransaction(ChatProvider chatNotifier) async {
-    if (_isConfirming) return; // Guard: prevent double-tap
-    _isConfirming = true;
-    try {
-      // Find the most recent user message
-      final messages = ref.read(chatProvider).messages;
-      final lastUserMsg = messages.reversed.firstWhere(
-        (m) => m.isUser,
-        orElse: () => ChatMessage(
-          id: '',
-          role: 'user',
-          content: '',
-          timestamp: DateTime(2000),
-        ),
-      );
+  // ── Undo (DEC-020) ──
 
-      if (lastUserMsg.content.isEmpty) return;
-
-      // Use stored classification from the FIRST _tryAutoClassify call —
-      // never call Gemini again (LLM output isn't deterministic).
-      final txResult = _storedClassifications[lastUserMsg.id];
-      if (txResult == null || txResult['type'] != 'simple') {
-        chatNotifier.setError(
-          'تعذر حفظ المعاملة — التصنيف غير متوفر. حاول مرة أخرى.',
-        );
-        return;
-      }
-
-      final txService = ref.read(transactionServiceProvider);
-      final saved = await txService.saveTransaction(
-        amount: (txResult['amount'] as num).toDouble(),
-        category: txResult['category'] as String? ?? 'متنوع',
-        tone: txResult['tone'] as String? ?? 'gray',
-      );
-      final txId = saved['id'] as String;
-
-      // DEC-020: Attach undo button — single transaction
-      chatNotifier.addBotMessage(
-        'تم تسجيل المعاملة بنجاح ✅',
-        widget: {
-          'widget': 'action_buttons',
-          'question': 'تم تسجيل المعاملة بنجاح ✅',
-          'buttons': [
-            {
-              'label': '↩️ تراجع',
-              'value': 'undo_transaction',
-              'type': 'secondary',
-            }
-          ],
-          'tx_id': txId,
-          'tx_type': 'simple',
-        },
-      );
-    } catch (e) {
-      chatNotifier.setError('فشل حفظ المعاملة: $e');
-    } finally {
-      _isConfirming = false;
-    }
-  }
-
-  /// Soft-delete a confirmed transaction (simple or compound group).
-  ///
-  /// Called when the user taps "↩️ تراجع" on a success message.
-  /// Reads the transaction id and type from [action].
-  /// Removes the undo-button message and replaces it with plain text
-  /// so the button is gone after use.
   Future<void> _undoTransaction(
     Map<String, dynamic> action,
     ChatProvider chatNotifier,
   ) async {
-    if (_isUndoing) return; // Guard: prevent double-tap
+    if (_isUndoing) return;
     _isUndoing = true;
     try {
       final txId = action['tx_id'] as String?;
@@ -673,7 +538,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         await txService.softDeleteTransaction(txId);
       }
 
-      // Find the message with the undo button and replace it
       final messages = ref.read(chatProvider).messages;
       for (final msg in messages.reversed) {
         if (msg.hasWidget && msg.widget!['tx_id'] == txId) {
@@ -688,6 +552,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _isUndoing = false;
     }
   }
+
+  // ── Compound split (unchanged from DEC-020) ──
 
   Future<void> _handleCompoundSplit(
     Map<String, dynamic> action,
@@ -711,18 +577,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final results = await txService.saveCompoundSplits(splits: splitData);
       final groupId = results.first['id'] as String;
 
-      // DEC-020: Attach undo button — compound split (group id)
       chatNotifier.addBotMessage(
         'تم تسجيل ${splits.length} معاملات بنجاح ✅',
         widget: {
           'widget': 'action_buttons',
           'question': 'تم تسجيل ${splits.length} معاملات بنجاح ✅',
           'buttons': [
-            {
-              'label': '↩️ تراجع',
-              'value': 'undo_transaction',
-              'type': 'secondary',
-            }
+            {'label': '↩️ تراجع', 'value': 'undo_transaction', 'type': 'secondary'},
           ],
           'tx_id': groupId,
           'tx_type': 'group',
@@ -733,7 +594,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  /// Handle OCR failure manual entry — save as simple transaction.
+  // ── OCR failure manual entry ──
+
   Future<void> _handleOcrFailureSubmit(
     Map<String, dynamic> action,
     ChatProvider chatNotifier,
@@ -749,7 +611,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       final txService = ref.read(transactionServiceProvider);
 
-      // Try to upload receipt first (if we still have it)
       String? receiptUrl;
       if (_capturedReceiptPath != null) {
         receiptUrl = await _uploadReceiptToStorage(_capturedReceiptPath!);
@@ -770,11 +631,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           'widget': 'action_buttons',
           'question': 'تم تسجيل $amount ريال — $category ✅',
           'buttons': [
-            {
-              'label': '↩️ تراجع',
-              'value': 'undo_transaction',
-              'type': 'secondary',
-            }
+            {'label': '↩️ تراجع', 'value': 'undo_transaction', 'type': 'secondary'},
           ],
           'tx_id': txId,
           'tx_type': 'simple',
@@ -787,10 +644,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   // ── OCR Camera / Gallery / Share Sheet ──────────────────────────
 
-  /// Path of the captured or selected receipt image (temporary file).
   String? _capturedReceiptPath;
 
-  /// Show a bottom sheet to pick receipt from camera or gallery.
   Future<void> _pickReceiptImage() async {
     final picker = ImagePicker();
 
@@ -825,13 +680,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         maxWidth: 1920,
       );
       if (xFile != null && mounted) {
-        // ignore: avoid_print
-        print('=== AZDAL DEBUG: Receipt image picked — '
-            'path=${xFile.path}');
+        print('=== AZDAL DEBUG: Receipt image picked — path=${xFile.path}');
         await _processReceiptImage(xFile.path);
       }
     } catch (e) {
-      // ignore: avoid_print
       print('=== AZDAL DEBUG: Image pick FAILED — $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -841,22 +693,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  /// Process a receipt image: show in chat, trigger OCR, handle result.
   Future<void> _processReceiptImage(String imagePath) async {
     final chatNotifier = ref.read(chatProvider.notifier);
 
-    // Display the image as a user message
     chatNotifier.addUserMessage('📷 إيصال', imagePath: imagePath);
 
-    // Show OCR processing overlay — capture its id so we can remove it
-    // when the result (or failure) arrives.
     final processingId = chatNotifier.addBotMessage(
       '',
       widget: const {'widget': 'ocr_processing'},
     );
 
     try {
-      // Read image bytes
       final imageFile = File(imagePath);
       if (!await imageFile.exists()) {
         chatNotifier.setError('الصورة غير موجودة.');
@@ -865,7 +712,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       final imageBytes = await imageFile.readAsBytes();
 
-      // Run OCR with timeout
       final geminiService = ref.read(geminiServiceProvider);
       final ocrResult = await geminiService
           .ocrReceipt(imageBytes)
@@ -873,81 +719,69 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       if (!mounted) return;
 
-      // Check result
       if (ocrResult.containsKey('error')) {
-        // State 3: OCR failure → show manual entry
         _showOcrFailure(chatNotifier, ocrResult, processingId);
         return;
       }
 
       final items = ocrResult['items'] as List<dynamic>? ?? [];
       final total = ocrResult['total'];
+      final reply = ocrResult['reply'] as String?;
 
       if (items.isEmpty) {
-        // State 3: No items extracted
         _showOcrFailure(chatNotifier, ocrResult, processingId);
         return;
       }
 
-      // State 2 or full success: show compound_split_card
-      _showOcrResult(chatNotifier, items, total, imagePath, processingId);
+      _showOcrResult(chatNotifier, items, total, reply, imagePath, processingId);
     } on TimeoutException {
       if (!mounted) return;
-      // ignore: avoid_print
       print('=== AZDAL DEBUG: OCR timed out after 10s');
       _showOcrFailure(chatNotifier, {'error': 'timeout'}, processingId);
     } catch (e) {
       if (!mounted) return;
-      // ignore: avoid_print
       print('=== AZDAL DEBUG: OCR process FAILED — $e');
       _showOcrFailure(chatNotifier, {'error': 'unexpected', 'detail': e.toString()}, processingId);
     }
   }
 
-  /// Show OCR failure state (State 3) with manual entry form.
   void _showOcrFailure(
     ChatProvider chatNotifier,
     Map<String, dynamic> ocrResult,
     String processingId,
   ) {
-    // Remove the processing bubble, then add failure widget
     chatNotifier.removeMessage(processingId);
     chatNotifier.addBotMessage(
       '',
-      widget: const {
-        'widget': 'ocr_failure',
-      },
+      widget: const {'widget': 'ocr_failure'},
     );
   }
 
-  /// Show OCR result as compound_split_card or partial extraction.
   void _showOcrResult(
     ChatProvider chatNotifier,
     List<dynamic> items,
     dynamic total,
+    String? reply,
     String imagePath,
     String processingId,
   ) {
-    // Remove the processing bubble — one bubble only, not three
     chatNotifier.removeMessage(processingId);
-    // Convert items to compound_split_card format
     final splits = items.map<Map<String, dynamic>>((item) {
       final map = item as Map<String, dynamic>;
       final name = map['name'] as String? ?? '';
       final price = (map['price'] as num?)?.toInt() ?? 0;
-      return {
-        'category': name,
-        'amount': price,
-      };
+      return {'category': name, 'amount': price};
     }).toList();
 
     final totalAmount = (total is num) ? total.toInt() : 0;
-
-    // Store receipt path for later upload
     _capturedReceiptPath = imagePath;
 
+    final bubbleText = (reply != null && reply.trim().isNotEmpty)
+        ? reply.trim()
+        : 'تم استخراج ${items.length} بنود من الإيصال:';
+
     chatNotifier.addBotMessage(
-      'تم استخراج ${items.length} بنود من الإيصال:',
+      bubbleText,
       widget: {
         'widget': 'compound_split_card',
         'splits': splits,
@@ -956,14 +790,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  /// Upload receipt image to Supabase Storage.
-  /// Path: /{user_id}/{timestamp}_receipt.jpg
+  // ── Upload receipt to Supabase Storage ───────────────────────────
+
   Future<String?> _uploadReceiptToStorage(String localPath) async {
     try {
       final client = Supabase.instance.client;
       final uid = client.auth.currentUser?.id;
       if (uid == null) {
-        // ignore: avoid_print
         print('=== AZDAL DEBUG: Receipt upload SKIPPED — no user');
         return null;
       }
@@ -981,35 +814,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       await client.storage.from('receipts').upload(
             storagePath,
             file,
-            fileOptions: const FileOptions(
-              contentType: 'image/jpeg',
-            ),
+            fileOptions: const FileOptions(contentType: 'image/jpeg'),
           );
 
-      // ignore: avoid_print
       print('=== AZDAL DEBUG: Receipt uploaded — path=$storagePath');
       return storagePath;
     } catch (e) {
-      // ignore: avoid_print
       print('=== AZDAL DEBUG: Receipt upload FAILED — $e');
       return null;
     }
   }
 
-  /// Check for pending shared image (from system share sheet).
-  /// Called once on init. Consumes and clears the pending path.
   void _checkPendingSharedImage() {
     final pendingPath = _getPendingSharedImage();
     if (pendingPath != null && mounted) {
-      // ignore: avoid_print
-      print('=== AZDAL DEBUG: Processing pending shared image — '
-          'path=$pendingPath');
+      print('=== AZDAL DEBUG: Processing pending shared image — path=$pendingPath');
       _processReceiptImage(pendingPath);
     }
   }
 
-  /// Thread-safe accessor for the module-level pending shared image.
-  /// Consumed once, then cleared.
   static String? _getPendingSharedImage() {
     return consumePendingSharedImage();
   }
@@ -1031,7 +854,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
       body: Column(
         children: [
-          // ── Chat messages ──
           Expanded(
             child: chatState.messages.isEmpty && !_coldStartDone
                 ? const _EmptyState()
@@ -1045,7 +867,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         (chatState.isLoading ? 1 : 0) +
                         (chatState.error != null ? 1 : 0),
                     itemBuilder: (context, index) {
-                      // Error bubble (shown at the end)
                       if (chatState.error != null &&
                           index == chatState.messages.length) {
                         return ErrorBubble(
@@ -1056,15 +877,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         );
                       }
 
-                      // Typing indicator (shown after messages, before error)
                       final typingOffset = chatState.error != null ? 1 : 0;
                       if (chatState.isLoading &&
-                          index ==
-                              chatState.messages.length - typingOffset) {
+                          index == chatState.messages.length - typingOffset) {
                         return const TypingIndicator();
                       }
 
-                      // Adjust index past loading/error placeholders
                       final adjustedIndex = chatState.isLoading &&
                               index >= chatState.messages.length
                           ? chatState.messages.length - 1
@@ -1080,15 +898,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         onWidgetAction: _handleWidgetAction,
                       );
                     },
-                    // Auto-scroll to bottom
                     itemExtent: null,
                   ),
           ),
 
-          // ── Offline banner ──
           if (!_isOnline) const OfflineBanner(),
 
-          // ── Input bar ──
           _InputBar(
             controller: _textController,
             focusNode: _focusNode,
@@ -1097,7 +912,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             onSend: _sendMessage,
             onMic: _toggleVoice,
             onCamera: () {
-              _pickReceiptImage();
+              // NOT IMPLEMENTED — Stage 3 OCR
             },
           ),
         ],
@@ -1107,7 +922,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Empty State (first launch, before Cold Start)
+// Empty State
 // ─────────────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
@@ -1121,39 +936,25 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.shield_outlined,
-              size: 64,
-              color: _navy.withAlpha(100),
-            ),
+            Icon(Icons.shield_outlined, size: 64, color: _navy.withAlpha(100)),
             const SizedBox(height: 16),
             const Text(
               'أهلاً بك في أزدل',
               style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Cairo',
-                color: _navy,
+                fontSize: 22, fontWeight: FontWeight.w700,
+                fontFamily: 'Cairo', color: _navy,
               ),
             ),
             const SizedBox(height: 8),
             const Text(
               'مساعدك المالي الذكي. بدون تعب. بدون إدخال بيانات.',
-              style: TextStyle(
-                fontSize: 14,
-                color: _muted,
-                fontFamily: 'Cairo',
-              ),
+              style: TextStyle(fontSize: 14, color: _muted, fontFamily: 'Cairo'),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             Text(
               'اكتب أول مصروف... أو استخدم الصوت 🎤',
-              style: TextStyle(
-                fontSize: 14,
-                color: _navy.withAlpha(150),
-                fontFamily: 'Cairo',
-              ),
+              style: TextStyle(fontSize: 14, color: _navy.withAlpha(150), fontFamily: 'Cairo'),
             ),
           ],
         ),
@@ -1167,11 +968,7 @@ class _EmptyState extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({
-    required this.message,
-    this.onWidgetAction,
-  });
-
+  const _MessageBubble({required this.message, this.onWidgetAction});
   final ChatMessage message;
   final void Function(Map<String, dynamic>)? onWidgetAction;
 
@@ -1182,8 +979,7 @@ class _MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.start : MainAxisAlignment.end,
+        mainAxisAlignment: isUser ? MainAxisAlignment.start : MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Flexible(
@@ -1196,10 +992,8 @@ class _MessageBubble extends StatelessWidget {
                 right: isUser ? 40 : 16,
               ),
               child: Column(
-                crossAxisAlignment:
-                    isUser ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+                crossAxisAlignment: isUser ? CrossAxisAlignment.start : CrossAxisAlignment.end,
                 children: [
-                  // Image thumbnail (receipt photo) — user messages only
                   if (message.isUser && message.hasImage)
                     Container(
                       margin: const EdgeInsets.only(bottom: 8),
@@ -1219,33 +1013,23 @@ class _MessageBubble extends StatelessWidget {
                               height: 120,
                               color: _userBubbleBg,
                               child: const Center(
-                                child: Icon(Icons.broken_image,
-                                    color: _muted, size: 32),
+                                child: Icon(Icons.broken_image, color: _muted, size: 32),
                               ),
                             );
                           },
                         ),
                       ),
                     ),
-
-                  // Text bubble
                   if (message.content.isNotEmpty)
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
                         color: isUser ? _userBubbleBg : _navy,
                         borderRadius: BorderRadius.only(
                           topLeft: const Radius.circular(16),
-                          topRight: isUser
-                              ? const Radius.circular(4)
-                              : const Radius.circular(16),
+                          topRight: isUser ? const Radius.circular(4) : const Radius.circular(16),
                           bottomLeft: const Radius.circular(16),
-                          bottomRight: isUser
-                              ? const Radius.circular(16)
-                              : const Radius.circular(4),
+                          bottomRight: isUser ? const Radius.circular(16) : const Radius.circular(4),
                         ),
                       ),
                       child: Text(
@@ -1258,29 +1042,18 @@ class _MessageBubble extends StatelessWidget {
                         textDirection: TextDirection.rtl,
                       ),
                     ),
-
-                  // Widget (if present)
                   if (message.hasWidget)
                     renderCatalogWidget(
                       message.widget!,
                       onAction: onWidgetAction != null
-                          ? (action) => onWidgetAction!({
-                              ...action,
-                              'message_id': message.id,
-                            })
+                          ? (action) => onWidgetAction!({...action, 'message_id': message.id})
                           : null,
                     ),
-
-                  // Timestamp
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
                       _formatTime(message.timestamp),
-                      style: const TextStyle(
-                        color: _muted,
-                        fontSize: 10,
-                        fontFamily: 'Cairo',
-                      ),
+                      style: const TextStyle(color: _muted, fontSize: 10, fontFamily: 'Cairo'),
                     ),
                   ),
                 ],
@@ -1293,27 +1066,20 @@ class _MessageBubble extends StatelessWidget {
   }
 
   String _formatTime(DateTime dt) {
-    final hour = dt.hour.toString().padLeft(2, '0');
-    final minute = dt.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
+    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Input Bar (fixed, 56px)
+// Input Bar
 // ─────────────────────────────────────────────────────────────────────
 
 class _InputBar extends StatefulWidget {
   const _InputBar({
-    required this.controller,
-    required this.focusNode,
-    required this.isOnline,
-    required this.isListening,
-    required this.onSend,
-    required this.onMic,
-    required this.onCamera,
+    required this.controller, required this.focusNode,
+    required this.isOnline, required this.isListening,
+    required this.onSend, required this.onMic, required this.onCamera,
   });
-
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool isOnline;
@@ -1321,7 +1087,6 @@ class _InputBar extends StatefulWidget {
   final VoidCallback onSend;
   final VoidCallback onMic;
   final VoidCallback onCamera;
-
   @override
   State<_InputBar> createState() => _InputBarState();
 }
@@ -1344,9 +1109,7 @@ class _InputBarState extends State<_InputBar> {
 
   void _onTextChanged() {
     final hasText = widget.controller.text.trim().isNotEmpty;
-    if (hasText != _hasText) {
-      setState(() => _hasText = hasText);
-    }
+    if (hasText != _hasText) setState(() => _hasText = hasText);
   }
 
   @override
@@ -1355,81 +1118,50 @@ class _InputBarState extends State<_InputBar> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
         color: Color(0xFFF1F3F5),
-        border: Border(
-          top: BorderSide(color: Color(0xFFE1E4E8)),
-        ),
+        border: Border(top: BorderSide(color: Color(0xFFE1E4E8))),
       ),
       child: SafeArea(
         child: Row(
           textDirection: TextDirection.rtl,
           children: [
-            // Send button (left in RTL = end)
-            _SendButton(
-              isOnline: widget.isOnline,
-              hasText: _hasText,
-              onSend: widget.onSend,
-            ),
+            _SendButton(isOnline: widget.isOnline, hasText: _hasText, onSend: widget.onSend),
             const SizedBox(width: 8),
-
-            // Text input
             Expanded(
               child: TextField(
                 controller: widget.controller,
                 focusNode: widget.focusNode,
                 textDirection: TextDirection.rtl,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontFamily: 'Cairo',
-                  color: Color(0xFF1B1B1F),
-                ),
+                style: const TextStyle(fontSize: 14, fontFamily: 'Cairo', color: Color(0xFF1B1B1F)),
                 decoration: InputDecoration(
                   hintText: 'اكتب مصروف... أو اسأل سؤال',
-                  hintStyle: const TextStyle(
-                    color: _muted,
-                    fontFamily: 'Cairo',
-                  ),
+                  hintStyle: const TextStyle(color: _muted, fontFamily: 'Cairo'),
                   filled: true,
                   fillColor: _white,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
+                    borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none,
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
+                    borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none,
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
-                    borderSide:
-                        const BorderSide(color: _cyan, width: 1.5),
+                    borderSide: const BorderSide(color: _cyan, width: 1.5),
                   ),
                 ),
-                maxLines: 3,
-                minLines: 1,
+                maxLines: 3, minLines: 1,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => widget.onSend(),
               ),
             ),
             const SizedBox(width: 8),
-
-            // Mic button
             _IconButton(
-              icon: Icons.mic,
-              isActive: widget.isListening,
-              activeColor: _cyan,
+              icon: Icons.mic, isActive: widget.isListening, activeColor: _cyan,
               onTap: widget.onMic,
             ),
             const SizedBox(width: 4),
-
-            // Camera button (Stage 3 — not yet implemented)
             _IconButton(
-              icon: Icons.camera_alt_outlined,
-              isActive: false,
-              activeColor: _cyan,
+              icon: Icons.camera_alt_outlined, isActive: false, activeColor: _cyan,
               onTap: widget.onCamera,
             ),
           ],
@@ -1439,17 +1171,8 @@ class _InputBarState extends State<_InputBar> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Send Button
-// ─────────────────────────────────────────────────────────────────────
-
 class _SendButton extends StatelessWidget {
-  const _SendButton({
-    required this.isOnline,
-    required this.hasText,
-    required this.onSend,
-  });
-
+  const _SendButton({required this.isOnline, required this.hasText, required this.onSend});
   final bool isOnline;
   final bool hasText;
   final VoidCallback onSend;
@@ -1460,34 +1183,19 @@ class _SendButton extends StatelessWidget {
       onTap: (isOnline && hasText) ? onSend : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: 40,
-        height: 40,
+        width: 40, height: 40,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: (isOnline && hasText) ? _cyan : _muted,
         ),
-        child: const Icon(
-          Icons.arrow_upward,
-          color: _white,
-          size: 20,
-        ),
+        child: const Icon(Icons.arrow_upward, color: _white, size: 20),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Icon Button (mic, camera)
-// ─────────────────────────────────────────────────────────────────────
-
 class _IconButton extends StatelessWidget {
-  const _IconButton({
-    required this.icon,
-    required this.isActive,
-    required this.activeColor,
-    required this.onTap,
-  });
-
+  const _IconButton({required this.icon, required this.isActive, required this.activeColor, required this.onTap});
   final IconData icon;
   final bool isActive;
   final Color activeColor;
@@ -1499,21 +1207,13 @@ class _IconButton extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: 40,
-        height: 40,
+        width: 40, height: 40,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: isActive ? activeColor.withAlpha(30) : Colors.transparent,
-          border: Border.all(
-            color: isActive ? activeColor : _muted,
-            width: isActive ? 2 : 1,
-          ),
+          border: Border.all(color: isActive ? activeColor : _muted, width: isActive ? 2 : 1),
         ),
-        child: Icon(
-          icon,
-          color: isActive ? activeColor : _muted,
-          size: 20,
-        ),
+        child: Icon(icon, color: isActive ? activeColor : _muted, size: 20),
       ),
     );
   }

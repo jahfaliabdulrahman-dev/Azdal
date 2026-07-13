@@ -18,24 +18,113 @@ import '../../features/chat/models/chat_message.dart';
 /// Compile-time Gemini API key (injected via --dart-define-from-file=.env).
 const _apiKey = String.fromEnvironment('GEMINI_API_KEY');
 
+// ─────────────────────────────────────────────────────────────────────
+// Coach prompt — used ONLY for non-transaction conversational chat
+// ─────────────────────────────────────────────────────────────────────
+
 /// System prompt for Azdal's financial AI coach in Saudi Arabic dialect.
 ///
-/// IMPORTANT: This prompt deliberately does NOT instruct Gemini to emit
-/// `action_buttons` or `compound_split_card` JSON for transaction
-/// classifications.  The app constructs ALL transaction widgets locally
-/// from the dedicated `classifyTransaction` call, which runs without
-/// conversation history so it cannot conflate a prior transaction with
-/// the current one.  The main chat response should just describe in
-/// plain Arabic — the app handles the widget generation.
+/// IMPORTANT: This prompt is used ONLY for conversational (non-digit)
+/// messages.  The router (`_classifySystemPrompt`) handles all messages
+/// that contain a digit.  This prompt must never emit `action_buttons`
+/// or `compound_split_card` — those are Dart-built from classification.
 const _systemPrompt = '''
-أنت أزدل — مساعد مالي ذكي سعودي. تتحدث باللهجة السعودية فقط.
-دورك: مساعدة المستخدم في رحلته المالية — نصائح، توضيح، تحفيز.
-التطبيق يتولى تصنيف المعاملات — لا ترسل action_buttons أو compound_split_card.
-عبر عن ردودك بنص عادي. لا تحسب أبداً — الحسابات على Supabase.
-إذا احتجت توضيحاً — اسأل سؤالاً واحداً واضحاً. لا تخمن.
+أنت أزدل — مدرّب مالي سعودي ودود وذكي. تتكلم باللهجة السعودية فقط، بأسلوب مشجّع ومختصر وطبيعي — مو آلي، ومو رسمي.
+دورك: الرد على أسئلة المستخدم، تقديم النصائح المالية، التحفيز، والترحيب.
 
-عند السؤال عن ملخص المصاريف، استخدم summary_card أو bar_chart.
+قواعد ثابتة:
+- التطبيق يتكفّل بتسجيل المعاملات — لا ترسل action_buttons ولا compound_split_card إطلاقاً.
+- لا تخترع ولا تحسب أي رقم مالي بنفسك (مجموع، نسبة، متوسط، تقدير) — إذا ما وصلك رقم حقيقي مع هذه الرسالة، لا تذكر أي رقم محدد إطلاقاً. رد بتشجيع أو توضيح عام بدون اختلاق تفاصيل.
+- حالياً summary_card و bar_chart غير مفعّلين في هذا المسار — لا ترسلهما إطلاقاً. لو سُئلت عن ملخص أو تقرير مصاريف، رد بجملة ودّية تفيد إن التقرير التفصيلي قادم قريباً — بدون أي رقم.
+- رد بجملة أو جملتين بس. لا تكرر نفس القالب كل مرة — نوّع بأسلوب طبيعي.
+
+أمثلة على الأسلوب المطلوب (وحّي منها، لا تكررها حرفياً):
+- تحية ("مرحبا" / "السلام عليكم") ⟶ "هلا فيك! جاهز تسجل أول مصروف اليوم أو تسألني أي شي؟"
+- سؤال أداء عام بدون بيانات كافية ("كيف أدائي؟") ⟶ "أدائك يعتمد على انتظامك بالتسجيل — كل ما سجلت أكثر، قدرت أعطيك صورة أدق. جرّب تسجل يومين وشوف الفرق 📊"
+- رغبة شراء ("أبي أشتري جوال بـ 3000") ⟶ "حلو! عشان أعطيك قرار دقيق أحتاج أشوف وضعك المالي كامل — هذي ميزة قادمة قريب. حالياً خلك مركز تسجل مصاريفك أول بأول 💪"
+- سؤال ملخص ("لخص لي مصاريفي") ⟶ "التقرير التفصيلي قادم قريب — لين ذاك، استمر تسجل كل عملية وأنا أراقب وياك 📈"
 ''';
+
+// ─────────────────────────────────────────────────────────────────────
+// Router prompt — the single history-free call for digit messages
+// ─────────────────────────────────────────────────────────────────────
+
+/// Classification / routing system prompt.
+///
+/// Used ONLY by [classifyTransaction] for messages containing a digit.
+/// Receives ZERO conversation history — structurally preventing
+/// cross-message rebundling.
+///
+/// Returns a single JSON object with a `kind` field:
+/// - `transaction`: single clear expense → auto-saved immediately
+/// - `compound`: multi-item split → confirm/edit card shown
+/// - `clarify`: ambiguous → a single clear question asked
+/// - `chat`: not an expense → falls through to coach prompt
+const _classifySystemPrompt = '''
+أنت محرّك تصنيف وصياغة لتطبيق "أزدل" المالي. مهمتك: تحليل رسالة المستخدم الحالية وإخراج JSON واحد فقط — بدون أي نص أو شرح خارج الـ JSON، وبدون أسيجة ```.
+
+قاعدة أساسية: أي رقم مذكور مع سياق صرف (أكل، شرب، مقاضي، بنزين، اسم منتج أو خدمة) هو مبلغ بالريال السعودي — حتى لو ما كُتبت كلمة "ريال".
+أمثلة:
+- "50 بيض"  ⟶  50 ريال على البيض.
+- "20 قهوة"  ⟶  20 ريال على القهوة.
+- "سجل 150 عشاء"  ⟶  150 ريال على العشاء.
+
+اختر نوعاً واحداً فقط (kind):
+
+1) "transaction" — الرسالة فيها عملية صرف واحدة واضحة (مبلغ + الشي اللي انصرف عليه). هذي العملية تُسجَّل تلقائياً فور تصنيفها — ما فيه خطوة تأكيد بعدها، فـ reply يجب أن يقول إن العملية تسجّلت فعلاً (مو يسأل "صح؟" ولا ينتظر تأكيد):
+{"kind":"transaction","amount":الرقم,"category":"الفئة","subcategory":"وصف مختصر","tone":"green|gray|red","reply":"جملة قصيرة تفيد إن العملية تسجّلت فعلاً، بلهجة سعودية دافئة ومتنوعة، تذكر المبلغ والفئة مع إيموجي مناسب — مثل 'تم تسجيل 50 ريال — بيض 🥚' أو 'سجّلت لك 50 ريال على البيض 🥚'"}
+
+2) "compound" — الرسالة الواحدة فيها أكثر من بند صرف (مثل "150 مقهى + 175 خضار + 150 مطعم"). هذي لسه تحتاج تأكيد المستخدم قبل الحفظ (فيه بطاقة تعديل)، فـ reply يوصف الاستخراج بدون أي إشارة إنه "تسجّل":
+{"kind":"compound","reply":"جملة قصيرة ودّية بدون أي مجموع ولا جمع أرقام، تصف إنك قسّمت المبلغ ولسه بانتظار تأكيده","splits":[{"category":"...","amount":الرقم}]}
+
+3) "clarify" — فيها رقم لكن ناقص معلومة أساسية (ما فيه شي انصرف عليه، أو المقصد غير واضح). ما صار أي تسجيل، فـ reply سؤال حقيقي:
+{"kind":"clarify","reply":"سؤال واحد قصير وواضح باللهجة السعودية"}
+
+4) "chat" — ليست عملية صرف: سلام، سؤال، طلب نصيحة، أو سؤال عن ملخص/تقرير مصاريف، أو رغبة شراء مستقبلية ("أبي أشتري"):
+{"kind":"chat"}
+
+قواعد ثابتة:
+- amount رقم فقط (بدون نص وبدون كلمة ريال).
+- استخدم الأرقام الإنجليزية في نص reply (50 مو ٥٠).
+- لا تحسب أي مجموع ولا ناتج جمع إطلاقاً — التطبيق هو اللي يحسب.
+- tone: green لمصروف اعتيادي بسيط، gray لمصروف عادي، red لمصروف كبير أو غير ضروري.
+- reply باللهجة السعودية، دافئة ومختصرة وطبيعية، بدون تكلّف ولا لغة رسمية جافة، وبدون تكرار نفس الصياغة كل مرة.
+- أخرج JSON واحد فقط.
+''';
+
+// ─────────────────────────────────────────────────────────────────────
+// Cold Start reaction prompt — history-free, numbers-only
+// ─────────────────────────────────────────────────────────────────────
+
+const _coldStartReactionPrompt = '''
+أنت أزدل — تصيغ جملة تفاعل واحدة على نتيجة "البداية السريعة" لمستخدم جديد، بناءً على رقمين حسبهما التطبيق مسبقاً فقط. ما عندك أي معلومة ثانية عن المستخدم.
+
+المدخل يوصلك بصيغة JSON:
+{"spend_ratio_percent": رقم, "disposable_after_commitments": رقم بالريال}
+- spend_ratio_percent: نسبة مصروفه الأسبوعي التقديري من اللي يتبقى له بعد الالتزامات.
+- disposable_after_commitments: كم يتبقى له شهرياً بعد الالتزامات (بالريال، قبل خصم المصروف). قد يكون سالباً.
+
+ممنوع:
+- لا تحسب ولا تقرّب ولا تعدّل أي رقم — استخدم الرقمين كما وصلوك بالضبط.
+- لا تذكر أي رقم غير هذين الرقمين إطلاقاً (ممنوع دخل، التزامات، مصروف أسبوعي، أو أي رقم مشتق لم يصلك).
+- لا تكرر نفس الصياغة حرفياً كل مرة — نوّع بأسلوب طبيعي.
+- لا ترسل أي widget أو أي حقل JSON غير المطلوب.
+
+أخرج JSON فقط بحقل واحد:
+{"reply": "جملة أو جملتين بالكثير، لهجة سعودية دافئة ومشجعة، تعلّق على وضعه بالاعتماد على الرقمين، وتختم بدعوة لطيفة يسجل أول عملية بالصوت أو الكتابة"}
+
+أمثلة:
+- المدخل {"spend_ratio_percent": 85, "disposable_after_commitments": 2000}
+  {"reply": "تصرف 85% من اللي يتبقى لك بعد الالتزامات قبل نص الشهر — خليني أساعدك تتحكم فيها أكثر. سجل أول عملية وأنا وياك 💪"}
+- المدخل {"spend_ratio_percent": 35, "disposable_after_commitments": 4000}
+  {"reply": "وضعك المالي معقول جداً — عندك مجال كويس بعد الالتزامات. تبي نبدأ نسجل أول عملية؟ 🎤"}
+- المدخل {"spend_ratio_percent": 100, "disposable_after_commitments": -500}
+  {"reply": "التزاماتك الشهرية أعلى من دخلك حالياً — هذا شي مهم ننتبه له بدري. أول خطوة: خلنا نسجل مصاريفك عشان نشوف وين نقدر نرتب 📊"}
+''';
+
+// ─────────────────────────────────────────────────────────────────────
+// Service
+// ─────────────────────────────────────────────────────────────────────
 
 /// Thin service wrapper around the Gemini generative AI SDK.
 final class GeminiService {
@@ -171,37 +260,36 @@ final class GeminiService {
     return contents;
   }
 
-  // ── Classification (dedicated — no main _systemPrompt interference) ──
+  // ── Shared JSON helper ──────────────────────────────────────────
 
-  /// Classification-specific system prompt.
+  /// Extract and decode a JSON object from raw LLM text.
   ///
-  /// Separate from [_systemPrompt] so the classification instructions
-  /// (compound_split_card, JSON extraction) don't conflict with the main
-  /// chat prompt's "express in plain text" directive.
-  /// Only used by [classifyTransaction] — the main chat response uses
-  /// [_systemPrompt] and will never see these widget instructions.
-  static const _classifySystemPrompt = '''
-أنت نظام تصنيف معاملات مالية. مهمتك الوحيدة: تحليل النص واستخراج البيانات.
-أجب بصيغة JSON فقط، بدون أي نص آخر — لا تقدم شرحاً ولا اعتذاراً.
+  /// Strips ```json fences if present, else greedily matches the first
+  /// `{...}` block.  Returns `null` on any parse failure.
+  Map<String, dynamic>? _extractJsonObject(String rawText) {
+    var jsonStr = rawText.trim();
+    final fenced = RegExp(r'```(?:json)?\s*([\s\S]*?)```').firstMatch(jsonStr);
+    if (fenced != null) jsonStr = fenced.group(1)!.trim();
+    final brace = RegExp(r'\{[\s\S]*\}').firstMatch(jsonStr);
+    if (brace != null) jsonStr = brace.group(0)!;
+    try {
+      return jsonDecode(jsonStr) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
 
-للمعاملة الواحدة:
-{"amount": الرقم, "category": "الفئة", "subcategory": "الفئة الفرعية", "tone": "green أو gray أو red"}
+  // ── Classification (router — the single history-free call) ──
 
-لعدة عناصر في نفس الرسالة:
-{"widget": "compound_split_card", "splits": [{"category": "...", "amount": الرقم}]}
-
-إذا لم تكن معاملة مالية:
-{"error": "NOT_TRANSACTION"}
-''';
-
-  /// Classify a single user message as a transaction.
+  /// Classify a single user message as a transaction, compound split,
+  /// clarification-needed, or chat.
   ///
   /// Uses [_classifySystemPrompt] — NOT [_systemPrompt] — so Gemini
   /// receives explicit JSON-formatting instructions without conflicting
-  /// with the main chat prompt's "express in plain text" directive.
+  /// with the coach prompt.
   ///
   /// No conversation history is sent — each classification is isolated
-  /// to the current message, preventing prior transactions from leaking in.
+  /// to the current message, preventing prior transactions from leaking.
   Future<GeminiResponse> classifyTransaction(String userText) async {
     assert(_apiKey.isNotEmpty, 'GEMINI_API_KEY is empty.');
 
@@ -225,9 +313,9 @@ final class GeminiService {
       ]);
 
       final rawText = response.text ?? '';
-      final widget = _extractWidget(rawText);
+      final map = _extractJsonObject(rawText);
 
-      return GeminiResponse(text: rawText, widget: widget);
+      return GeminiResponse(text: rawText, widget: map);
     } on GenerativeAIException catch (e) {
       // ignore: avoid_print
       print('=== AZDAL DEBUG: classifyTransaction FAILED — $e');
@@ -238,6 +326,49 @@ final class GeminiService {
       return GeminiResponse(text: '{}', error: e.toString());
     }
   }
+
+  // ── Cold Start reaction ─────────────────────────────────────────
+
+  /// Cold Start insight reaction.
+  ///
+  /// Takes ZERO user-authored text — only two numbers Dart has already
+  /// computed. Cannot be a function of any prior or current conversational
+  /// text, so it's history-free by construction.
+  Future<GeminiResponse> reactToColdStart({
+    required int spendRatio,
+    required double disposableAfterCommitments,
+  }) async {
+    assert(_apiKey.isNotEmpty, 'GEMINI_API_KEY is empty.');
+    if (_apiKey.isEmpty) {
+      return const GeminiResponse(text: '');
+    }
+
+    try {
+      final model = GenerativeModel(
+        model: _modelName,
+        apiKey: _apiKey,
+        systemInstruction: Content.system(_coldStartReactionPrompt),
+      );
+
+      final input = jsonEncode({
+        'spend_ratio_percent': spendRatio,
+        'disposable_after_commitments': disposableAfterCommitments.round(),
+      });
+
+      final response = await model.generateContent([Content.text(input)]);
+      final rawText = response.text ?? '';
+      final map = _extractJsonObject(rawText);
+      final reply = (map?['reply'] as String?)?.trim() ?? '';
+
+      return GeminiResponse(text: reply);
+    } catch (e) {
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: reactToColdStart FAILED — $e');
+      return GeminiResponse(text: '', error: e.toString());
+    }
+  }
+
+  // ── Legacy helpers ──────────────────────────────────────────────
 
   /// Extract a JSON widget block from the response text.
   ///
@@ -272,8 +403,8 @@ final class GeminiService {
   ///
   /// [imageBytes] is the raw JPEG/PNG bytes of the receipt photo.
   ///
-  /// Returns a parsed JSON map with `items`, `total`, and `currency` on
-  /// success, or an error map with `error` key on failure.
+  /// Returns a parsed JSON map with `items`, `total`, `currency`, and
+  /// `reply` on success, or an error map with `error` key on failure.
   ///
   /// The Arabic prompt instructs Gemini to extract each line item — product
   /// name and price — and return a structured JSON response.
@@ -299,8 +430,15 @@ final class GeminiService {
       const prompt =
           'استخرج جميع بنود هذا الإيصال. '
           'لكل بند: اسم المنتج/الخدمة، السعر. '
-          'أعد النتيجة بصيغة JSON فقط بدون أي نص آخر: '
-          '{"items": [{"name": "...", "price": 0}], "total": 0, "currency": "SAR"}';
+          'أعد النتيجة بصيغة JSON فقط بدون أي نص آخر، بالشكل التالي:\n'
+          '{"items": [{"name": "...", "price": 0}], "total": 0, "currency": "SAR", "reply": "..."}\n\n'
+          'حقل reply: جملة قصيرة وحيدة بلهجة سعودية دافئة تصف نوع الإيصال اللي شفته '
+          '(مثلاً مقاضي، مطعم، بنزين...) — ممنوع تذكر أي مبلغ إجمالي أو مجموع إطلاقاً '
+          '(التطبيق يحسب الإجمالي بنفسه من البنود). لا تكرر نفس الصياغة حرفياً كل مرة.\n\n'
+          'أمثلة على حقل reply فقط (وحّي منها، لا تنسخها حرفياً):\n'
+          '- إيصال سوبرماركت فيه خضار ولحوم ومنظفات ⟶ "شكلك جبت مقاضي البيت — طلعت 5 بنود 🛒"\n'
+          '- إيصال مطعم فيه أطباق وشراب ⟶ "عشاء اليوم كان في مطعم — سجلتلك كل طبق لحاله 🍽️"\n'
+          '- إيصال محطة بنزين ⟶ "تعبئة بنزين — سجلتها لك ⛽"';
 
       final imagePart = DataPart('image/jpeg', imageBytes);
 

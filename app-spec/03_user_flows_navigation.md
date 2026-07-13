@@ -326,19 +326,28 @@ User confirms or changes decision
 ```
 User taps camera or types text
   ↓
-Voice: "سجل ١٥٠ ريال عشاء"
+Voice: "سجل 150 ريال عشاء"
 OCR: Photo of receipt processed
-Text: "150 عشاء"
+Text: "150 عشاء"  ← a bare number + spending-context word defaults to SAR;
+                     writing "ريال" explicitly is optional, not required (DEC-021)
   ↓
-Gemini Flash classifies and enriches:
+Gemini classifies AND writes the transaction directly — no confirm tap
+for a single, clear item (DEC-021: auto-save simple transactions):
   - Category: مطاعم
   - Subcategory: عشاء
   - Amount: 150 SAR
   - Tone: Green (routine)
   ↓
-Bot confirms: "تم تسجيل ١٥٠ ريال — عشاء 🍽️"
+Transaction saved. Bot confirms in ONE message:
+  "تم تسجيل 150 ريال — عشاء 🍽️"  +  [↩️ تراجع]
   ↓
-Evening check-in: "عندك 3 عمليات تحتاج تصنيفها."
+(only if the message has MULTIPLE items in one turn, e.g. a receipt or
+"150 مقهى + 175 خضار": Gemini extracts the split → bot shows
+compound_split_card with adjustable amounts → user taps
+❌ إلغاء or ✅ تأكيد → only then is anything written)
+  ↓
+Evening check-in: "عندك 3 عمليات تحتاج تصنيفها."  ← Future (not in MVP) —
+  no scheduling/batch-classification exists in the code today.
 ```
 
 ---

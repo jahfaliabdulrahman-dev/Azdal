@@ -26,6 +26,30 @@ None at Stage 3. All decisions below are closed.
 | **Impact** | `lib/features/chat/widgets/widget_catalog.dart` (compound_split_card cancel action), `lib/features/chat/chat_screen.dart` (undo quick-action wiring + soft-delete call), `lib/features/chat/services/transaction_service.dart` (needs a `deleteTransaction(id)` / soft-delete method — doesn't exist yet). No schema change — `is_deleted`/`deleted_at` already deployed. Scoped to the OCR/image flow where the bug was found; the undo mechanism itself is generic enough to reuse for any confirmed transaction later, not OCR-specific. |
 | **Related** | `16_implementation_backlog.md §Stage 3` (OCR-05 added), `app-spec/INIT-03_supabase_schema.md` (existing soft-delete columns), `lib/features/chat/widgets/widget_catalog.dart` |
 
+### DEC-021: Auto-Save Simple Transactions, Drop Confirm Tap
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-13 |
+| **Status** | ✅ Closed |
+| **Summary** | Single-item transactions save immediately on classification; the ✅ صحيح / 🔄 تعديل confirm step is removed for this case. `↩️ تراجع` (undo, DEC-020) is the safety net. |
+| **Rationale** | The app's own empty-state tagline promises "بدون تعب" (effortless) — a mandatory confirm-tap on every logged expense contradicts that. The old "🔄 تعديل" never did real inline editing anyway (just replied with a plain-text re-prompt), so undo-then-retype is strictly cleaner than edit-then-retype. Zero-tap auto-logging reads as stronger AI confidence in a live demo. |
+| **Alternatives** | (A) Keep confirm-before-save — rejected, contradicts product positioning and adds a tap with no real correction benefit over undo. (B) Auto-save with no undo — rejected, removes the only safety net for misclassification. |
+| **Impact** | `compound_split_card` (multi-item messages) is unaffected — it keeps its real ❌ إلغاء / ✅ تأكيد step, since the user can genuinely adjust amounts there before anything saves. Deleted `_confirmTransaction`, `_isConfirming`, `_tryAutoClassify`, and the confirm/edit `action_buttons` handler cases. |
+| **Related** | DEC-020 (undo/cancel), `03_user_flows_navigation.md` Flow: Transaction Entry |
+
+### DEC-022: Bounded Reply Pattern (BRP) — Mandatory for All LLM-Authored Text Fields
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-13 |
+| **Status** | ✅ Closed |
+| **Summary** | Any bot-facing text authored by an LLM (not hardcoded Dart strings) must be: (1) a single named JSON field, never a whole free-form message; (2) given an explicit one-line purpose in its prompt; (3) bounded by an explicit tone/length/don't-list; (4) backed by 2-3 concrete few-shot examples written directly into the prompt (never conversation history); (5) given a deterministic Dart fallback for empty/malformed output. |
+| **Rationale** | The prior session's 7 prompt iterations (history-leak fix saga) drifted because there was no standing rule to check new prompt text against — instructions were added and removed ad hoc under time pressure, causing new regressions each time (bare-number parsing broke, responses became incoherent). BRP gives future prompt edits a checklist so this doesn't recur. |
+| **Alternatives** | (A) Fully free-form LLM text everywhere — rejected, risks inconsistency/drift and cannot guarantee JSON safety. (B) Fully hardcoded strings everywhere — rejected, loses the actual value of personalization at the moments that matter most (Cold Start first impression, per-transaction reaction, OCR receipt summary). |
+| **Impact** | Applies to: router `reply` (3 kinds), coach prompt replies, `reactToColdStart`, `ocrReceipt`'s new `reply` field. Does NOT apply to structural/systemic strings (loading states, error boundaries, button labels, undo/cancel acks) — those stay hardcoded permanently by design, not as an oversight. |
+| **Related** | DEC-003 (LLM never calculates), DEC-020 (undo), DEC-021 (auto-save) |
+
 ---
 
 ### DEC-019: "Can I Buy?" (BUY-01→04) Moved From Stage 3 to Stage 4
@@ -294,6 +318,8 @@ None at Stage 3. All decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-021 | Auto-save simple transactions — drop confirm tap | 2026-07-13 | ✅ |
+| DEC-022 | Bounded Reply Pattern (BRP) — mandatory for all LLM text | 2026-07-13 | ✅ |
 | DEC-020 | Cancel-before-confirm (compound split) + transaction undo | 2026-07-12 | ✅ |
 | DEC-019 | "Can I buy?" (BUY-01→04) moved from Stage 3 to Stage 4 | 2026-07-12 | ✅ |
 | DEC-018 | Voice input UX — mic button added to input bar | 2026-07-12 | ✅ |
