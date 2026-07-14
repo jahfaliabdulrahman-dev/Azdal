@@ -840,7 +840,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       case 'quick_input_form':
         final values = action['values'] as Map<String, dynamic>?;
-        final formKind = action['form_kind'] as String?;
+        final formKind = action['_form_kind'] as String?;
         final msgId = action['message_id'] as String?;
         if (values == null) break;
         if (msgId != null) chatNotifier.markWidgetAnswered(msgId, 'form_submitted');
