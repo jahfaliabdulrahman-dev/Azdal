@@ -50,14 +50,14 @@ String _normalizeArabic(String s) => s
     .replaceAll('ة', 'ه');
 
 // ── Setup-intent heuristic (commitments/goals) — cheap local pre-filter ──
-final RegExp _commitmentKeywords = RegExp(
+final RegExp _commitmentKeywords = RegExp(_normalizeArabic(
   'قسط|اقساط|التزام|التزامات|تمارا|تابي|تابى|سله|ايجار|قرض|تمويل|'
   'ديون|دين|اشتراك|اشتراكات',
-);
-final RegExp _goalKeywords = RegExp(
+));
+final RegExp _goalKeywords = RegExp(_normalizeArabic(
   'هدف|اهداف|هدفي|ادخار|ادخر|ابي ادخر|اوفر|صندوق الطوارئ|'
   'عمره|حج',
-);
+));
 
 bool _looksLikeSetupIntent(String text) {
   final normalized = _normalizeArabic(text);
@@ -66,17 +66,23 @@ bool _looksLikeSetupIntent(String text) {
 }
 
 // ── Buy-intent heuristic (Stage 4) — cheap local pre-filter ──
-final RegExp _buyKeywords = RegExp(
-  'ابي اشتري|ودي اشتري|ابغى اشتري|بشتري|كم سعر|هل اقدر|ينفع اشتري|اقدر اشتري',
-);
+// Not authoritative: a miss falls through to classifyTransaction, whose
+// 'chat' branch runs one more classifyBuyIntent safety-net check before
+// giving up (see the 'chat' case in _sendMessage) — this regex only
+// decides whether to skip a redundant round-trip, never whether the
+// feature can fire at all.
+final RegExp _buyKeywords = RegExp(_normalizeArabic(
+  'ابي اشتري|ودي اشتري|ابغى اشتري|بشتري|كم سعر|هل اقدر|ينفع اشتري|'
+  'اقدر اشتري|نفسي اشتري|افكر اشتري',
+));
 
 bool _looksLikeBuyIntent(String text) =>
     _buyKeywords.hasMatch(_normalizeArabic(text));
 
 // ── Integrity-score query heuristic (Stage 4) ──
-final RegExp _integrityKeywords = RegExp(
+final RegExp _integrityKeywords = RegExp(_normalizeArabic(
   'كيف ادائي|كم درجه النزاهه|درجه النزاهه|نقاط النزاهه|نزاهتي|كيف نزاهتي',
-);
+));
 
 bool _looksLikeIntegrityQuery(String text) =>
     _integrityKeywords.hasMatch(_normalizeArabic(text));
@@ -381,6 +387,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         case 'chat':
         default:
           _storedClassifications.remove(userMsgId);
+          // Safety net (not a regex-gated fast path): classifyTransaction
+          // deliberately punts buy-intent phrasing to 'chat', and the local
+          // _looksLikeBuyIntent keyword list can never enumerate every real
+          // phrasing. Any digit-bearing message that reaches here gets one
+          // more check against the real classifier before we fall back to
+          // generic coach chat — this is the only thing standing between
+          // an unlisted phrasing and the app silently pretending to answer
+          // "Can I Buy?" without ever running the real analysis.
+          if (hasDigit) {
+            final safetyNetBuy = await geminiService.classifyBuyIntent(text);
+            final safetyNetKind = safetyNetBuy.widget?['kind'] as String?;
+            if (safetyNetKind != null && safetyNetKind != 'none') {
+              await _handleBuyIntent(safetyNetKind, safetyNetBuy.widget!, chatNotifier);
+              return;
+            }
+          }
           final response = await geminiService.sendMessage(text, history: filteredHistory);
           if (!mounted) return;
           if (response.hasError) { chatNotifier.setError(response.error!); return; }
