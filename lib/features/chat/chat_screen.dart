@@ -352,8 +352,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     final allMessages = ref.read(chatProvider).messages;
+    // Widget-bearing bot messages (verdict cards, forms, lists, integrity/
+    // budget summaries) are outputs of isolated intent flows, not
+    // conversational replies. Their own triggering user message is already
+    // excluded below via _storedClassifications, but the bot reply itself
+    // was never excluded — leaving an orphaned, question-less reply in the
+    // history the general coach sees, which is exactly what produced
+    // confused/off-topic answers that dragged in an unrelated earlier
+    // topic. Only plain-text bot replies (normal coach chat) stay in
+    // history; widget-bearing ones never do.
     final filteredHistory = allMessages.where((m) {
-      if (!m.isUser) return true;
+      if (!m.isUser) return !m.hasWidget;
       if (m.id == userMsgId) return true;
       return !_storedClassifications.containsKey(m.id);
     }).toList();
@@ -731,8 +740,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       chatNotifier.addBotMessage('محتاج رقم صحيح للمبلغ المتبقي.');
       return;
     }
-    try { await ref.read(commitmentServiceProvider).updateRemaining(id, remaining); chatNotifier.addBotMessage('تم تحديث المبلغ المتبقي ✅'); }
-    catch (e) { chatNotifier.setError('فشل التحديث: $e'); }
+    try {
+      final commitmentService = ref.read(commitmentServiceProvider);
+      if (remaining <= 0) {
+        await commitmentService.markCompleted(id);
+        chatNotifier.addBotMessage('مبروك! خلصت الالتزام بالكامل 🎉');
+      } else {
+        await commitmentService.updateRemaining(id, remaining);
+        chatNotifier.addBotMessage('تم تحديث المبلغ المتبقي ✅');
+      }
+    } catch (e) { chatNotifier.setError('فشل التحديث: $e'); }
   }
 
   // ── Goal flow (DEC-033) ──
@@ -839,8 +856,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       chatNotifier.addBotMessage('محتاج رقم صحيح للمبلغ المدخر.');
       return;
     }
-    try { await ref.read(goalServiceProvider).updateCurrentAmount(id, amount); chatNotifier.addBotMessage('تم تحديث المبلغ المدخر ✅'); }
-    catch (e) { chatNotifier.setError('فشل التحديث: $e'); }
+    try {
+      final goalService = ref.read(goalServiceProvider);
+      await goalService.updateCurrentAmount(id, amount);
+      final goals = await goalService.listActive();
+      final match = goals.where((g) => g['id'] == id);
+      final target = match.isEmpty ? null : (match.first['target_amount'] as num?)?.toDouble();
+      if (target != null && amount >= target) {
+        await goalService.markAchieved(id);
+        chatNotifier.addBotMessage('مبروك! حققت الهدف 🎉');
+      } else {
+        chatNotifier.addBotMessage('تم تحديث المبلغ المدخر ✅');
+      }
+    } catch (e) { chatNotifier.setError('فشل التحديث: $e'); }
   }
 
   // ── Widget action handler ──
