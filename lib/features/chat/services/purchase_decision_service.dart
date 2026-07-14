@@ -140,4 +140,87 @@ final class PurchaseDecisionService {
       };
     }
   }
+
+  /// Calculate how much disposable budget is left for the current month.
+  ///
+  /// Same deterministic factors as [evaluate] (income, active commitments,
+  /// current-month expense total, active goal contributions) but with no
+  /// specific purchase amount — this answers "كم باقي من ميزانيتي؟" rather
+  /// than "can I afford X". Returns `{'hasProfile': false}` if no income is
+  /// on file yet (caller should ask for it, same as [evaluate]'s need_info).
+  Future<Map<String, dynamic>> calculateRemainingBudget() async {
+    final userId = _client.auth.currentUser!.id;
+
+    final profileRows = await _client
+        .from('financial_profile')
+        .select()
+        .eq('user_id', userId)
+        .eq('is_deleted', false)
+        .limit(1);
+
+    final income = (profileRows as List).isEmpty
+        ? 0.0
+        : ((profileRows.first as Map)['monthly_income'] as num?)
+            ?.toDouble() ??
+            0;
+
+    if (income <= 0) {
+      return {'hasProfile': false};
+    }
+
+    final commitmentsRows = await _client
+        .from('commitments')
+        .select()
+        .eq('user_id', userId)
+        .eq('is_deleted', false)
+        .eq('status', 'active');
+
+    final totalCommitments = (commitmentsRows as List).fold<double>(
+      0,
+      (sum, c) => sum + ((c['monthly_amount'] as num?)?.toDouble() ?? 0),
+    );
+
+    final now = DateTime.now();
+    final monthStart =
+        DateTime(now.year, now.month, 1).toIso8601String();
+    final spendRows = await _client
+        .from('transactions')
+        .select('amount')
+        .eq('user_id', userId)
+        .eq('type', 'expense')
+        .eq('is_deleted', false)
+        .gte('created_at', monthStart);
+
+    final monthlySpend = (spendRows as List).fold<double>(
+      0,
+      (sum, r) => sum + ((r['amount'] as num?)?.toDouble() ?? 0),
+    );
+
+    final goalsRows = await _client
+        .from('goals')
+        .select()
+        .eq('user_id', userId)
+        .eq('is_deleted', false)
+        .eq('status', 'active');
+
+    final totalGoalMonthly = (goalsRows as List).fold<double>(
+      0,
+      (sum, g) =>
+          sum + ((g['monthly_contribution'] as num?)?.toDouble() ?? 0),
+    );
+
+    final remaining = income - totalCommitments - monthlySpend - totalGoalMonthly;
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final daysLeft = daysInMonth - now.day + 1;
+
+    return {
+      'hasProfile': true,
+      'income': income,
+      'commitments': totalCommitments,
+      'monthlySpend': monthlySpend,
+      'goalMonthly': totalGoalMonthly,
+      'remaining': remaining,
+      'daysLeft': daysLeft,
+    };
+  }
 }

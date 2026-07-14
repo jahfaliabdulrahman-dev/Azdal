@@ -87,6 +87,18 @@ final RegExp _integrityKeywords = RegExp(_normalizeArabic(
 bool _looksLikeIntegrityQuery(String text) =>
     _integrityKeywords.hasMatch(_normalizeArabic(text));
 
+// ── Remaining-budget query heuristic — deterministic, no LLM (DEC-003:
+// this is a pure calculation, not something the LLM should ever answer
+// in free-form chat, which is how "كم باقي من المصروف" previously got a
+// stale reply about an unrelated earlier topic instead of a real number).
+final RegExp _budgetQueryKeywords = RegExp(_normalizeArabic(
+  'كم باقي|باقي من مصروفي|باقي من الشهر|باقي من ميزانيتي|كم فاضل|فاضل لي|'
+  'وش وضع ميزانيتي|وضعي المالي|كم متبقي|باقي مصروف|كم باقي ميزانيه',
+));
+
+bool _looksLikeBudgetQuery(String text) =>
+    _budgetQueryKeywords.hasMatch(_normalizeArabic(text));
+
 // ─────────────────────────────────────────────────────────────────────
 // ChatScreen
 // ─────────────────────────────────────────────────────────────────────
@@ -330,6 +342,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // ── Integrity-score query pre-check (additive — Stage 4) ──
     if (_looksLikeIntegrityQuery(text)) {
       await _showIntegrityScore(chatNotifier);
+      return;
+    }
+
+    // ── Remaining-budget query pre-check (additive) ──
+    if (_looksLikeBudgetQuery(text)) {
+      await _showRemainingBudget(chatNotifier);
       return;
     }
 
@@ -917,6 +935,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               chatNotifier.addBotMessage('محتاج رقم صحيح للدخل الشهري.');
             }
             break;
+          case 'budget_query_clarification':
+            final budgetIncome = double.tryParse(_arabicToWestern(values['income'] as String? ?? ''));
+            if (budgetIncome != null && budgetIncome > 0) {
+              final profileService = ref.read(financialProfileServiceProvider);
+              final existing = await profileService.getProfile();
+              await profileService.upsert(
+                monthlyIncome: budgetIncome,
+                monthlyCommitmentsEstimate:
+                    (existing?['monthly_commitments_estimate'] as num?)?.toDouble() ?? 0,
+                weeklySpendEstimate:
+                    (existing?['weekly_spend_estimate'] as num?)?.toDouble() ?? 0,
+              );
+              await _showRemainingBudget(chatNotifier);
+            } else {
+              chatNotifier.addBotMessage('محتاج رقم صحيح للدخل الشهري.');
+            }
+            break;
           default:
             if (values.containsKey('monthly_income')) await _handleColdStartSubmit(values);
             chatNotifier.addBotMessage('تم استلام المعلومات. شكراً لك! 🙏');
@@ -1024,6 +1059,55 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       });
     } catch (e) {
       chatNotifier.setError('فشل حساب نقاط النزاهة: $e');
+    }
+  }
+
+  // ── Remaining-budget query — deterministic, no LLM (DEC-003) ──
+
+  Future<void> _showRemainingBudget(ChatProvider chatNotifier) async {
+    try {
+      final purchaseService = ref.read(purchaseDecisionServiceProvider);
+      final result = await purchaseService.calculateRemainingBudget();
+      if (result['hasProfile'] != true) {
+        chatNotifier.addBotMessage('عشان أقدر أحسبها — كم دخلك الشهري التقريبي؟', widget: {
+          'widget': 'quick_input_form',
+          'title': 'معلومة ناقصة',
+          '_form_kind': 'budget_query_clarification',
+          'fields': [
+            {'label': 'الدخل الشهري التقريبي', 'placeholder': 'مثلاً: 8,000', 'key': 'income', 'type': 'number', 'required': true},
+          ],
+          'submit_label': 'احسب →',
+        });
+        return;
+      }
+      final income = result['income'] as double;
+      final commitments = result['commitments'] as double;
+      final monthlySpend = result['monthlySpend'] as double;
+      final goalMonthly = result['goalMonthly'] as double;
+      final remaining = result['remaining'] as double;
+      final daysLeft = result['daysLeft'] as int;
+      final isPositive = remaining >= 0;
+
+      chatNotifier.addBotMessage(
+        isPositive
+            ? 'باقي لك ${remaining.round()} ريال هالشهر، وقدامك $daysLeft يوم 📊'
+            : 'مصاريفك والتزاماتك تجاوزت دخلك بـ ${(-remaining).round()} ريال هالشهر — خل بالك من أي مصروف إضافي ⚠️',
+        widget: {
+          'widget': 'summary_card',
+          'title': 'ميزانيتك المتبقية',
+          'tone': isPositive ? 'success' : 'danger',
+          'rows': [
+            {'label': 'الدخل الشهري', 'value': '${income.round()} ريال', 'tone': 'neutral'},
+            {'label': 'الالتزامات', 'value': '${commitments.round()} ريال', 'tone': 'neutral'},
+            {'label': 'مصروفك هالشهر', 'value': '${monthlySpend.round()} ريال', 'tone': 'neutral'},
+            if (goalMonthly > 0)
+              {'label': 'مساهمة الأهداف', 'value': '${goalMonthly.round()} ريال', 'tone': 'neutral'},
+            {'label': 'المتبقي', 'value': '${remaining.round()} ريال', 'tone': isPositive ? 'success' : 'danger'},
+          ],
+        },
+      );
+    } catch (e) {
+      chatNotifier.setError('فشل حساب الميزانية المتبقية: $e');
     }
   }
 
