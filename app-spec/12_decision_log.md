@@ -413,7 +413,14 @@ None at Stage 4. All decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
-| DEC-021 | Auto-save simple transactions — drop confirm tap | 2026-07-13 | ✅ |
+| DEC-035 | Stage 4 BUY+INTG — implemented without deviations | 2026-07-14 | ✅ |
+| DEC-034 | `quick_input_form` — optional `prefill` + `_form_kind` | 2026-07-13 | ✅ |
+| DEC-033 | Commitment/Goal setup intent — pre-router heuristic | 2026-07-13 | ✅ |
+| DEC-029 | Bounded Reply Pattern — mandatory for new LLM-authored fields | 2026-07-14 | ✅ |
+| DEC-026 | "Can I Buy?" MVP Formula — no proration, DTI 33% cap | 2026-07-14 | ✅ |
+| DEC-025 | Integrity Score — 3 real factors, 2 locked | 2026-07-14 | ✅ |
+| DEC-024 | All financial math in Dart — no Edge Functions | 2026-07-14 | ✅ |
+| DEC-023 | `financial_profile` table — durable home for Cold Start | 2026-07-13 | ✅ |
 | DEC-022 | Bounded Reply Pattern (BRP) — mandatory for all LLM text | 2026-07-13 | ✅ |
 | DEC-020 | Cancel-before-confirm (compound split) + transaction undo | 2026-07-12 | ✅ |
 | DEC-019 | "Can I buy?" (BUY-01→04) moved from Stage 3 to Stage 4 | 2026-07-12 | ✅ |
