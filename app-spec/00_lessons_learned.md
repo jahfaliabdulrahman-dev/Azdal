@@ -95,6 +95,16 @@
 
 ---
 
+## LL-010: Passing Tests and Agent Self-Approval Are Not Verification
+
+- **Discovered:** 2026-07-14 — Abdulrahman, during Stage 4 (BUY+INTG) live device testing
+- **Lesson:** Stage 4 was logged DONE (DEC-035) on the strength of `flutter analyze` clean, `flutter test` 34/34 passing, and the swarm's own Zero-Trust Auditor + SCSI Guardian both signing off APPROVE with 0 CRITICAL findings. Live device testing plus direct Supabase queries then found 5 critical bugs none of those gates caught: a purchase-confirmation insert against columns that don't exist on the live table (100% failure rate), a submit button that never disabled (unlimited duplicate writes), success messages showing the same sentence twice, Arabic-Indic numerals silently failing every form-field parse, and — most instructively — a regression introduced *by* the fix for the disable-button bug, where a key rename (`_form_kind` → `form_kind`) got silently dropped, breaking every commitment/goal/income save for hours with zero errors shown anywhere.
+- **Impact:** None of the 5 bugs were reachable by static analysis or by tests that never call the real class under test (a related, separate finding: the Stage-4 unit tests re-derive their target formulas as local constants instead of instantiating the actual service — they would pass unchanged even against a broken implementation). Every one was found by: reproducing the exact user flow live on a real device, then independently querying the live database directly (not trusting the app's own "success" message) to confirm a matching row actually exists with the right values and the right timestamp.
+- **Rule:** For this project, "tests pass" and "an agent/auditor approved it" are necessary but never sufficient. Before accepting any "done" report — especially one involving a database write, a widget-to-handler payload, or a fix for a previous bug (fixes are exactly where regressions hide) — reproduce the flow live and check the live data source directly. Route B's own audit/guardian layer is not a substitute for this; it missed all 5 bugs above despite explicitly claiming to check for exactly this class of issue.
+- **Source:** `12_decision_log.md` DEC-036, this session's Stage 4 verification transcript
+
+---
+
 ## Key Decisions (Permanent)
 
 | ID | Decision | Date | Rationale |

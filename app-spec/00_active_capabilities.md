@@ -1,6 +1,6 @@
 # Azdal — Active Capabilities
 
-> **Status:** 🟢 Stage 4 (BUY+INTG) complete — BUY-01/03, INTG-01/02 shipped, BUY-02 cancelled (DEC-026)  
+> **Status:** 🟢 Stage 4 (BUY+INTG+COMMIT+GOAL) complete and device-verified end-to-end, after 5 critical post-ship fixes (DEC-036)  
 > **Last Updated:** 2026-07-14
 
 ---
@@ -64,17 +64,22 @@
 | Processing bubble lifecycle | Was leaving a stuck "جاري تحليل..." bubble behind on both success and failure — fixed via `ChatProvider.removeMessage(id)`, confirmed one bubble only after processing | `lib/features/chat/providers/chat_provider.dart` |
 || System share sheet (OCR-02) | **Not wired up** — `receive_sharing_intent` package builds fine at the pinned version (1.8.0), so it's not actually build-blocked despite earlier reports; the handler code in `main.dart` is just still commented out and untested. `pubspec.yaml` also has a leftover duplicate declaration (one commented, one active) that should be cleaned up | `lib/main.dart` |
 
-### ✅ COMPLETE — Stage 4 (BUY + INTG), device-verified
+### ✅ COMPLETE — Stage 4 (BUY + INTG), device-verified (DEC-036 — genuinely verified only after 5 critical fixes)
+
+**Note on this section's history:** the initial implementation was logged as DEC-035 "implemented without deviations" — that claim was premature. Independent live-device + direct-database verification (not just `flutter analyze`/`flutter test`, which stayed green throughout) found and required fixing 5 critical bugs before this stage actually worked end-to-end: (1) `purchase_decisions` insert used non-existent columns, (2) `quick_input_form` submit button never disabled, allowing unlimited duplicate writes, (3) success bubbles showed the same sentence twice, (4) Arabic-Indic numerals silently failed `double.tryParse` in every form field, (5) a regression from fixing #2 — the widget-to-handler key was renamed `_form_kind` but the handler still read `form_kind`, silently breaking commitment/goal/income-clarification saves entirely. See DEC-036 and LL-010.
 
 | Capability | Evidence | File |
 |------------|----------|------|
 | Integrity Score calculator | Pure Dart `IntegrityScoreService` — 3 active factors (`logging_consistency`, `receipt_upload_rate`, `no_deletion_rate`), 2 locked (bank-link future). Score 0-100. INTG-01 ✅ | `lib/core/services/integrity_score_service.dart` |
 | Integrity Score widget | `summary_card` widget — score display + 3-factor breakdown + 2 locked badges ("قادم مع الربط البنكي"). INTG-02 ✅ | `lib/features/chat/widgets/widget_catalog.dart` |
-| Commitments CRUD | `CommitmentsService` — seed from Cold Start `monthly_commitments` estimate, reusable `financial_profile` table. COMMIT-01 ✅ — not tracked in original BUY/INTG scope but BUY-01 depends on it | `lib/features/chat/services/commitments_service.dart` |
-| "Can I buy?" engine | Pure Dart `PurchaseDecisionService` — DTI 33% cap, no-proration MVP per DEC-026. Unknown income = need-info refusal. BUY-01 ✅ | `lib/core/services/purchase_decision_service.dart` |
+| Commitments CRUD | `CommitmentService` — seed from Cold Start `monthly_commitments` estimate, reusable `financial_profile` table. COMMIT-01 ✅, device-verified: a real commitment ("قسط سيارة", 678 SAR/month) saved and confirmed via direct Supabase query | `lib/features/chat/services/commitment_service.dart` |
+| Goals CRUD | `GoalService` — add/view/complete/adjust, mirrors commitment flow. GOAL-01/02 ✅ | `lib/features/chat/services/goal_service.dart` |
+| "Can I buy?" engine | Pure Dart `PurchaseDecisionService` — DTI 33% cap, no-proration MVP per DEC-026. Unknown income = need-info refusal. BUY-01 ✅, device-verified end-to-end including the purchase-confirmation write (real transaction row + undo) | `lib/core/services/purchase_decision_service.dart` |
 | Buy-intent detector | Isolated history-free `_buyIntentSystemPrompt` per DEC-029 (BRP). LLM authors only the `reply` text; amount/verdict are Dart-computed. | `lib/core/services/gemini_service.dart` |
 | Verdict widget | YES/WAIT/NO verdict card with Arabic explanation + DTI breakdown. BUY-03 ✅ | `lib/features/chat/widgets/widget_catalog.dart` |
 | BUY-02 (Edge Function) | **Cancelled** — DEC-024/026 moved all financial math to pure Dart. No Supabase Edge Function needed. | — |
+| Arabic-Indic numeral input | `_arabicToWestern` helper applied to all 10 form-field numeric parses (commitment/goal add/adjust, buy-intent income clarification, OCR manual entry, Cold Start) | `lib/features/chat/chat_screen.dart` |
+| Known gap (test-quality) | `test/purchase_decision_service_test.dart`/`integrity_score_service_test.dart` don't call the real service classes — they re-derive the formulas as local constants. "34/34 passing" did not and will not catch bugs in these two services. Real coverage still needed. | `test/` |
 
 ### ✅ COMPLETE — Design
 

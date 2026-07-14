@@ -122,6 +122,20 @@ None at Stage 4. All decisions below are closed.
 | **Rationale** | Closes entry-point gap for commitments/goals without touching `_classifySystemPrompt` (stabilized over 3 MoA rounds). Digit-bearing commitment phrases are intercepted by digit gate first — a real blind spot. |
 | **Impact** | New prompt + method + handlers; zero changes to existing router/coach prompts. |
 
+### DEC-036: Stage 4 BUY+INTG — 5 Critical Fixes Required After "No Deviations" Claim (DEC-035)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-14 |
+| **Status** | ✅ Closed |
+| **Summary** | DEC-035 logged Stage 4 as "implemented without deviations" based on `flutter analyze`/`flutter test` passing (34/34) and the swarm's own Zero-Trust Auditor + SCSI Guardian both reporting APPROVE with 0 CRITICAL findings. Independent live-device testing plus direct Supabase queries found 5 critical bugs those gates missed entirely, all now fixed and re-verified: (1) `_confirmPurchase` inserted into `purchase_decisions` using columns (`item`, `amount`) that don't exist on the live table — every purchase confirmation failed 100% of the time (commit `9497c82`); (2) `_QuickInputFormWidgetState`'s submit button never disabled after use — unlimited duplicate commitment/goal rows possible (commit `428006f`); (3) 8 success-message call sites passed the same sentence as both the bubble text and the widget's `question` field, rendering it twice (commit `428006f`); (4) every form-submitted numeric field (`double.tryParse`) lacked Arabic-Indic digit normalization — a value typed on an Arabic keyboard silently failed to parse and nothing saved, with no error shown in several cases (commit `a885438`); (5) fixing #2 replaced a manual field whitelist with a `...json` spread, which silently dropped an implicit key rename (`_form_kind` → `form_kind`) the old code depended on — every commitment/goal/income-clarification submission fell through to a generic acknowledgement with **no save at all**, for the several hours between commits `428006f` and `3b1a006`. |
+| **Rationale** | None of these 5 bugs were caught by `flutter analyze`, `flutter test`, or the swarm's own audit/guardian sign-off — all 5 were found only through live-device interaction plus direct Supabase queries comparing what the code assumed against the actual deployed schema/state. Bug #5 is the most instructive: it was a regression introduced *by* the fix for bug #2, in the same commit, and would have shipped invisibly if the human hadn't tested the actual save behavior (not just "does the button visually disable") after the fix landed. |
+| **Alternatives** | None — this is a record of what was found and fixed, not a design choice. |
+| **Impact** | Confirms LL-010 (below): "34/34 tests passing" and an agent's own self-reported audit approval are necessary but never sufficient signals for this project. Every Stage-4 fix from this point forward was verified via a live device test plus a direct Supabase query showing the actual row created/updated — that discipline caught all 5 of the above and should continue for any future stage. |
+| **Related** | DEC-035, LL-010, `app-spec/00_active_capabilities.md` §Stage 4 |
+
+---
+
 ### DEC-035: Stage 4 BUY+INTG — Implemented Without Deviations
 
 | Field | Value |
@@ -413,7 +427,8 @@ None at Stage 4. All decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
-| DEC-035 | Stage 4 BUY+INTG — implemented without deviations | 2026-07-14 | ✅ |
+| DEC-036 | Stage 4 BUY+INTG — 5 critical fixes required post-ship | 2026-07-14 | ✅ |
+| DEC-035 | Stage 4 BUY+INTG — implemented without deviations (see DEC-036) | 2026-07-14 | ✅ |
 | DEC-034 | `quick_input_form` — optional `prefill` + `_form_kind` | 2026-07-13 | ✅ |
 | DEC-033 | Commitment/Goal setup intent — pre-router heuristic | 2026-07-13 | ✅ |
 | DEC-029 | Bounded Reply Pattern — mandatory for new LLM-authored fields | 2026-07-14 | ✅ |
