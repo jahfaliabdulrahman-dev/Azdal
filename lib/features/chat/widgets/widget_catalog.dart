@@ -402,6 +402,7 @@ class _QuickInputFormWidgetState extends State<_QuickInputFormWidget> {
             .toList() ??
         [];
     final submitLabel = widget.json['submit_label'] as String? ?? 'إرسال';
+    final answered = widget.json['_answered'] == true;
 
     return Container(
       margin: const EdgeInsets.only(top: 8),
@@ -411,9 +412,11 @@ class _QuickInputFormWidgetState extends State<_QuickInputFormWidget> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _cardBorder),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: Opacity(
+        opacity: answered ? 0.55 : 1.0,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           if (title.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -452,6 +455,7 @@ class _QuickInputFormWidgetState extends State<_QuickInputFormWidget> {
                       ),
                     ),
                   TextField(
+                    enabled: !answered,
                     controller: _controllerFor(key, prefill),
                     keyboardType:
                         isNumeric ? TextInputType.number : TextInputType.text,
@@ -503,17 +507,14 @@ class _QuickInputFormWidgetState extends State<_QuickInputFormWidget> {
                   borderRadius: BorderRadius.circular(20),
                 ),
               ),
-              onPressed: () => widget.onAction?.call({
-                'action': 'form_submit',
-                'widget': 'quick_input_form',
-                'values': Map<String, String>.from(_values),
-                if (widget.json.containsKey('_form_kind'))
-                  'form_kind': widget.json['_form_kind'],
-                if (widget.json.containsKey('commitment_id'))
-                  'commitment_id': widget.json['commitment_id'],
-                if (widget.json.containsKey('goal_id'))
-                  'goal_id': widget.json['goal_id'],
-              }),
+              onPressed: answered
+                  ? null
+                  : () => widget.onAction?.call({
+                      ...widget.json,
+                      'action': 'form_submit',
+                      'widget': 'quick_input_form',
+                      'values': Map<String, String>.from(_values),
+                    }),
               child: Text(
                 submitLabel,
                 style: const TextStyle(
@@ -526,6 +527,7 @@ class _QuickInputFormWidgetState extends State<_QuickInputFormWidget> {
           ),
         ],
       ),
+      ), // Opacity
     );
   }
 }

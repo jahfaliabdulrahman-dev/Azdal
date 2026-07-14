@@ -383,7 +383,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final txService = ref.read(transactionServiceProvider);
       final saved = await txService.saveTransaction(amount: (txResult['amount'] as num).toDouble(), category: txResult['category'] as String? ?? 'متنوع', tone: txResult['tone'] as String? ?? 'gray');
       final txId = saved['id'] as String;
-      chatNotifier.addBotMessage(replyText, widget: {'widget': 'action_buttons', 'question': replyText, 'buttons': [{'label': '↩️ تراجع', 'value': 'undo_transaction', 'type': 'secondary'}], 'tx_id': txId, 'tx_type': 'simple'});
+      chatNotifier.addBotMessage('', widget: {'widget': 'action_buttons', 'question': replyText, 'buttons': [{'label': '↩️ تراجع', 'value': 'undo_transaction', 'type': 'secondary'}], 'tx_id': txId, 'tx_type': 'simple'});
     } catch (e) {
       if (mounted) chatNotifier.setError('فشل حفظ المعاملة: $e');
     }
@@ -614,7 +614,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (matches.length == 1) {
       await _showCommitmentCompletePrompt(matches.first, chatNotifier);
     } else {
-      chatNotifier.addBotMessage('أي التزام تقصد؟', widget: {
+      chatNotifier.addBotMessage('', widget: {
         'widget': 'action_buttons', 'question': 'أي التزام تقصد؟',
         'buttons': matches.take(4).map((c) => {'label': c['name'], 'value': 'commitment_edit_pick_${c['id']}', 'type': 'secondary'}).toList(),
       });
@@ -622,7 +622,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _showCommitmentCompletePrompt(Map<String, dynamic> c, ChatProvider chatNotifier) async {
-    chatNotifier.addBotMessage('هل خلصت التزام "${c['name']}" بالكامل؟', widget: {
+    chatNotifier.addBotMessage('', widget: {
       'widget': 'action_buttons', 'question': 'هل خلصت التزام "${c['name']}" بالكامل؟',
       'buttons': [{'label': '✅ خلصته بالكامل', 'value': 'commitment_edit_complete', 'type': 'primary'}, {'label': '✏️ عدّل المتبقي', 'value': 'commitment_edit_adjust', 'type': 'secondary'}],
       'commitment_id': c['id'],
@@ -722,7 +722,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (matches.length == 1) {
       await _showGoalAchievedPrompt(matches.first, chatNotifier);
     } else {
-      chatNotifier.addBotMessage('أي هدف تقصد؟', widget: {
+      chatNotifier.addBotMessage('', widget: {
         'widget': 'action_buttons', 'question': 'أي هدف تقصد؟',
         'buttons': matches.take(4).map((g) => {'label': g['name'], 'value': 'goal_edit_pick_${g['id']}', 'type': 'secondary'}).toList(),
       });
@@ -730,7 +730,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _showGoalAchievedPrompt(Map<String, dynamic> g, ChatProvider chatNotifier) async {
-    chatNotifier.addBotMessage('هل حققت هدف "${g['name']}" بالكامل؟', widget: {
+    chatNotifier.addBotMessage('', widget: {
       'widget': 'action_buttons', 'question': 'هل حققت هدف "${g['name']}" بالكامل؟',
       'buttons': [{'label': '✅ حققته', 'value': 'goal_edit_complete', 'type': 'primary'}, {'label': '✏️ عدّل المبلغ', 'value': 'goal_edit_adjust', 'type': 'secondary'}],
       'goal_id': g['id'],
@@ -823,7 +823,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       case 'quick_input_form':
         final values = action['values'] as Map<String, dynamic>?;
         final formKind = action['form_kind'] as String?;
+        final msgId = action['message_id'] as String?;
         if (values == null) break;
+        if (msgId != null) chatNotifier.markWidgetAnswered(msgId, 'form_submitted');
         switch (formKind) {
           case 'commitment_add': await _submitCommitmentAdd(values, chatNotifier); break;
           case 'goal_add': await _submitGoalAdd(values, chatNotifier); break;
@@ -913,7 +915,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       // Reuses the existing, already-verified undo_transaction path — no new
       // handler needed. Do NOT introduce a separate 'undo_purchase' value.
       chatNotifier.addBotMessage(
-        'تم تسجيل عملية شراء $item بـ $amount ريال ✅',
+        '',
         widget: {
           'widget': 'action_buttons',
           'question': 'تم تسجيل عملية شراء $item بـ $amount ريال ✅',
@@ -987,7 +989,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final splitData = splits.map((s) { final split = s as Map<String, dynamic>; return {'amount': (split['amount'] as num).toDouble(), 'category': split['category'] as String? ?? 'متنوع', 'type': 'expense', 'tone': 'gray'}; }).toList();
       final results = await txService.saveCompoundSplits(splits: splitData);
       final groupId = results.first['id'] as String;
-      chatNotifier.addBotMessage('تم تسجيل ${splits.length} معاملات بنجاح ✅', widget: {'widget': 'action_buttons', 'question': 'تم تسجيل ${splits.length} معاملات بنجاح ✅', 'buttons': [{'label': '↩️ تراجع', 'value': 'undo_transaction', 'type': 'secondary'}], 'tx_id': groupId, 'tx_type': 'group'});
+      chatNotifier.addBotMessage('', widget: {'widget': 'action_buttons', 'question': 'تم تسجيل ${splits.length} معاملات بنجاح ✅', 'buttons': [{'label': '↩️ تراجع', 'value': 'undo_transaction', 'type': 'secondary'}], 'tx_id': groupId, 'tx_type': 'group'});
     } catch (e) { chatNotifier.setError(e.toString()); }
   }
 
@@ -1005,7 +1007,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (_capturedReceiptPath != null) { receiptUrl = await _uploadReceiptToStorage(_capturedReceiptPath!); _capturedReceiptPath = null; }
       final saved = await txService.saveTransaction(amount: amount, category: category, description: 'إدخال يدوي (فشل OCR)', receiptUrl: receiptUrl);
       final txId = saved['id'] as String;
-      chatNotifier.addBotMessage('تم تسجيل $amount ريال — $category ✅', widget: {'widget': 'action_buttons', 'question': 'تم تسجيل $amount ريال — $category ✅', 'buttons': [{'label': '↩️ تراجع', 'value': 'undo_transaction', 'type': 'secondary'}], 'tx_id': txId, 'tx_type': 'simple'});
+      chatNotifier.addBotMessage('', widget: {'widget': 'action_buttons', 'question': 'تم تسجيل $amount ريال — $category ✅', 'buttons': [{'label': '↩️ تراجع', 'value': 'undo_transaction', 'type': 'secondary'}], 'tx_id': txId, 'tx_type': 'simple'});
     } catch (e) { chatNotifier.setError('فشل حفظ المعاملة: $e'); }
   }
 
