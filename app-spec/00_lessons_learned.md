@@ -105,6 +105,16 @@
 
 ---
 
+## LL-011: A Local Regex Gate May Decide Cost, Never Correctness — And a "Disabled" Style Isn't Automatically Your Style
+
+- **Discovered:** 2026-07-15 — Abdulrahman, second live-device retest of Stage 4, escalated to an Opus 4.8 consultation
+- **Lesson:** Two distinct traps found in the same retest. (1) `_looksLikeBuyIntent`/`_looksLikeSetupIntent`/`_looksLikeIntegrityQuery` are cheap local `RegExp` pre-filters that gate whether the real LLM classifier ever gets called. They required exact hamza spelling (`أبي أشتري`), so common dialectal typing that drops it (`ابي اشتري`) silently missed the gate entirely — the message fell through to a generic, fluent-sounding coach reply that could pass for a real answer without ever running `PurchaseDecisionService`. A regex pre-filter is a fine *cost* optimization; it must never be the *only* path to a correctness-critical feature, because a miss degrades to confidently-wrong-and-silent, not "slower but correct." (2) Separately, `ElevatedButton.styleFrom(backgroundColor:, foregroundColor:)` only styles the *enabled* state — once `onPressed: null` (every "answered" widget in this app relies on this to prevent re-submission), Flutter silently substitutes its own default disabled palette, discarding the custom colors entirely. An opacity-value fix applied first (0.55→0.85) looked plausible but was treating the wrong layer; only direct pixel-sampling of a live screenshot (measuring actual RGB at text-stroke locations) revealed the real mechanism.
+- **Impact:** Both bugs were invisible to `flutter analyze`/`flutter test` and to a first plausible-looking fix attempt (the opacity bump). Both needed a live device + a technique one level more rigorous than "look at the screenshot" — reading actual pixel values for the color bug, and reproducing the exact reported phrase for the regex bug — before the real mechanism became clear.
+- **Rule:** (1) Any local keyword/regex gate standing in front of an LLM classifier for a correctness-critical feature must have a fallback path for a miss — never let it be the sole gate to the feature firing at all; when in doubt, add a cheap safety-net classifier call at the point where the message would otherwise silently fall through to generic chat. (2) Any `ElevatedButton`/`OutlinedButton` style block that sets custom `backgroundColor`/`foregroundColor` must also set the `disabled*` variants explicitly if the button will ever be disabled — otherwise Material's defaults silently apply once `onPressed` becomes null, regardless of any `Opacity` wrapper around it.
+- **Source:** DEC-037, DEC-037-B, this session's Opus 4.8 consultation transcript
+
+---
+
 ## Key Decisions (Permanent)
 
 | ID | Decision | Date | Rationale |

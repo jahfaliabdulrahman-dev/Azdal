@@ -136,6 +136,48 @@ None at Stage 4. All decisions below are closed.
 
 ---
 
+### DEC-037: Stage 4 Round 2 — 4 More Bugs Found on Retest, Plus an Opus 4.8 Architecture Consult
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-15 |
+| **Status** | ✅ Closed |
+| **Summary** | A second live-device test pass (after DEC-036's 5 fixes shipped) found 4 more real bugs, all fixed and re-verified: (1) `financial_profile.upsert()` never reset `is_deleted`/`deleted_at` — a singleton row soft-deleted once (during earlier test-data cleanup) stayed permanently invisible to every future read, so "Can I Buy?" asked for income forever with no way out regardless of how many times it was resubmitted (commit `c7f16a6`); (2) `_showCommitmentList` rendered every commitment with one unconditional `"$remaining / $total ريال (شهرياً $monthly)"` format — for recurring/open-ended commitments (rent, subscriptions) where the add-form never collects a fixed total, `total` defaults to `monthly`, so the row showed the same number three times (commit `c7f16a6`); (3) OCR-photographed receipts uploaded to Storage successfully but the resulting URL was only `print()`-ed to logcat, never attached to the transaction rows `saveCompoundSplits` wrote — `receipt_upload_rate` was mathematically stuck at 0% forever since every receipt goes through the compound-split path (commit `c7f16a6`); (4) `ElevatedButton.styleFrom()` set `backgroundColor`/`foregroundColor` but never the `disabled*` variants, so once a widget's buttons hit `onPressed: null` (the "answered" state every action_buttons/quick_input_form/compound_split_card widget relies on), Flutter's own default disabled palette silently replaced the custom colors — this, not the opacity constant, was why answered buttons lost their fill/border/legible text (commits `c7f16a6`, `c9fecf9`). |
+| **Rationale** | Same pattern as DEC-036: none of these were static-analysis or unit-test catchable — found only by driving the real device and, for #1 and #3, cross-checking the live Supabase rows directly. #4 is the most instructive of this round: an opacity bump (0.55→0.85) applied first as a plausible-looking fix was itself treating the wrong layer — direct pixel-sampling of a live screenshot (measuring actual RGB values at text-stroke locations) was needed to discover the real mechanism was Material's disabled-state color override, not insufficient contrast from the opacity wrapper. |
+| **Alternatives** | None — record of what was found and fixed. |
+| **Impact** | A follow-up retest (same session) surfaced a 5th, separate class of bug: the local Arabic-keyword regex gates (`_buyKeywords` etc.) required exact hamza spelling, silently missing common dialectal typing that drops it (e.g. "ابي اشتري" vs the pattern's "أبي أشتري") — the LLM classifier was simply never invoked. Because "Can I Buy?" is the product's signature/brand feature, this was escalated to a dedicated Opus 4.8 consultation (see DEC-037-B below) rather than patched reactively again. |
+| **Related** | DEC-036, LL-010, LL-011 |
+
+---
+
+### DEC-037-B: Can-I-Buy Intent Detection — Safety Net Now, Unified Router Deferred (Opus 4.8 Consult)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-15 |
+| **Status** | ✅ Closed (safety net shipped; router migration explicitly deferred) |
+| **Summary** | Consulted Opus 4.8 on whether the hand-curated local-regex pre-filter in front of `classifyBuyIntent`/`classifySetupIntent`/`classifyIntegrityQuery` is the right shape for the product's most brand-critical feature, given a regex miss was silently degrading to a fluent-but-wrong generic chat reply rather than a visible failure. Opus's finding: a regex pre-filter is a reasonable *cost* optimization but must never be an authoritative *correctness* gate — a miss must never be indistinguishable from "the feature doesn't apply here." Recommendation adopted: (a) **now** — add a `classifyBuyIntent` safety-net check inside `classifyTransaction`'s own `'chat'` fallback branch for any digit-bearing message, reusing the existing history-free classifier with zero new prompts (commit `1305ce3`); (b) **deferred to post-hackathon** — retire the three regex gates as correctness gates in favor of one unified history-free router call classifying every message into `{transaction, buy_intent, setup_intent, integrity_query, chat}`, which is latency-neutral-to-better than today's up-to-4-sequential-calls worst case and fully preserves the history-free isolation invariant from the earlier rebundling saga. |
+| **Rationale** | The digit path already gives a free interception point (`classifyTransaction` already deliberately returns `'chat'` for buy-intent phrasing it recognizes but declines to handle) — inserting the safety net there has near-zero blast radius and catches any unlisted phrasing, not just the specific hamza gap found. The full router rewrite touches the single most bug-prone function in the app (`_sendMessage` — site of the earlier multi-iteration history-leak saga) and was judged too risky to land ~36 hours before the AMAD demo without a full re-test of the intent matrix. |
+| **Alternatives considered** | "Classify on every regex miss" was considered and rejected as effectively identical in cost to the unified router (most messages miss the regex anyway) while adding more moving parts, not fewer. |
+| **Impact** | Also fixed in the same pass: `_buyIntentSystemPrompt` had grouped "هل أقدر أشتري X بـ Y" (a concrete item+amount, just phrased as a question) under `buy_query` instead of `buy_intent` — rewritten so any message naming an item is always `buy_intent` regardless of interrogative phrasing; and a self-inflicted regression where `_normalizeArabic()` was applied to user input but not to the keyword regex patterns themselves, so a pattern containing ى/ة (e.g. "ابغى") could never match already-normalized input (commit `1305ce3`). |
+| **Related** | DEC-037, DEC-033, LL-011 |
+
+---
+
+### DEC-038: Remaining-Budget Query — New Deterministic Feature, No LLM
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-15 |
+| **Status** | ✅ Closed |
+| **Summary** | Added a "كم باقي من ميزانيتي؟" (how much budget is left) query, mirroring the existing integrity-score-query pattern: a local keyword pre-filter routes matching messages straight to a new `PurchaseDecisionService.calculateRemainingBudget()` — the same deterministic factors as `evaluate()` (income, active commitments, current-month expense total, active goal contributions) minus a specific purchase amount — with zero LLM calls. If no income is on file, asks for it via the existing `quick_input_form` pattern and re-runs the calculation immediately after submission. |
+| **Rationale** | This question previously fell through to the free-form coach chat, which has no real computation behind it (violates DEC-003: LLM must never calculate financially) and was observed live going stale/off-topic — it answered a budget question with leftover conversational context about an unrelated earlier topic (gasoline) instead of a real number. |
+| **Alternatives** | None — this is the same "deterministic Dart + cheap keyword gate, no LLM" shape already proven by the integrity-score query; no reason to design it differently. |
+| **Impact** | `lib/features/chat/services/purchase_decision_service.dart` (`calculateRemainingBudget`), `lib/features/chat/chat_screen.dart` (`_looksLikeBudgetQuery`, `_showRemainingBudget`, `budget_query_clarification` form-kind). |
+| **Related** | DEC-024, DEC-025, DEC-026 |
+
+---
+
 ### DEC-035: Stage 4 BUY+INTG — Implemented Without Deviations
 
 | Field | Value |
@@ -427,6 +469,9 @@ None at Stage 4. All decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-038 | Remaining-budget query — new deterministic feature, no LLM | 2026-07-15 | ✅ |
+| DEC-037-B | Can-I-Buy intent detection — safety net now, unified router deferred (Opus consult) | 2026-07-15 | ✅ |
+| DEC-037 | Stage 4 round 2 — 4 more bugs found on retest | 2026-07-15 | ✅ |
 | DEC-036 | Stage 4 BUY+INTG — 5 critical fixes required post-ship | 2026-07-14 | ✅ |
 | DEC-035 | Stage 4 BUY+INTG — implemented without deviations (see DEC-036) | 2026-07-14 | ✅ |
 | DEC-034 | `quick_input_form` — optional `prefill` + `_form_kind` | 2026-07-13 | ✅ |
