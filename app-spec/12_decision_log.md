@@ -8,11 +8,63 @@
 
 ## Open Decisions
 
-None at Stage 3. All decisions below are closed.
+None at Stage 4. All decisions below are closed.
 
 ---
 
 ## Closed Decisions
+
+### DEC-029: Bounded Reply Pattern — Mandatory for All New LLM-Authored Fields
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-14 |
+| **Status** | ✅ Closed |
+| **Summary** | Any new LLM-authored text field (verdict explanations, buy-intent `reply`, integrity summaries) follows the Bounded Reply Pattern (DEC-022): a single fenced JSON field, an explicit one-line purpose in the prompt, tone/length bounds, 2-3 concrete in-prompt few-shot examples, and a deterministic Dart fallback. Any new intent-detection call must be history-free. |
+| **Rationale** | DEC-022 established the pattern for all existing LLM fields. The buy-intent detector and verdict engine introduce new LLM-authored fields — these must follow the same BRP guardrails. |
+| **Impact** | gemini_service.dart gains one new isolated system prompt (`_buyIntentSystemPrompt`) following the exact structure of `_setupIntentSystemPrompt`. All number-bearing fields are Dart-computed; the LLM authors only the `reply` text. |
+| **Related** | DEC-022 (BRP), DEC-003 (LLM never calculates) |
+
+---
+
+### DEC-026: "Can I Buy?" MVP Formula — No Proration, DTI 33% Cap, Unknown-Income Refusal
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-14 |
+| **Status** | ✅ Closed |
+| **Summary** | The "Can I Buy?" verdict engine uses MVP formula: Verdict = f(disposable_after_commitments, current-month expense total, active-goal impact). Days-to-salary proration dropped. DTI > 33% forces NO. Unknown/zero income triggers need-info. All aggregations filter `type='expense' AND is_deleted=false`. |
+| **Rationale** | Original PRD required `days_remaining_to_salary` — no capture mechanism. DTI 33% is hard safety rule from ACID constraints. |
+| **Impact** | `PurchaseDecisionService` (pure Dart per DEC-024). Backlog BUY-02 (Edge Function) cancelled. |
+| **Related** | DEC-024, `17_data_architecture_acid_constraints.md §2` |
+
+---
+
+### DEC-025: Integrity Score — 3 Real Factors Only, 2 Locked (Post Bank-Linking)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-14 |
+| **Status** | ✅ Closed |
+| **Summary** | Integrity Score MVP computes ONLY 3 real factors: `logging_consistency`, `receipt_upload_rate`, `no_deletion_rate` — re-weighted to sum 100%. The 2 factors needing bank-linking (`data_match_accuracy`, `response_time_factor`) are displayed as locked ("قادم مع الربط البنكي") and NEVER assigned a numeric value. DB columns for all 5 remain — the 2 locked stay NULL. |
+| **Rationale** | Assigning fabricated values creates trust-fabrication risk in a product whose core value proposition IS trustworthiness. |
+| **Impact** | `IntegrityScoreService` (pure Dart) computes from 3 factors. The fabricated "92% match" example in `03_user_flows_navigation.md` is replaced. |
+| **Related** | DEC-024, `05_data_model_erd.md §4`, `03_user_flows_navigation.md` |
+
+---
+
+### DEC-024: All Financial Math in Dart — No Edge Functions, No LLM Arithmetic
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-14 |
+| **Status** | ✅ Closed |
+| **Summary** | All financial calculations (disposable income, DTI, verdict, integrity factors) are implemented in pure Dart. No Supabase Edge Functions compute any financial math. No LLM performs arithmetic — the LLM's role is strictly bounded to natural-language tasks (intent detection, generating `reply` text per DEC-029/BRP). |
+| **Rationale** | DEC-003 established "LLM understands and routes — SQL calculates." Original backlog assigned BUY-02 to an Edge Function, violating this constraint. Dart-side is testable, debuggable, keeps financial logic in-repo. |
+| **Impact** | `PurchaseDecisionService` + `IntegrityScoreService` are pure Dart. BUY-02 Edge Function cancelled. |
+| **Related** | DEC-003, DEC-025, DEC-026, `07_flutter_architecture.md §10` |
+
+---
 
 ### DEC-020: Cancel-Before-Confirm + Transaction Undo (Hackathon MVP Scope)
 
