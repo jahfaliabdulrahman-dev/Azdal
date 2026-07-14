@@ -49,29 +49,28 @@ final class IntegrityScoreService {
           .single();
 
       final firstDate = DateTime.parse(
-        (firstTxRow as Map<String, dynamic>)['created_at'] as String,
+        firstTxRow['created_at'] as String,
       );
       final daysSince =
           DateTime.now().difference(firstDate).inDays.clamp(1, 30);
 
-        final distinctRows = await _client
-            .from('transactions')
-            .select('created_at')
-            .eq('user_id', userId)
-            .eq('type', 'expense')
-            .eq('is_deleted', false);
+      final distinctRows = await _client
+          .from('transactions')
+          .select('created_at')
+          .eq('user_id', userId)
+          .eq('type', 'expense')
+          .eq('is_deleted', false);
 
-        final uniqueDays = (distinctRows as List)
-            .map((r) => DateTime.parse(
-                    (r as Map<String, dynamic>)['created_at'] as String)
-                .toIso8601String()
-                .substring(0, 10))
-            .toSet()
-            .length;
+      final uniqueDays = (distinctRows as List)
+          .map((r) => DateTime.parse(
+                  (r as Map<String, dynamic>)['created_at'] as String)
+              .toIso8601String()
+              .substring(0, 10))
+          .toSet()
+          .length;
 
-        loggingConsistency =
-            (uniqueDays / daysSince * 100).clamp(0, 100);
-      }
+      loggingConsistency =
+          (uniqueDays / daysSince * 100).clamp(0, 100);
     }
 
     // ── 2. receipt_upload_rate ──────────────────────────────────
