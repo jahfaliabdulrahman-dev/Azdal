@@ -178,6 +178,21 @@ None at Stage 4. All decisions below are closed.
 
 ---
 
+### DEC-039: Advanced Retest Round — History-Leak Into Coach Chat, Completion-Detection Gap, and 3 Explicitly Deferred Product Gaps
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-15 |
+| **Status** | ✅ Closed (2 bugs fixed); 3 items explicitly deferred, not bugs |
+| **Summary** | A round of medium/advanced scenario testing (interactions and edge cases, not basics) found 2 more real bugs, both fixed: (1) `filteredHistory` excluded a triggering user message from the general coach's conversation history whenever an isolated intent flow (buy-intent/setup-intent/integrity/budget) handled it, but never excluded the bot's own widget-bearing reply to that message — the coach's later calls saw a dangling, question-less verdict/form/card and would drag its content into unrelated follow-up questions (observed live: an unrelated question got an answer contaminated by an earlier buy-intent verdict about a bicycle). Fixed by excluding any bot message that carries a widget from coach history — only plain-text replies stay in context (commit `2c71df7`). (2) `_submitCommitmentAdjust`/`_submitGoalAdjust` always called `updateRemaining`/`updateCurrentAmount` unconditionally, even when the new value meant the item was actually finished (remaining ≤ 0, or current ≥ target) — the row stayed `status='active'` with a generic "updated" reply instead of recognizing completion, until the user separately used the dedicated "mark complete" action. Both now detect the completing condition and call `markCompleted`/`markAchieved` with the congratulatory reply instead (commit `2c71df7`). |
+| **Rationale** | Same discipline as DEC-036/037: found by driving real interaction sequences on-device, not by static analysis. |
+| **Alternatives** | None for the 2 fixed bugs — straightforward corrections. |
+| **Deferred, not bugs — explicit product decisions for post-hackathon:** | **(a)** Sending two distinct purchase requests in one message ("أبي أشتري جوال بـ 2000 ودراجة بـ 800") confuses `classifyBuyIntent`'s single-item extraction; sending them as two separate messages works correctly. Narrow edge case, not fixed now — the classifier is documented as single-item-per-message by design. **(b)** There is no direct way to ask "كم نسبة التزاماتي؟" (what's my DTI ratio) — it's only ever surfaced as a side effect of a buy-intent verdict. Same shape as the gap DEC-038 just closed for remaining budget; a natural, low-risk follow-up but not done tonight. **(c)** Marking a commitment "خلصته بالكامل" only flips its status — it does not create a corresponding expense transaction recording that real money left the user's account to pay it off, so that month's spending/remaining-budget/integrity-score figures don't reflect it. This is a genuine, valid data-completeness gap the founder raised directly; it's a materially bigger change (needs a confirm/amount UX, interacts with the undo/soft-delete path, and touches the money-movement invariant this whole app is built to track correctly) and was judged too risky to land ~24 hours before the AMAD demo. Recorded here so it isn't lost, not because it's low-priority for a production version. |
+| **Impact** | `app-spec/00_active_capabilities.md` §Stage 4, §⬜ NOT STARTED (deferred items added there too). |
+| **Related** | DEC-036, DEC-037, DEC-038, LL-011 |
+
+---
+
 ### DEC-035: Stage 4 BUY+INTG — Implemented Without Deviations
 
 | Field | Value |
@@ -469,6 +484,7 @@ None at Stage 4. All decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-039 | Advanced retest — history-leak fix, completion-detection fix, 3 gaps deferred | 2026-07-15 | ✅ |
 | DEC-038 | Remaining-budget query — new deterministic feature, no LLM | 2026-07-15 | ✅ |
 | DEC-037-B | Can-I-Buy intent detection — safety net now, unified router deferred (Opus consult) | 2026-07-15 | ✅ |
 | DEC-037 | Stage 4 round 2 — 4 more bugs found on retest | 2026-07-15 | ✅ |

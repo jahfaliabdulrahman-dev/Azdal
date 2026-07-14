@@ -1,6 +1,6 @@
 # Azdal — Active Capabilities
 
-> **Status:** 🟢 Stage 4 (BUY+INTG+COMMIT+GOAL) complete and device-verified end-to-end, after 5 critical post-ship fixes (DEC-036) + 4 more found on retest (DEC-037) + a buy-intent detection hardening pass (DEC-037-B) + a new remaining-budget query feature (DEC-038)  
+> **Status:** 🟢 Stage 4 (BUY+INTG+COMMIT+GOAL) complete and device-verified end-to-end, after 5 critical post-ship fixes (DEC-036) + 4 more found on retest (DEC-037) + a buy-intent detection hardening pass (DEC-037-B) + a new remaining-budget query feature (DEC-038) + an advanced-scenario retest fixing 2 more bugs and explicitly deferring 3 product gaps (DEC-039)  
 > **Last Updated:** 2026-07-15
 
 ---
@@ -84,6 +84,11 @@
 | Answered-widget legibility | `ElevatedButton.styleFrom` now sets `disabled*` colors explicitly everywhere (action_buttons, quick_input_form submit, compound_split_card confirm) so Material's default disabled palette can't silently override the app's colors once a widget is answered | `lib/features/chat/widgets/widget_catalog.dart` |
 | Known gap (test-quality) | `test/purchase_decision_service_test.dart`/`integrity_score_service_test.dart` don't call the real service classes — they re-derive the formulas as local constants. "34/34 passing" did not and will not catch bugs in these two services. Real coverage still needed. | `test/` |
 | Known deferred item | Unified single-classifier router to fully retire the 3 local regex intent-gates (DEC-037-B) — explicitly deferred to post-hackathon; the safety-net fix covers the demo-critical path in the meantime | `lib/features/chat/chat_screen.dart` |
+| Coach-chat history hygiene | Widget-bearing bot replies (verdict/form/list/summary cards) now excluded from the history sent to the general coach LLM — fixes an observed case where an unrelated question got an answer contaminated by an earlier isolated-flow reply | `lib/features/chat/chat_screen.dart` |
+| Commitment/goal completion detection | Adjusting remaining-to-zero or current-to-target now auto-completes the row (`markCompleted`/`markAchieved` + congratulatory reply) instead of silently leaving it `active` with a generic "updated" reply | `lib/features/chat/chat_screen.dart` |
+| Known deferred item (DEC-039) | Single-message multi-item buy requests ("جوال بـ 2000 ودراجة بـ 800" in one message) confuse single-item extraction — works correctly as two separate messages; not fixed, documented as a narrow by-design limitation | `lib/core/services/gemini_service.dart` |
+| Known deferred item (DEC-039) | No direct "كم نسبة التزاماتي؟" (DTI ratio) query — only surfaced as a side effect of a buy-intent verdict. Same shape as the gap DEC-038 closed for remaining budget; natural low-risk follow-up, not done for the hackathon | `lib/features/chat/chat_screen.dart` |
+| Known deferred item (DEC-039) | Marking a commitment "خلصته بالكامل" only flips status — does not create a real expense transaction, so that month's spending/remaining-budget/integrity-score figures don't reflect the payoff. Valid data-completeness gap raised by the founder directly; deliberately deferred as too large/risky to land before the demo, not because it's low-priority for production | `lib/features/chat/chat_screen.dart` |
 
 ### ✅ COMPLETE — Design
 
