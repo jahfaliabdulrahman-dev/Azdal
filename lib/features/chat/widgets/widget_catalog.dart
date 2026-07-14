@@ -339,18 +339,11 @@ class _ActionButtonsWidget extends StatelessWidget {
                     onPressed: answered
                         ? null
                         : () => onAction?.call({
+                            ...json,
                             'action': 'button_tap',
                             'widget': 'action_buttons',
                             'value': value,
                             'label': btn['label'],
-                            if (json.containsKey('tx_id'))
-                              'tx_id': json['tx_id'],
-                            if (json.containsKey('tx_type'))
-                              'tx_type': json['tx_type'],
-                            if (json.containsKey('commitment_id'))
-                              'commitment_id': json['commitment_id'],
-                            if (json.containsKey('goal_id'))
-                              'goal_id': json['goal_id'],
                           }),
                     child: Text(
                       btn['label'] as String? ?? '',

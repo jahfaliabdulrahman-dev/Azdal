@@ -471,6 +471,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ],
             'purchase_item': item,
             'purchase_amount': amount.round(),
+            'purchase_reply': reply,
+            'purchase_disposable': disposable,
           });
           break;
         case 'wait':
@@ -494,6 +496,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ],
             'purchase_item': item,
             'purchase_amount': amount.round(),
+            'purchase_reply': reply,
+            'purchase_disposable': disposable,
           });
           break;
         case 'no':
@@ -807,7 +811,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           chatNotifier.markWidgetAnswered(msgId, value);
           final item = action['purchase_item'] as String? ?? '';
           final amt = action['purchase_amount'] as int? ?? 0;
-          await _confirmPurchase(item, amt, chatNotifier);
+          final reply = action['purchase_reply'] as String? ?? '';
+          final disposable = (action['purchase_disposable'] as num?)?.toDouble() ?? 0;
+          await _confirmPurchase(item, amt, reply, disposable, chatNotifier);
         } else if (value == 'defer_purchase') {
           chatNotifier.markWidgetAnswered(msgId, value);
           chatNotifier.addBotMessage('تمام، أجلناه. خلنا نركز على أولوياتك الحالية 👍');
@@ -826,13 +832,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           case 'buy_verdict_clarification':
             final income = double.tryParse(values['income'] as String? ?? '');
             if (income != null && income > 0) {
-              // Re-trigger Cold Start with the new income, then re-evaluate
               final profileService = ref.read(financialProfileServiceProvider);
-              final weeklySpend = (income * 0.3).clamp(0, income); // rough estimate
+              final existing = await profileService.getProfile();
               await profileService.upsert(
                 monthlyIncome: income,
-                monthlyCommitmentsEstimate: 0,
-                weeklySpendEstimate: weeklySpend / 4,
+                monthlyCommitmentsEstimate:
+                    (existing?['monthly_commitments_estimate'] as num?)?.toDouble() ?? 0,
+                weeklySpendEstimate:
+                    (existing?['weekly_spend_estimate'] as num?)?.toDouble() ?? 0,
               );
               chatNotifier.addBotMessage(
                 'تمام، سجلت دخلك — خلنا نرجع نحلل. اكتب "أبي أشتري..." بالشيء والمبلغ.',
@@ -870,27 +877,51 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   // ── Purchase confirmation (Stage 4) ──
 
-  Future<void> _confirmPurchase(String item, int amount, ChatProvider chatNotifier) async {
+  Future<void> _confirmPurchase(
+    String item,
+    int amount,
+    String reply,
+    double disposable,
+    ChatProvider chatNotifier,
+  ) async {
     try {
       final client = Supabase.instance.client;
       final userId = client.auth.currentUser?.id;
       if (userId == null) return;
+
+      // Audit log — matches the REAL purchase_decisions schema.
       await client.from('purchase_decisions').insert({
         'user_id': userId,
-        'item': item,
-        'amount': amount,
+        'query': '$item بـ $amount ريال',
         'verdict': 'yes',
+        'disposable_income': disposable,
+        'explanation': reply,
       });
+
+      // Actually track it as a real expense (DEC-024: Dart writes, never LLM) —
+      // reuses the same save path as every other transaction, so it correctly
+      // feeds future spend totals / Integrity Score / next "Can I Buy?" call.
+      final txService = ref.read(transactionServiceProvider);
+      final saved = await txService.saveTransaction(
+        amount: amount.toDouble(),
+        category: item,
+        tone: 'gray',
+        description: 'شراء عبر تحليل "هل أقدر أشتري؟"',
+      );
+      final txId = saved['id'] as String;
+
+      // Reuses the existing, already-verified undo_transaction path — no new
+      // handler needed. Do NOT introduce a separate 'undo_purchase' value.
       chatNotifier.addBotMessage(
         'تم تسجيل عملية شراء $item بـ $amount ريال ✅',
         widget: {
           'widget': 'action_buttons',
           'question': 'تم تسجيل عملية شراء $item بـ $amount ريال ✅',
           'buttons': [
-            {'label': '↩️ تراجع', 'value': 'undo_purchase', 'type': 'secondary'},
+            {'label': '↩️ تراجع', 'value': 'undo_transaction', 'type': 'secondary'},
           ],
-          'purchase_item': item,
-          'purchase_amount': amount,
+          'tx_id': txId,
+          'tx_type': 'simple',
         },
       );
     } catch (e) {
