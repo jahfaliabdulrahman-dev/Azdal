@@ -88,23 +88,23 @@ gave during Cold Start (CHAT-07) instead of asking again — that value is
 currently computed for the initial insight message and then discarded;
 fix that as part of this task, not as an afterthought.
 
-| ID | Task | Assignee | Depends On | Est. |
-|----|------|----------|-----------|------|
-| COMMIT-01 | Commitments CRUD (reuses deployed `commitments` table/RLS). Seed from the Cold Start `monthly_commitments` estimate as a starting value the user can refine into itemized commitments, instead of re-asking from scratch | State Engineer | CHAT-07 | 3h |
-| GOAL-01 | Goals CRUD + UI (quick_input_form widget) | State Engineer | CHAT-01 | 3h |
-| GOAL-02 | Goal progress tracking (goal_progress_card) | State Engineer | GOAL-01 | 2h |
-| GOAL-03 | Gap detection: data vs reality reconciliation | State Engineer | GOAL-02 | 3h |
-| INTG-01 | Integrity Score calculator (Edge Function) | Backend Architect | None | 2h |
-| INTG-02 | Integrity Score display widget (summary_card) | State Engineer | INTG-01 | 2h |
-| BUY-01 | "Can I buy?" domain logic (Riverpod provider) — income + commitments + current spend + days-to-salary + active goals | State Engineer | COMMIT-01, GOAL-01 | 4h |
-| BUY-02 | Supabase Edge Function: purchase_calculation | Backend Architect | BUY-01 | 2h |
-| BUY-03 | Verdict widget (YES/WAIT/NO) with Arabic explanation | State Engineer | BUY-01 | 3h |
-| BUY-04 | Integration test: full "Can I buy?" flow | QA Tester | BUY-03 | 2h |
-| SIM-01 | Tier 2 gateway simulation logic | State Engineer | BUY-01, INTG-01 | 3h |
-| SIM-02 | Demo script wiring ("show me Tier 2 readiness") | State Engineer | SIM-01 | 2h |
-| POL-01 | Silent Triage logic (Green/Gray/Red) | State Engineer | CHAT-05 | 2h |
-| POL-02 | Evening check-in scheduling | State Engineer | CHAT-02 | 2h |
-| POL-03 | Progress summary widget (weekly wins) | State Engineer | GOAL-02 | 2h |
+| ID | Task | Assignee | Depends On | Est. | Status |
+|----|------|----------|-----------|------|--------|
+| COMMIT-01 | Commitments CRUD (reuses deployed `commitments` table/RLS). Seed from the Cold Start `monthly_commitments` estimate as a starting value the user can refine into itemized commitments, instead of re-asking from scratch | State Engineer | CHAT-07 | 3h | ✅ DONE |
+| GOAL-01 | Goals CRUD + UI (quick_input_form widget) | State Engineer | CHAT-01 | 3h | ✅ DONE |
+| GOAL-02 | Goal progress tracking (goal_progress_card) | State Engineer | GOAL-01 | 2h | ✅ DONE |
+| GOAL-03 | Gap detection: data vs reality reconciliation | State Engineer | GOAL-02 | 3h | — |
+| INTG-01 | Integrity Score calculator (Edge Function) | Backend Architect | None | 2h | ✅ DONE (pure Dart per DEC-024) |
+| INTG-02 | Integrity Score display widget (summary_card) | State Engineer | INTG-01 | 2h | ✅ DONE |
+| BUY-01 | "Can I buy?" domain logic (Riverpod provider) — income + commitments + current spend + days-to-salary + active goals | State Engineer | COMMIT-01, GOAL-01 | 4h | ✅ DONE |
+| BUY-02 | Supabase Edge Function: purchase_calculation | Backend Architect | BUY-01 | 2h | ❌ CANCELLED (DEC-024/026) |
+| BUY-03 | Verdict widget (YES/WAIT/NO) with Arabic explanation | State Engineer | BUY-01 | 3h | ✅ DONE |
+| BUY-04 | Integration test: full "Can I buy?" flow | QA Tester | BUY-03 | 2h | — |
+| SIM-01 | Tier 2 gateway simulation logic | State Engineer | BUY-01, INTG-01 | 3h | — |
+| SIM-02 | Demo script wiring ("show me Tier 2 readiness") | State Engineer | SIM-01 | 2h | — |
+| POL-01 | Silent Triage logic (Green/Gray/Red) | State Engineer | CHAT-05 | 2h | — |
+| POL-02 | Evening check-in scheduling | State Engineer | CHAT-02 | 2h | — |
+| POL-03 | Progress summary widget (weekly wins) | State Engineer | GOAL-02 | 2h | — |
 
 ---
 

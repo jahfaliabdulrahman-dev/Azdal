@@ -22,7 +22,7 @@ void main() {
     test('score is always in range 0-100', () {
       // Per DEC-025: score = weighted average of 3 factors, clamped 0-100
       // Test boundary math with various factor values
-      final testCases = [
+      final testCases = <List<int>>[
         [100, 100, 100, 100], // perfect
         [0, 0, 0, 0],         // zero
         [50, 60, 70, 60],     // typical (avg = 60)
@@ -32,7 +32,7 @@ void main() {
       ];
 
       for (final tc in testCases) {
-        final avg = ((tc[0] as int) + (tc[1] as int) + (tc[2] as int)) / 3;
+        final avg = (tc[0] + tc[1] + tc[2]) / 3;
         final score = avg.round().clamp(0, 100);
         expect(score, tc[3]);
         expect(score >= 0, isTrue);

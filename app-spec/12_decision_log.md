@@ -122,6 +122,20 @@ None at Stage 4. All decisions below are closed.
 | **Rationale** | Closes entry-point gap for commitments/goals without touching `_classifySystemPrompt` (stabilized over 3 MoA rounds). Digit-bearing commitment phrases are intercepted by digit gate first — a real blind spot. |
 | **Impact** | New prompt + method + handlers; zero changes to existing router/coach prompts. |
 
+### DEC-035: Stage 4 BUY+INTG — Implemented Without Deviations
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-14 |
+| **Status** | ✅ Closed |
+| **Summary** | Stage 4 BUY+INTG implemented exactly per DEC-024/025/026/029 without deviations. `PurchaseDecisionService` (pure Dart, DTI 33% cap, no-proration MVP), `IntegrityScoreService` (3 active factors, 2 locked), buy-intent detector (BRP-compliant, history-free), and verdict widget all shipped. BUY-02 Edge Function cancelled per DEC-024/026. |
+| **Rationale** | DEC-024 mandated pure Dart for all financial math — both services are pure Dart. DEC-025 mandated 3 real factors only with 2 locked — `IntegrityScoreService` computes exactly 3 factors, displays 2 as locked badges. DEC-026 set DTI 33% cap + no-proration + unknown-income refusal — `PurchaseDecisionService` implements all three. DEC-029 mandated BRP for new LLM fields — `_buyIntentSystemPrompt` follows the exact structure of `_setupIntentSystemPrompt`. |
+| **Alternatives** | None — implementation followed the design decisions exactly. |
+| **Impact** | `lib/core/services/purchase_decision_service.dart`, `lib/core/services/integrity_score_service.dart`, `lib/features/chat/widgets/widget_catalog.dart` (verdict widget + integrity summary), `lib/core/services/gemini_service.dart` (`_buyIntentSystemPrompt`). BUY-02 cancelled. |
+| **Related** | DEC-024, DEC-025, DEC-026, DEC-029, `16_implementation_backlog.md §Stage 4`, `00_active_capabilities.md` |
+
+---
+
 ### DEC-034: `quick_input_form` — Optional `prefill` + `_form_kind`
 
 | Field | Value |

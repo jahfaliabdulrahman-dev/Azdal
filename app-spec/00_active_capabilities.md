@@ -1,7 +1,7 @@
 # Azdal — Active Capabilities
 
-> **Status:** 🟢 Stage 3 (OCR) complete, device-verified — one small gap open (OCR-05)  
-> **Last Updated:** 2026-07-12
+> **Status:** 🟢 Stage 4 (BUY+INTG) complete — BUY-01/03, INTG-01/02 shipped, BUY-02 cancelled (DEC-026)  
+> **Last Updated:** 2026-07-14
 
 ---
 
@@ -62,7 +62,19 @@
 | Gemini Vision OCR | Real receipt photographed on-device → correct line items + total extracted. Was broken on first real test (`gemini-2.5-flash` deprecated, rejected by the live API) — fixed by unifying to `gemini-flash-latest` (same alias already proven for chat) | `lib/core/services/gemini_service.dart` |
 | OCR failure fallback (State 3) | Confirmed on a real non-receipt image — correctly detected, manual-entry form shown | `lib/features/chat/widgets/ocr_widgets.dart` |
 | Processing bubble lifecycle | Was leaving a stuck "جاري تحليل..." bubble behind on both success and failure — fixed via `ChatProvider.removeMessage(id)`, confirmed one bubble only after processing | `lib/features/chat/providers/chat_provider.dart` |
-| System share sheet (OCR-02) | **Not wired up** — `receive_sharing_intent` package builds fine at the pinned version (1.8.0), so it's not actually build-blocked despite earlier reports; the handler code in `main.dart` is just still commented out and untested. `pubspec.yaml` also has a leftover duplicate declaration (one commented, one active) that should be cleaned up | `lib/main.dart` |
+|| System share sheet (OCR-02) | **Not wired up** — `receive_sharing_intent` package builds fine at the pinned version (1.8.0), so it's not actually build-blocked despite earlier reports; the handler code in `main.dart` is just still commented out and untested. `pubspec.yaml` also has a leftover duplicate declaration (one commented, one active) that should be cleaned up | `lib/main.dart` |
+
+### ✅ COMPLETE — Stage 4 (BUY + INTG), device-verified
+
+| Capability | Evidence | File |
+|------------|----------|------|
+| Integrity Score calculator | Pure Dart `IntegrityScoreService` — 3 active factors (`logging_consistency`, `receipt_upload_rate`, `no_deletion_rate`), 2 locked (bank-link future). Score 0-100. INTG-01 ✅ | `lib/core/services/integrity_score_service.dart` |
+| Integrity Score widget | `summary_card` widget — score display + 3-factor breakdown + 2 locked badges ("قادم مع الربط البنكي"). INTG-02 ✅ | `lib/features/chat/widgets/widget_catalog.dart` |
+| Commitments CRUD | `CommitmentsService` — seed from Cold Start `monthly_commitments` estimate, reusable `financial_profile` table. COMMIT-01 ✅ — not tracked in original BUY/INTG scope but BUY-01 depends on it | `lib/features/chat/services/commitments_service.dart` |
+| "Can I buy?" engine | Pure Dart `PurchaseDecisionService` — DTI 33% cap, no-proration MVP per DEC-026. Unknown income = need-info refusal. BUY-01 ✅ | `lib/core/services/purchase_decision_service.dart` |
+| Buy-intent detector | Isolated history-free `_buyIntentSystemPrompt` per DEC-029 (BRP). LLM authors only the `reply` text; amount/verdict are Dart-computed. | `lib/core/services/gemini_service.dart` |
+| Verdict widget | YES/WAIT/NO verdict card with Arabic explanation + DTI breakdown. BUY-03 ✅ | `lib/features/chat/widgets/widget_catalog.dart` |
+| BUY-02 (Edge Function) | **Cancelled** — DEC-024/026 moved all financial math to pure Dart. No Supabase Edge Function needed. | — |
 
 ### ✅ COMPLETE — Design
 
@@ -105,10 +117,7 @@
 | Capability | Required For Stage | Notes |
 |------------|-------------------|-------|
 | System share sheet (OCR-02) | Stage 3 | Deferred — package builds fine, just never wired up or tested. Not urgent for MVP since the camera/gallery path already covers the core flow |
-| Commitments tracking (CRUD) | Stage 4 | No task existed for this anywhere until DEC-019 — PRD lists it as Tier 1 but it was never scheduled. Must seed from the Cold Start estimate, not re-ask |
-| Goals + gap detection | Stage 4 | `goals` table deployed, empty — no CRUD yet |
-| Integrity Score tracker | Stage 4 | Moved here from an earlier "Stage 3" label — see `16_implementation_backlog.md` |
-| "Can I buy?" engine | Stage 4 (moved from Stage 3, DEC-019) | Needs commitments + goals data — didn't exist when originally scheduled |
+| Goals + gap detection | Stage 4 | `goals` table deployed, GOAL-01/02 built — gap detection (GOAL-03) not yet done |
 | Tier 2 simulation (demo) | Stage 4 | Gateway showcase |
 | Full widget/integration test suite | Stage 5 | Beyond the 16 unit/widget tests that exist today |
 | Hostile audit | Stage 5 | Pre-release security review |
