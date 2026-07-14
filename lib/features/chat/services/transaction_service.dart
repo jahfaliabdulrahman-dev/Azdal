@@ -74,6 +74,7 @@ final class TransactionService {
   /// Returns the list of created rows.
   Future<List<Map<String, dynamic>>> saveCompoundSplits({
     required List<Map<String, dynamic>> splits,
+    String? receiptUrl,
   }) async {
     if (splits.isEmpty) return [];
 
@@ -95,6 +96,7 @@ final class TransactionService {
     if (splits.first['subcategory'] != null) {
       firstData['subcategory'] = splits.first['subcategory'];
     }
+    if (receiptUrl != null) firstData['receipt_url'] = receiptUrl;
 
     final firstResponse = await _client
         .from('transactions')
@@ -122,6 +124,7 @@ final class TransactionService {
       if (split['subcategory'] != null) {
         data['subcategory'] = split['subcategory'];
       }
+      if (receiptUrl != null) data['receipt_url'] = receiptUrl;
 
       final response = await _client
           .from('transactions')

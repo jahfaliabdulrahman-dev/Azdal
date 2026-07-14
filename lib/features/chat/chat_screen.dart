@@ -522,6 +522,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               {'label': 'الدخل الشهري التقريبي', 'placeholder': 'مثلاً: 8,000', 'key': 'income', 'type': 'number', 'required': true},
             ],
             'submit_label': 'احسب →',
+            '_pending_item': item,
+            '_pending_amount': amount,
           });
           break;
       }
@@ -609,7 +611,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         final remaining = (c['remaining'] as num).toInt();
         final total = (c['total_amount'] as num).toInt();
         final monthly = (c['monthly_amount'] as num).toInt();
-        return {'label': c['name'], 'value': '$remaining / $total ريال (شهرياً $monthly)', 'tone': remaining <= 0 ? 'success' : 'neutral'};
+        final value = total == monthly
+            ? '$monthly ريال شهرياً'
+            : '$remaining / $total ريال (شهرياً $monthly)';
+        return {'label': c['name'], 'value': value, 'tone': remaining <= 0 ? 'success' : 'neutral'};
       }).toList(),
     });
   }
@@ -861,9 +866,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 weeklySpendEstimate:
                     (existing?['weekly_spend_estimate'] as num?)?.toDouble() ?? 0,
               );
-              chatNotifier.addBotMessage(
-                'تمام، سجلت دخلك — خلنا نرجع نحلل. اكتب "أبي أشتري..." بالشيء والمبلغ.',
-              );
+              final pendingItem = action['_pending_item'] as String?;
+              final pendingAmount = (action['_pending_amount'] as num?)?.toDouble();
+              if (pendingItem != null && pendingItem.isNotEmpty && pendingAmount != null) {
+                chatNotifier.addBotMessage('تمام، سجلت دخلك — خلني أحسبها لك 🔍');
+                await _runPurchaseDecision(pendingItem, pendingAmount, chatNotifier);
+              } else {
+                chatNotifier.addBotMessage(
+                  'تمام، سجلت دخلك — خلنا نرجع نحلل. اكتب "أبي أشتري..." بالشيء والمبلغ.',
+                );
+              }
             } else {
               chatNotifier.addBotMessage('محتاج رقم صحيح للدخل الشهري.');
             }
@@ -879,12 +891,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         if (msgId2 == null) break;
         if (actionType == 'compound_split_cancel') { chatNotifier.markWidgetAnswered(msgId2, 'compound_split_cancel'); chatNotifier.addBotMessage('تم الإلغاء.'); break; }
         chatNotifier.markWidgetAnswered(msgId2, 'compound_split_confirm');
-        await _handleCompoundSplit(action, chatNotifier);
+        String? receiptUrl;
         if (_capturedReceiptPath != null) {
-          final receiptUrl = await _uploadReceiptToStorage(_capturedReceiptPath!);
-          if (receiptUrl != null) print('=== AZDAL DEBUG: Receipt stored — url=$receiptUrl');
+          receiptUrl = await _uploadReceiptToStorage(_capturedReceiptPath!);
           _capturedReceiptPath = null;
         }
+        await _handleCompoundSplit(action, chatNotifier, receiptUrl: receiptUrl);
         break;
 
       case 'ocr_failure':
@@ -999,13 +1011,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   // ── Compound split (unchanged from DEC-020) ──
 
-  Future<void> _handleCompoundSplit(Map<String, dynamic> action, ChatProvider chatNotifier) async {
+  Future<void> _handleCompoundSplit(Map<String, dynamic> action, ChatProvider chatNotifier, {String? receiptUrl}) async {
     final splits = action['splits'] as List<dynamic>?;
     if (splits == null || splits.isEmpty) return;
     try {
       final txService = ref.read(transactionServiceProvider);
       final splitData = splits.map((s) { final split = s as Map<String, dynamic>; return {'amount': (split['amount'] as num).toDouble(), 'category': split['category'] as String? ?? 'متنوع', 'type': 'expense', 'tone': 'gray'}; }).toList();
-      final results = await txService.saveCompoundSplits(splits: splitData);
+      final results = await txService.saveCompoundSplits(splits: splitData, receiptUrl: receiptUrl);
       final groupId = results.first['id'] as String;
       chatNotifier.addBotMessage('', widget: {'widget': 'action_buttons', 'question': 'تم تسجيل ${splits.length} معاملات بنجاح ✅', 'buttons': [{'label': '↩️ تراجع', 'value': 'undo_transaction', 'type': 'secondary'}], 'tx_id': groupId, 'tx_type': 'group'});
     } catch (e) { chatNotifier.setError(e.toString()); }

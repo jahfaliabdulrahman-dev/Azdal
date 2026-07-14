@@ -21,6 +21,8 @@ final class FinancialProfileService {
       'monthly_income': monthlyIncome,
       'monthly_commitments_estimate': monthlyCommitmentsEstimate,
       'weekly_spend_estimate': weeklySpendEstimate,
+      'is_deleted': false,
+      'deleted_at': null,
     }, onConflict: 'user_id');
   }
 

@@ -22,6 +22,7 @@ const _cardBg = Color(0xFF161B22);
 const _cardBorder = Color(0xFF30363D);
 const _muted = Color(0xFF6B7280);
 const _white = Colors.white;
+const _answeredOpacity = 0.85;
 
 // ─────────────────────────────────────────────────────────────────────
 // Public entry point
@@ -131,21 +132,27 @@ class _SummaryCardWidget extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    row['label'] as String? ?? '',
-                    style: const TextStyle(
-                      color: _muted,
-                      fontSize: 14,
-                      fontFamily: 'Cairo',
+                  Flexible(
+                    child: Text(
+                      row['label'] as String? ?? '',
+                      style: const TextStyle(
+                        color: _muted,
+                        fontSize: 14,
+                        fontFamily: 'Cairo',
+                      ),
                     ),
                   ),
-                  Text(
-                    row['value'] as String? ?? '',
-                    style: TextStyle(
-                      color: _toneColor(tone),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Cairo',
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      row['value'] as String? ?? '',
+                      textAlign: TextAlign.end,
+                      style: TextStyle(
+                        color: _toneColor(tone),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Cairo',
+                      ),
                     ),
                   ),
                 ],
@@ -294,7 +301,7 @@ class _ActionButtonsWidget extends StatelessWidget {
         border: Border.all(color: _cardBorder),
       ),
       child: Opacity(
-        opacity: answered ? 0.55 : 1.0,
+        opacity: answered ? _answeredOpacity : 1.0,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -413,7 +420,7 @@ class _QuickInputFormWidgetState extends State<_QuickInputFormWidget> {
         border: Border.all(color: _cardBorder),
       ),
       child: Opacity(
-        opacity: answered ? 0.55 : 1.0,
+        opacity: answered ? _answeredOpacity : 1.0,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -696,7 +703,7 @@ class _CompoundSplitCardWidgetState extends State<_CompoundSplitCardWidget> {
     final isConfirmed = answered && selectedValue == 'compound_split_confirm';
 
     return Opacity(
-      opacity: answered ? 0.55 : 1.0,
+      opacity: answered ? _answeredOpacity : 1.0,
       child: Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(14),
