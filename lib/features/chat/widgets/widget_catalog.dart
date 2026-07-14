@@ -335,6 +335,12 @@ class _ActionButtonsWidget extends StatelessWidget {
                       foregroundColor: isSelected
                           ? _navy
                           : (isPrimary ? _navy : _cyan),
+                      disabledBackgroundColor: isSelected
+                          ? _cyan
+                          : (isPrimary ? _cyan : Colors.transparent),
+                      disabledForegroundColor: isSelected
+                          ? _navy
+                          : (isPrimary ? _navy : _cyan),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                         side: isPrimary && !isSelected
@@ -510,6 +516,8 @@ class _QuickInputFormWidgetState extends State<_QuickInputFormWidget> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: _cyan,
                 foregroundColor: _navy,
+                disabledBackgroundColor: _cyan,
+                disabledForegroundColor: _navy,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
@@ -825,6 +833,8 @@ class _CompoundSplitCardWidgetState extends State<_CompoundSplitCardWidget> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isConfirmed ? _success : _cyan,
                       foregroundColor: _navy,
+                      disabledBackgroundColor: isConfirmed ? _success : _cyan,
+                      disabledForegroundColor: _navy,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),

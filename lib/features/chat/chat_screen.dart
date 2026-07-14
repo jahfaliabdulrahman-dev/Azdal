@@ -39,32 +39,47 @@ const _userBubbleBg = Color(0xFFE3E8F5);
 const _muted = Color(0xFF6B7280);
 const _white = Colors.white;
 
+// ── Arabic text normalization — casual/dialectal typing frequently drops
+// hamza (أ/إ/آ → ا) and varies ta-marbuta/alef-maqsura. Keyword regexes below
+// are written with plain alef only; normalize user input the same way before
+// matching, or common phrasings like "ابي اشتري" silently miss a pattern
+// written as "أبي أشتري".
+String _normalizeArabic(String s) => s
+    .replaceAll(RegExp('[أإآ]'), 'ا')
+    .replaceAll('ى', 'ي')
+    .replaceAll('ة', 'ه');
+
 // ── Setup-intent heuristic (commitments/goals) — cheap local pre-filter ──
 final RegExp _commitmentKeywords = RegExp(
-  'قسط|أقساط|التزام|التزامات|تمارا|تابي|تابى|سلة|إيجار|الايجار|قرض|تمويل|'
+  'قسط|اقساط|التزام|التزامات|تمارا|تابي|تابى|سله|ايجار|قرض|تمويل|'
   'ديون|دين|اشتراك|اشتراكات',
 );
 final RegExp _goalKeywords = RegExp(
-  'هدف|أهداف|هدفي|ادخار|أدخر|ابي ادخر|أبي أدخر|أوفر|صندوق الطوارئ|'
-  'عمرة|حج',
+  'هدف|اهداف|هدفي|ادخار|ادخر|ابي ادخر|اوفر|صندوق الطوارئ|'
+  'عمره|حج',
 );
 
-bool _looksLikeSetupIntent(String text) =>
-    _commitmentKeywords.hasMatch(text) || _goalKeywords.hasMatch(text);
+bool _looksLikeSetupIntent(String text) {
+  final normalized = _normalizeArabic(text);
+  return _commitmentKeywords.hasMatch(normalized) ||
+      _goalKeywords.hasMatch(normalized);
+}
 
 // ── Buy-intent heuristic (Stage 4) — cheap local pre-filter ──
 final RegExp _buyKeywords = RegExp(
-  'أبي أشتري|ودي أشتري|ابغى اشتري|بشتري|كم سعر|هل اقدر|ينفع اشتري|أقدر أشتري',
+  'ابي اشتري|ودي اشتري|ابغى اشتري|بشتري|كم سعر|هل اقدر|ينفع اشتري|اقدر اشتري',
 );
 
-bool _looksLikeBuyIntent(String text) => _buyKeywords.hasMatch(text);
+bool _looksLikeBuyIntent(String text) =>
+    _buyKeywords.hasMatch(_normalizeArabic(text));
 
 // ── Integrity-score query heuristic (Stage 4) ──
 final RegExp _integrityKeywords = RegExp(
-  'كيف أدائي|كم درجة النزاهة|درجة النزاهة|نقاط النزاهة|نزاهتي|كيف نزاهتي',
+  'كيف ادائي|كم درجه النزاهه|درجه النزاهه|نقاط النزاهه|نزاهتي|كيف نزاهتي',
 );
 
-bool _looksLikeIntegrityQuery(String text) => _integrityKeywords.hasMatch(text);
+bool _looksLikeIntegrityQuery(String text) =>
+    _integrityKeywords.hasMatch(_normalizeArabic(text));
 
 // ─────────────────────────────────────────────────────────────────────
 // ChatScreen
@@ -613,7 +628,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         final monthly = (c['monthly_amount'] as num).toInt();
         final value = total == monthly
             ? '$monthly ريال شهرياً'
-            : '$remaining / $total ريال (شهرياً $monthly)';
+            : '$remaining / $total ريال\nشهرياً $monthly ريال';
         return {'label': c['name'], 'value': value, 'tone': remaining <= 0 ? 'success' : 'neutral'};
       }).toList(),
     });
