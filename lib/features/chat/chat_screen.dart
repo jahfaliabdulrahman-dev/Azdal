@@ -52,6 +52,20 @@ final RegExp _goalKeywords = RegExp(
 bool _looksLikeSetupIntent(String text) =>
     _commitmentKeywords.hasMatch(text) || _goalKeywords.hasMatch(text);
 
+// ── Buy-intent heuristic (Stage 4) — cheap local pre-filter ──
+final RegExp _buyKeywords = RegExp(
+  'أبي أشتري|ودي أشتري|ابغى اشتري|بشتري|كم سعر|هل اقدر|ينفع اشتري|أقدر أشتري',
+);
+
+bool _looksLikeBuyIntent(String text) => _buyKeywords.hasMatch(text);
+
+// ── Integrity-score query heuristic (Stage 4) ──
+final RegExp _integrityKeywords = RegExp(
+  'كيف أدائي|كم درجة النزاهة|درجة النزاهة|نقاط النزاهة|نزاهتي|كيف نزاهتي',
+);
+
+bool _looksLikeIntegrityQuery(String text) => _integrityKeywords.hasMatch(text);
+
 // ─────────────────────────────────────────────────────────────────────
 // ChatScreen
 // ─────────────────────────────────────────────────────────────────────
@@ -282,6 +296,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
     }
 
+    // ── Buy-intent pre-check (additive — Stage 4) ──
+    if (_looksLikeBuyIntent(text)) {
+      final buyResult = await geminiService.classifyBuyIntent(text);
+      final buyKind = buyResult.widget?['kind'] as String?;
+      if (buyKind != null && buyKind != 'none') {
+        await _handleBuyIntent(buyKind, buyResult.widget!, chatNotifier);
+        return;
+      }
+    }
+
     final allMessages = ref.read(chatProvider).messages;
     final filteredHistory = allMessages.where((m) {
       if (!m.isUser) return true;
@@ -372,6 +396,127 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       case 'goal_add': await _showGoalAddForm(draft, reply, chatNotifier); break;
       case 'goal_view': await _showGoalList(chatNotifier); break;
       case 'goal_edit': await _showGoalEditPicker(nameHint, chatNotifier); break;
+    }
+  }
+
+  // ── Buy intent dispatcher (Stage 4) ──
+
+  Future<void> _handleBuyIntent(String kind, Map<String, dynamic> data, ChatProvider chatNotifier) async {
+    switch (kind) {
+      case 'buy_intent':
+        final item = data['item'] as String? ?? '';
+        final amountRaw = data['amount'];
+        final amount = amountRaw is int
+            ? amountRaw.toDouble()
+            : amountRaw is double
+                ? amountRaw
+                : (amountRaw is String ? double.tryParse(amountRaw) : null);
+        await _runPurchaseDecision(item, amount, chatNotifier);
+        break;
+      case 'buy_query':
+        chatNotifier.addBotMessage(
+          'هذي الميزة قادمة قريب — حالياً أقدر أحلل لك أي عملية شراء '
+          'تكتبها بالمبلغ. جرّب تكتب "أبي أشتري [الشيء] بـ [المبلغ]" 🔍',
+        );
+        break;
+      default:
+        break;
+    }
+  }
+
+  Future<void> _runPurchaseDecision(
+    String item,
+    double? amount,
+    ChatProvider chatNotifier,
+  ) async {
+    if (item.isEmpty) {
+      chatNotifier.addBotMessage('وش الشيء اللي تبي تشتريه؟');
+      return;
+    }
+    if (amount == null || amount <= 0) {
+      chatNotifier.addBotMessage('كم سعره؟ عشان أقدر أحلل وضعك.');
+      return;
+    }
+
+    try {
+      final purchaseService = ref.read(purchaseDecisionServiceProvider);
+      final result = await purchaseService.evaluate(item, amount);
+      final verdict = result['verdict'] as String;
+      final reply = result['reply'] as String;
+      final disposable = result['disposable'] as double;
+      final dti = result['dti'] as double;
+
+      switch (verdict) {
+        case 'yes':
+          chatNotifier.addBotMessage(reply, widget: {
+            'widget': 'summary_card',
+            'title': 'نتيجة التحليل — شراء $item',
+            'tone': 'success',
+            'rows': [
+              {'label': 'المبلغ المطلوب', 'value': '${amount.round()} ريال', 'tone': 'neutral'},
+              {'label': 'الفائض المتاح', 'value': '${disposable.round()} ريال', 'tone': 'success'},
+            ],
+          });
+          chatNotifier.addBotMessage('', widget: {
+            'widget': 'action_buttons',
+            'question': 'تقدر تشتري! تبي نسجل العملية؟',
+            'buttons': [
+              {'label': 'تسجيل العملية ✓', 'value': 'confirm_purchase', 'type': 'primary'},
+            ],
+            'purchase_item': item,
+            'purchase_amount': amount.round(),
+          });
+          break;
+        case 'wait':
+          final goalImpact = result['goalImpact'] as String?;
+          chatNotifier.addBotMessage(reply, widget: {
+            'widget': 'summary_card',
+            'title': 'انتبه — أولوياتك المالية',
+            'tone': 'warning',
+            'rows': [
+              {'label': 'الفائض هذا الشهر', 'value': '${(disposable + amount).round()} ريال', 'tone': 'neutral'},
+              if (goalImpact != null)
+                {'label': 'تأثير الشراء', 'value': goalImpact, 'tone': 'warning'},
+            ],
+          });
+          chatNotifier.addBotMessage('', widget: {
+            'widget': 'action_buttons',
+            'question': 'وش تبي تسوي؟',
+            'buttons': [
+              {'label': 'تأجيل', 'value': 'defer_purchase', 'type': 'secondary'},
+              {'label': 'شراء الآن', 'value': 'confirm_purchase', 'type': 'primary'},
+            ],
+            'purchase_item': item,
+            'purchase_amount': amount.round(),
+          });
+          break;
+        case 'no':
+          final dtiPercent = (dti * 100).round();
+          chatNotifier.addBotMessage(reply, widget: {
+            'widget': 'summary_card',
+            'title': 'الأفضل ما تشتري الآن',
+            'tone': 'danger',
+            'rows': [
+              {'label': 'نسبة الالتزامات', 'value': '$dtiPercent% من الدخل', 'tone': 'danger'},
+              {'label': 'الحد الآمن', 'value': '33% من الدخل', 'tone': 'neutral'},
+              {'label': 'التوصية', 'value': 'انتظر حتى تنخفض التزاماتك', 'tone': 'danger'},
+            ],
+          });
+          break;
+        case 'need_info':
+          chatNotifier.addBotMessage(reply, widget: {
+            'widget': 'quick_input_form',
+            'title': 'معلومة ناقصة',
+            '_form_kind': 'buy_verdict_clarification',
+            'fields': [
+              {'label': 'الدخل الشهري التقريبي', 'placeholder': 'مثلاً: 8,000', 'key': 'income', 'type': 'number', 'required': true},
+            ],
+            'submit_label': 'احسب →',
+          });
+          break;
+      }
+    } catch (e) {
+      chatNotifier.setError('فشل تحليل الشراء: $e');
     }
   }
 
@@ -652,6 +797,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         } else if (value.startsWith('goal_edit_pick_')) {
           chatNotifier.markWidgetAnswered(msgId, value);
           await _showGoalCompletePromptById(value.substring('goal_edit_pick_'.length), chatNotifier);
+        } else if (value == 'confirm_purchase') {
+          chatNotifier.markWidgetAnswered(msgId, value);
+          final item = action['purchase_item'] as String? ?? '';
+          final amt = action['purchase_amount'] as int? ?? 0;
+          await _confirmPurchase(item, amt, chatNotifier);
+        } else if (value == 'defer_purchase') {
+          chatNotifier.markWidgetAnswered(msgId, value);
+          chatNotifier.addBotMessage('تمام، أجلناه. خلنا نركز على أولوياتك الحالية 👍');
         }
         break;
 
@@ -664,6 +817,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           case 'goal_add': await _submitGoalAdd(values, chatNotifier); break;
           case 'commitment_edit_amount': await _submitCommitmentAdjust(action, values, chatNotifier); break;
           case 'goal_edit_amount': await _submitGoalAdjust(action, values, chatNotifier); break;
+          case 'buy_verdict_clarification':
+            final income = double.tryParse(values['income'] as String? ?? '');
+            if (income != null && income > 0) {
+              // Re-trigger Cold Start with the new income, then re-evaluate
+              final profileService = ref.read(financialProfileServiceProvider);
+              final weeklySpend = (income * 0.3).clamp(0, income); // rough estimate
+              await profileService.upsert(
+                monthlyIncome: income,
+                monthlyCommitmentsEstimate: 0,
+                weeklySpendEstimate: weeklySpend / 4,
+              );
+              chatNotifier.addBotMessage(
+                'تمام، سجلت دخلك — خلنا نرجع نحلل. اكتب "أبي أشتري..." بالشيء والمبلغ.',
+              );
+            } else {
+              chatNotifier.addBotMessage('محتاج رقم صحيح للدخل الشهري.');
+            }
+            break;
           default:
             if (values.containsKey('monthly_income')) await _handleColdStartSubmit(values);
             chatNotifier.addBotMessage('تم استلام المعلومات. شكراً لك! 🙏');
@@ -688,6 +859,65 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         if (ocrAction == 'ocr_failure_submit') { await _handleOcrFailureSubmit(action, chatNotifier); }
         else if (ocrAction == 'ocr_retake') { print('=== AZDAL DEBUG: OCR retake requested'); unawaited(_pickReceiptImage()); }
         break;
+    }
+  }
+
+  // ── Purchase confirmation (Stage 4) ──
+
+  Future<void> _confirmPurchase(String item, int amount, ChatProvider chatNotifier) async {
+    try {
+      final client = Supabase.instance.client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) return;
+      await client.from('purchase_decisions').insert({
+        'user_id': userId,
+        'item': item,
+        'amount': amount,
+        'verdict': 'yes',
+      });
+      chatNotifier.addBotMessage(
+        'تم تسجيل عملية شراء $item بـ $amount ريال ✅',
+        widget: {
+          'widget': 'action_buttons',
+          'question': 'تم تسجيل عملية شراء $item بـ $amount ريال ✅',
+          'buttons': [
+            {'label': '↩️ تراجع', 'value': 'undo_purchase', 'type': 'secondary'},
+          ],
+          'purchase_item': item,
+          'purchase_amount': amount,
+        },
+      );
+    } catch (e) {
+      chatNotifier.setError('فشل تسجيل الشراء: $e');
+    }
+  }
+
+  // ── Integrity score query (Stage 4) ──
+
+  Future<void> _showIntegrityScore(ChatProvider chatNotifier) async {
+    try {
+      final integrityService = ref.read(integrityScoreServiceProvider);
+      final result = await integrityService.calculate();
+      final score = result['score'] as int;
+      final loggingConsistency = result['logging_consistency'] as int;
+      final receiptUploadRate = result['receipt_upload_rate'] as int;
+      final noDeletionRate = result['no_deletion_rate'] as int;
+
+      chatNotifier.addBotMessage('', widget: {
+        'widget': 'summary_card',
+        'title': 'نقاط نزاهتك',
+        'tone': score >= 70 ? 'success' : (score >= 40 ? 'neutral' : 'warning'),
+        'rows': [
+          {'label': 'النتيجة', 'value': '$score / 100', 'tone': score >= 70 ? 'success' : (score >= 40 ? 'neutral' : 'warning'), 'style': 'large'},
+          {'label': 'تناسق التسجيل', 'value': '$loggingConsistency%', 'tone': 'neutral'},
+          {'label': 'معدل رفع الإيصالات', 'value': '$receiptUploadRate%', 'tone': 'neutral'},
+          {'label': 'معدل عدم الحذف', 'value': '$noDeletionRate%', 'tone': 'neutral'},
+          {'label': 'دقة مطابقة البيانات', 'value': 'قادم مع الربط البنكي 🔒', 'tone': 'muted'},
+          {'label': 'سرعة الاستجابة', 'value': 'قادم مع الربط البنكي 🔒', 'tone': 'muted'},
+        ],
+      });
+    } catch (e) {
+      chatNotifier.setError('فشل حساب نقاط النزاهة: $e');
     }
   }
 

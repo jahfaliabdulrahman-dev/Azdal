@@ -422,6 +422,71 @@ final class GeminiService {
 - "وفرت 200 ريال هالأسبوع" ⟶ {"kind":"none"}
 ''';
 
+  // ── Buy-intent detection (Stage 4) ───────────────────────────
+
+  /// System prompt for buy-intent detection.
+  ///
+  /// Separate from the coach, router, and setup-intent prompts.
+  /// Only invoked when the local keyword heuristic matches
+  /// [_looksLikeBuyIntent]. Any failure resolves to `{"kind":"none"}`
+  /// (DEC-029: BRP — Dart fallback).
+  static const _buyIntentSystemPrompt = '''
+أنت محرّك اكتشاف نية "الشراء" لتطبيق "أزدل" المالي — منفصل تماماً عن محرّك تصنيف المصاريف. مهمتك: تحدد هل رسالة المستخدم الحالية رغبة شراء (item + amount) أو استفسار عن سعر. أخرج JSON واحد فقط، بدون أي نص خارجه وبدون أسيجة ```.
+
+اختر kind واحد فقط:
+
+1) "buy_intent" — رغبة شراء واضحة (اسم الشيء + المبلغ):
+{"kind":"buy_intent","item":"اسم الشيء","amount":الرقم أو null}
+
+2) "buy_query" — استفسار عن سعر أو إمكانية شراء:
+{"kind":"buy_query","query":"نص الاستفسار"}
+
+3) "none" — أي شيء غير ما سبق (مصروف عادي، سؤال عام، دردشة):
+{"kind":"none"}
+
+قواعد ثابتة:
+- لا تخترع أي رقم لم يُذكر صراحة — إذا ما وصلك مبلغ استخدم null.
+- لا تحسب أي مجموع أو ناتج جمع إطلاقاً — التطبيق هو اللي يحسب.
+- أخرج JSON واحد فقط.
+
+أمثلة:
+- "أبي أشتري جوال بـ 3000" ⟶ {"kind":"buy_intent","item":"جوال","amount":3000}
+- "ودي اشتري ساعة" ⟶ {"kind":"buy_intent","item":"ساعة","amount":null}
+- "كم سعر الايفون" ⟶ {"kind":"buy_query","query":"سعر الايفون"}
+- "عندي 150 ريال اشتري فيها" ⟶ {"kind":"none"}
+''';
+
+  /// Detect a buy intent.
+  ///
+  /// Isolated from [classifyTransaction] and [classifySetupIntent] —
+  /// different prompt, different call, never shares history or state.
+  /// Only invoked when [_looksLikeBuyIntent] matches
+  /// (chat_screen.dart pre-filter). Any failure resolves to
+  /// `{"kind":"none"}` so this feature can never be the reason an
+  /// ordinary message fails to process.
+  Future<GeminiResponse> classifyBuyIntent(String userText) async {
+    assert(_apiKey.isNotEmpty, 'GEMINI_API_KEY is empty.');
+    if (_apiKey.isEmpty) return const GeminiResponse(text: '{"kind":"none"}');
+
+    try {
+      final model = GenerativeModel(
+        model: _modelName,
+        apiKey: _apiKey,
+        systemInstruction: Content.system(_buyIntentSystemPrompt),
+      );
+      final response = await model.generateContent([Content.text(userText)]);
+      final rawText = response.text ?? '';
+      final map = _extractJsonObject(rawText) ?? const {'kind': 'none'};
+      return GeminiResponse(text: rawText, widget: map);
+    } catch (e) {
+      // ignore: avoid_print
+      print('=== AZDAL DEBUG: classifyBuyIntent FAILED — $e');
+      return const GeminiResponse(text: '{"kind":"none"}', error: 'buy_intent_failed');
+    }
+  }
+
+  // ── Setup-intent detection (commitments/goals) ──────────────────
+
   /// Detect a commitment/goal setup intent.
   ///
   /// Isolated from [classifyTransaction] — different prompt, different
