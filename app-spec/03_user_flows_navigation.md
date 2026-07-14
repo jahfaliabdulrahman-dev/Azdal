@@ -316,234 +316,234 @@ AI returns verdict widget (one of 4 states — see §Verdict Widget States below
   WAIT ⚠️ → "إذا أجلت 15 يوم → توفر X ريال." (X Dart-computed)
   NO ❌ → "نسبة التزاماتك X% من دخلك — أعلى من الحد الآمن." (X Dart-computed)
   need-info ❓ → يسأل سؤالاً توضيحياً واحداً (مثلاً: الدخل غير معروف)
-  User confirms, defers, or provides requested info
-  ```
+  ↓
+User confirms, defers, or provides requested info
+```
 
+---
 
-  ---
+## Verdict Widget States — "Can I Buy?" تصميم حالات
 
-  ## Verdict Widget States — "Can I Buy?" تصميم حالات
+كل حالة من الحالات الأربع تستخدم **فقط** المكوّنات الموجودة في كتالوج الـ 6 Widgets (DEC-006). الأرقام تُحسب Dart-side، والنص العربي `reply` فقط هو من إخراج LLM (DEC-022: BRP).
 
-  كل حالة من الحالات الأربع تستخدم **فقط** المكوّنات الموجودة في كتالوج الـ 6 Widgets (DEC-006). الأرقام تُحسب Dart-side، والنص العربي `reply` فقط هو من إخراج LLM (DEC-022: BRP).
+### 1. YES ✅ — الشراء ممكن
 
-  ### 1. YES ✅ — الشراء ممكن
+| الخاصية | القيمة |
+|----------|-------|
+| **المكوّنات** | `summary_card` + `action_buttons` |
+| **اللون** | Success Green `#2E7D32` — left border tone |
+| **المحتوى** | صفوف Summary تعرض: الدخل، الالتزامات، المصروف الحالي، الفائض |
+| **النص** | "تقدر! باقي لك X ريال." — `X` = الدخل − الالتزامات − المصروف (Dart-computed) |
+| **الأزرار** | زر واحد: `[تسجيل العملية ✓]` — Primary Cyan fill |
 
-  | الخاصية | القيمة |
-  |----------|-------|
-  | **المكوّنات** | `summary_card` + `action_buttons` |
-  | **اللون** | Success Green `#2E7D32` — left border tone |
-  | **المحتوى** | صفوف Summary تعرض: الدخل، الالتزامات، المصروف الحالي، الفائض |
-  | **النص** | "تقدر! باقي لك X ريال." — `X` = الدخل − الالتزامات − المصروف (Dart-computed) |
-  | **الأزرار** | زر واحد: `[تسجيل العملية ✓]` — Primary Cyan fill |
+```json
+{
+  "widget": "summary_card",
+  "title": "نتيجة التحليل — شراء جوال",
+  "tone": "success",
+  "rows": [
+    {"label": "الدخل الشهري", "value": "8,000 ريال", "tone": "neutral"},
+    {"label": "الالتزامات", "value": "2,500 ريال", "tone": "neutral"},
+    {"label": "المصروف هذا الشهر", "value": "2,300 ريال", "tone": "neutral"},
+    {"label": "المبلغ المطلوب", "value": "3,000 ريال", "tone": "neutral"},
+    {"label": "الفائض المتاح", "value": "3,200 ريال", "tone": "success"}
+  ]
+}
+```
+```json
+{
+  "widget": "action_buttons",
+  "question": "تقدر تشتري! تبي نسجل العملية؟",
+  "buttons": [
+    {"label": "تسجيل العملية ✓", "value": "confirm_purchase", "type": "primary"}
+  ]
+}
+```
 
-  ```json
-  {
-    "widget": "summary_card",
-    "title": "نتيجة التحليل — شراء جوال",
-    "tone": "success",
-    "rows": [
-      {"label": "الدخل الشهري", "value": "8,000 ريال", "tone": "neutral"},
-      {"label": "الالتزامات", "value": "2,500 ريال", "tone": "neutral"},
-      {"label": "المصروف هذا الشهر", "value": "2,300 ريال", "tone": "neutral"},
-      {"label": "المبلغ المطلوب", "value": "3,000 ريال", "tone": "neutral"},
-      {"label": "الفائض المتاح", "value": "3,200 ريال", "tone": "success"}
-    ]
-  }
-  ```
-  ```json
-  {
-    "widget": "action_buttons",
-    "question": "تقدر تشتري! تبي نسجل العملية؟",
-    "buttons": [
-      {"label": "تسجيل العملية ✓", "value": "confirm_purchase", "type": "primary"}
-    ]
-  }
-  ```
+**قاعدة الحساب (Dart-side):**
+```
+remaining = income − commitments − current_month_spend − purchase_amount;
+verdict = (remaining >= 0) ? YES : …
+reply = "تقدر! باقي لك {remaining} ريال."
+```
 
-  **قاعدة الحساب (Dart-side):**
-  ```
-  remaining = income − commitments − current_month_spend − purchase_amount;
-  verdict = (remaining >= 0) ? YES : …
-  reply = "تقدر! باقي لك {remaining} ريال."
-  ```
+---
 
-  ---
+### 2. WAIT ⚠️ — تعارض مع هدف
 
-  ### 2. WAIT ⚠️ — تعارض مع هدف
+| الخاصية | القيمة |
+|----------|-------|
+| **المكوّنات** | `summary_card` + `action_buttons` |
+| **اللون** | Warning Amber `#B7791F` — left border tone |
+| **المحتوى** | صفوف Summary تعرض: الفائض، الأهداف النشطة، تأثير الشراء |
+| **النص** | "إذا أجلت X يوم → توفر Y ريال." — `X` و `Y` Dart-computed |
+| **الأزرار** | زران: `[تأجيل]` (Outlined) + `[شراء الآن]` (Primary) |
 
-  | الخاصية | القيمة |
-  |----------|-------|
-  | **المكوّنات** | `summary_card` + `action_buttons` |
-  | **اللون** | Warning Amber `#B7791F` — left border tone |
-  | **المحتوى** | صفوف Summary تعرض: الفائض، الأهداف النشطة، تأثير الشراء |
-  | **النص** | "إذا أجلت X يوم → توفر Y ريال." — `X` و `Y` Dart-computed |
-  | **الأزرار** | زران: `[تأجيل]` (Outlined) + `[شراء الآن]` (Primary) |
+```json
+{
+  "widget": "summary_card",
+  "title": "انتبه — هدفك قريب!",
+  "tone": "warning",
+  "rows": [
+    {"label": "الفائض هذا الشهر", "value": "1,200 ريال", "tone": "neutral"},
+    {"label": "هدفك النشط: طارئ", "value": "4,200 / 5,000 ريال", "tone": "neutral"},
+    {"label": "إذا اشتريت الآن", "value": "الهدف يتأخر 45 يوم", "tone": "warning"},
+    {"label": "إذا أجلت 15 يوم", "value": "توفر 800 ريال", "tone": "success"}
+  ]
+}
+```
+```json
+{
+  "widget": "action_buttons",
+  "question": "وش تبي تسوي؟",
+  "buttons": [
+    {"label": "تأجيل", "value": "defer", "type": "secondary"},
+    {"label": "شراء الآن", "value": "buy_now", "type": "primary"}
+  ]
+}
+```
 
-  ```json
-  {
-    "widget": "summary_card",
-    "title": "انتبه — هدفك قريب!",
-    "tone": "warning",
-    "rows": [
-      {"label": "الفائض هذا الشهر", "value": "1,200 ريال", "tone": "neutral"},
-      {"label": "هدفك النشط: طارئ", "value": "4,200 / 5,000 ريال", "tone": "neutral"},
-      {"label": "إذا اشتريت الآن", "value": "الهدف يتأخر 45 يوم", "tone": "warning"},
-      {"label": "إذا أجلت 15 يوم", "value": "توفر 800 ريال", "tone": "success"}
-    ]
-  }
-  ```
-  ```json
-  {
-    "widget": "action_buttons",
-    "question": "وش تبي تسوي؟",
-    "buttons": [
-      {"label": "تأجيل", "value": "defer", "type": "secondary"},
-      {"label": "شراء الآن", "value": "buy_now", "type": "primary"}
-    ]
-  }
-  ```
+**قاعدة الحساب (Dart-side):**
+```
+savings_needed = active_goal.target − active_goal.current;
+days_delay = ceil(savings_needed / daily_surplus);
+savings_in_15_days = min(daily_surplus * 15, savings_needed);
+reply = "إذا أجلت 15 يوم → توفر {savings_in_15_days} ريال.";
+```
 
-  **قاعدة الحساب (Dart-side):**
-  ```
-  savings_needed = active_goal.target − active_goal.current;
-  days_delay = ceil(savings_needed / daily_surplus);
-  savings_in_15_days = min(daily_surplus * 15, savings_needed);
-  reply = "إذا أجلت 15 يوم → توفر {savings_in_15_days} ريال.";
-  ```
+---
 
-  ---
+### 3. NO ❌ — تجاوز حد الالتزامات الآمن
 
-  ### 3. NO ❌ — تجاوز حد الالتزامات الآمن
+| الخاصية | القيمة |
+|----------|-------|
+| **المكوّنات** | `summary_card` فقط (بدون أزرار — إعلامي) |
+| **اللون** | Danger Red `#D32F2F` — left border tone |
+| **المحتوى** | صفوف Summary تعرض: نسبة الالتزامات، الحد الآمن، التوصية |
+| **النص** | "نسبة التزاماتك X% من دخلك — أعلى من الحد الآمن (33%)." — `X` Dart-computed |
 
-  | الخاصية | القيمة |
-  |----------|-------|
-  | **المكوّنات** | `summary_card` فقط (بدون أزرار — إعلامي) |
-  | **اللون** | Danger Red `#D32F2F` — left border tone |
-  | **المحتوى** | صفوف Summary تعرض: نسبة الالتزامات، الحد الآمن، التوصية |
-  | **النص** | "نسبة التزاماتك X% من دخلك — أعلى من الحد الآمن (33%)." — `X` Dart-computed |
+```json
+{
+  "widget": "summary_card",
+  "title": "الأفضل ما تشتري الآن",
+  "tone": "danger",
+  "rows": [
+    {"label": "نسبة الالتزامات", "value": "X% من الدخل", "tone": "danger"},
+    {"label": "الحد الآمن", "value": "33% من الدخل", "tone": "neutral"},
+    {"label": "التوصية", "value": "انتظر حتى تنخفض التزاماتك", "tone": "danger"}
+  ]
+}
+```
 
-  ```json
-  {
-    "widget": "summary_card",
-    "title": "الأفضل ما تشتري الآن",
-    "tone": "danger",
-    "rows": [
-      {"label": "نسبة الالتزامات", "value": "X% من الدخل", "tone": "danger"},
-      {"label": "الحد الآمن", "value": "33% من الدخل", "tone": "neutral"},
-      {"label": "التوصية", "value": "انتظر حتى تنخفض التزاماتك", "tone": "danger"}
-    ]
-  }
-  ```
+**قاعدة الحساب (Dart-side):**
+```
+dti_ratio = (commitments / income) * 100;
+if (dti_ratio > 33) → verdict = NO;
+reply = "نسبة التزاماتك {dti_ratio}% من دخلك — أعلى من الحد الآمن.";
+```
 
-  **قاعدة الحساب (Dart-side):**
-  ```
-  dti_ratio = (commitments / income) * 100;
-  if (dti_ratio > 33) → verdict = NO;
-  reply = "نسبة التزاماتك {dti_ratio}% من دخلك — أعلى من الحد الآمن.";
-  ```
+---
 
-  ---
+### 4. need-info ❓ — معلومات ناقصة
 
-  ### 4. need-info ❓ — معلومات ناقصة
+| الخاصية | القيمة |
+|----------|-------|
+| **المكوّنات** | `quick_input_form` (حقل واحد فقط) |
+| **اللون** | Neutral (بدون tone خاص — هذه حالة وسيطة) |
+| **المحتوى** | نموذج بحقل واحد يسأل عن المعلومة الناقصة |
+| **النص** | "كم دخلك الشهري التقريبي؟" — المكان الوحيد الذي يظهر فيه السؤال نصاً من LLM |
 
-  | الخاصية | القيمة |
-  |----------|-------|
-  | **المكوّنات** | `quick_input_form` (حقل واحد فقط) |
-  | **اللون** | Neutral (بدون tone خاص — هذه حالة وسيطة) |
-  | **المحتوى** | نموذج بحقل واحد يسأل عن المعلومة الناقصة |
-  | **النص** | "كم دخلك الشهري التقريبي؟" — المكان الوحيد الذي يظهر فيه السؤال نصاً من LLM |
+```json
+{
+  "widget": "quick_input_form",
+  "title": "معلومة ناقصة",
+  "_form_kind": "buy_verdict_clarification",
+  "fields": [
+    {"label": "الدخل الشهري التقريبي", "placeholder": "مثلاً: 8,000", "key": "income", "type": "number", "required": true}
+  ],
+  "submit_label": "احسب →"
+}
+```
 
-  ```json
-  {
-    "widget": "quick_input_form",
-    "title": "معلومة ناقصة",
-    "_form_kind": "buy_verdict_clarification",
-    "fields": [
-      {"label": "الدخل الشهري التقريبي", "placeholder": "مثلاً: 8,000", "key": "income", "type": "number", "required": true}
-    ],
-    "submit_label": "احسب →"
-  }
-  ```
+**متى تُستخدم هذه الحالة:**
+- الدخل غير معروف (لم يمر Cold Start بعد)
+- المستخدم لم يجب على أسئلة Phase 0
+- أي مُدخل أساسي ناقص يمنع الحساب الدقيق
 
-  **متى تُستخدم هذه الحالة:**
-  - الدخل غير معروف (لم يمر Cold Start بعد)
-  - المستخدم لم يجب على أسئلة Phase 0
-  - أي مُدخل أساسي ناقص يمنع الحساب الدقيق
+**السلوك بعد الإرسال:** يُعاد تشغيل محرك الحساب كاملاً بالقيمة الجديدة → ينتقل إلى YES/WAIT/NO.
 
-  **السلوك بعد الإرسال:** يُعاد تشغيل محرك الحساب كاملاً بالقيمة الجديدة → ينتقل إلى YES/WAIT/NO.
+---
 
-  ---
+## Integrity Score Display — عرض نقاط النزاهة
 
-  ## Integrity Score Display — عرض نقاط النزاهة
+يُعرض داخل `summary_card`. **3 عوامل حقيقية** + **2 مقفلة** حتى الربط البنكي (DEC-025).
 
-  يُعرض داخل `summary_card`. **3 عوامل حقيقية** + **2 مقفلة** حتى الربط البنكي (DEC-025).
+### التصميم
 
-  ### التصميم
+| الصف | المصدر | الحالة |
+|------|--------|--------|
+| **النتيجة الكلية (0-100)** | `Dart: weightedAverage(3 active factors)` | كبير، Bold 20px، في رأس الكارد |
+| **تناسق التسجيل** | `Dart: loggedDays / totalDays` | نشط — يعرض النسبة |
+| **معدل رفع الإيصالات** | `Dart: receiptsUploaded / flaggedTransactions` | نشط — يعرض النسبة |
+| **معدل عدم الحذف** | `Dart: 1 − (deletedCount / totalCount)` | نشط — يعرض النسبة |
+| **دقة مطابقة البيانات** | مقفل | رمادي 🔒، "قادم مع الربط البنكي" |
+| **سرعة الاستجابة** | مقفل | رمادي 🔒، "قادم مع الربط البنكي" |
 
-  | الصف | المصدر | الحالة |
-  |------|--------|--------|
-  | **النتيجة الكلية (0-100)** | `Dart: weightedAverage(3 active factors)` | كبير، Bold 20px، في رأس الكارد |
-  | **تناسق التسجيل** | `Dart: loggedDays / totalDays` | نشط — يعرض النسبة |
-  | **معدل رفع الإيصالات** | `Dart: receiptsUploaded / flaggedTransactions` | نشط — يعرض النسبة |
-  | **معدل عدم الحذف** | `Dart: 1 − (deletedCount / totalCount)` | نشط — يعرض النسبة |
-  | **دقة مطابقة البيانات** | مقفل | رمادي 🔒، "قادم مع الربط البنكي" |
-  | **سرعة الاستجابة** | مقفل | رمادي 🔒، "قادم مع الربط البنكي" |
+### JSON Schema
 
-  ### JSON Schema
+```json
+{
+  "widget": "summary_card",
+  "title": "نقاط نزاهتك — يوليو",
+  "tone": "neutral",
+  "rows": [
+    {"label": "النتيجة", "value": "78 / 100", "tone": "success", "style": "large"},
+    {"label": "تناسق التسجيل", "value": "22 / 30 يوم (73%)", "tone": "neutral"},
+    {"label": "معدل رفع الإيصالات", "value": "8 / 12 عملية (67%)", "tone": "neutral"},
+    {"label": "معدل عدم الحذف", "value": "95%", "tone": "neutral"},
+    {"label": "دقة مطابقة البيانات", "value": "قادم مع الربط البنكي 🔒", "tone": "muted"},
+    {"label": "سرعة الاستجابة", "value": "قادم مع الربط البنكي 🔒", "tone": "muted"}
+  ]
+}
+```
 
-  ```json
-  {
-    "widget": "summary_card",
-    "title": "نقاط نزاهتك — يوليو",
-    "tone": "neutral",
-    "rows": [
-      {"label": "النتيجة", "value": "78 / 100", "tone": "success", "style": "large"},
-      {"label": "تناسق التسجيل", "value": "22 / 30 يوم (73%)", "tone": "neutral"},
-      {"label": "معدل رفع الإيصالات", "value": "8 / 12 عملية (67%)", "tone": "neutral"},
-      {"label": "معدل عدم الحذف", "value": "95%", "tone": "neutral"},
-      {"label": "دقة مطابقة البيانات", "value": "قادم مع الربط البنكي 🔒", "tone": "muted"},
-      {"label": "سرعة الاستجابة", "value": "قادم مع الربط البنكي 🔒", "tone": "muted"}
-    ]
-  }
-  ```
+### قواعد القفل البصري
 
-  ### قواعد القفل البصري
+| الخاصية | القيمة |
+|----------|-------|
+| **لون النص** | Muted `#6B7280` |
+| **الأيقونة** | 🔒 قفل (system emoji) |
+| **النص** | "قادم مع الربط البنكي" — ثابت، غير متغير |
+| **الشفافية** | 60% opacity على الصف بالكامل |
+| **التفاعل** | غير قابل للنقر (non-interactive) |
 
-  | الخاصية | القيمة |
-  |----------|-------|
-  | **لون النص** | Muted `#6B7280` |
-  | **الأيقونة** | 🔒 قفل (system emoji) |
-  | **النص** | "قادم مع الربط البنكي" — ثابت، غير متغير |
-  | **الشفافية** | 60% opacity على الصف بالكامل |
-  | **التفاعل** | غير قابل للنقر (non-interactive) |
+### الحساب (Dart-side)
 
-  ### الحساب (Dart-side)
+```
+active_factors = {
+  logging_consistency: (loggedDays / totalDays) * 100,    // وزن 30% → 50% بعد إعادة التوزيع
+  receipt_upload_rate: (receiptsUploaded / flagged) * 100,  // وزن 20% → 33.3%
+  no_deletion_rate: (1 − deletedCount/totalCount) * 100,   // وزن 10% → 16.7%
+};
 
-  ```
-  active_factors = {
-    logging_consistency: (loggedDays / totalDays) * 100,    // وزن 30% → 50% بعد إعادة التوزيع
-    receipt_upload_rate: (receiptsUploaded / flagged) * 100,  // وزن 20% → 33.3%
-    no_deletion_rate: (1 − deletedCount/totalCount) * 100,   // وزن 10% → 16.7%
-  };
+score = weightedAverage(active_factors, redistributed_weights);
+// الأوزان الأصلية: 30+20+10 = 60. تُمدد نسبياً إلى 100.
+```
 
-  score = weightedAverage(active_factors, redistributed_weights);
-  // الأوزان الأصلية: 30+20+10 = 60. تُمدد نسبياً إلى 100.
-  ```
+> **ملاحظة:** عند إضافة العاملين المقفلين لاحقاً (بعد الربط البنكي)، تُعاد الأوزان إلى الأصلية: 30% + 25% + 20% + 15% + 10% = 100%.
 
-  > **ملاحظة:** عند إضافة العاملين المقفلين لاحقاً (بعد الربط البنكي)، تُعاد الأوزان إلى الأصلية: 30% + 25% + 20% + 15% + 10% = 100%.
+### نطاقات النتيجة
 
-  ### نطاقات النتيجة
+| النطاق | المستوى | اللون | التأثير |
+|--------|---------|-------|---------|
+| 90-100 | ممتاز | Success `#2E7D32` | Tier 2 متاح |
+| 70-89 | جيد | Success `#2E7D32` | Tier 2 قيد التقدم |
+| 50-69 | متوسط | Warning `#B7791F` | Tier 2 متأخر |
+| أقل من 50 | منخفض | Danger `#D32F2F` | Tier 2 مقفل |
 
-  | النطاق | المستوى | اللون | التأثير |
-  |--------|---------|-------|---------|
-  | 90-100 | ممتاز | Success `#2E7D32` | Tier 2 متاح |
-  | 70-89 | جيد | Success `#2E7D32` | Tier 2 قيد التقدم |
-  | 50-69 | متوسط | Warning `#B7791F` | Tier 2 متأخر |
-  | أقل من 50 | منخفض | Danger `#D32F2F` | Tier 2 مقفل |
+---
 
-  ---
-
-  ## Flow: Transaction Entry
+## Flow: Transaction Entry
 
 ```
 User taps camera or types text
