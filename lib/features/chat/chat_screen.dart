@@ -202,9 +202,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final commitments = values['monthly_commitments'] ?? '0';
     final weeklySpend = values['weekly_spend'] ?? '0';
 
-    final monthlyIncome = double.tryParse(income.toString()) ?? 0;
-    final monthlyCommitments = double.tryParse(commitments.toString()) ?? 0;
-    final monthlySpend = (double.tryParse(weeklySpend.toString()) ?? 0) * 4;
+    final monthlyIncome = double.tryParse(_arabicToWestern(income.toString())) ?? 0;
+    final monthlyCommitments = double.tryParse(_arabicToWestern(commitments.toString())) ?? 0;
+    final monthlySpend = (double.tryParse(_arabicToWestern(weeklySpend.toString())) ?? 0) * 4;
 
     final disposableAfterCommitments = monthlyIncome - monthlyCommitments;
     final spendRatio = disposableAfterCommitments > 0
@@ -217,7 +217,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       await profileService.upsert(
         monthlyIncome: monthlyIncome,
         monthlyCommitmentsEstimate: monthlyCommitments,
-        weeklySpendEstimate: (double.tryParse(weeklySpend.toString()) ?? 0),
+        weeklySpendEstimate: (double.tryParse(_arabicToWestern(weeklySpend.toString())) ?? 0),
       );
     } catch (e) {
       print('=== AZDAL DEBUG: financial_profile upsert FAILED — $e');
@@ -556,14 +556,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
+  /// Convert Arabic-Indic numerals (٠-٩) to Western (0-9) so double.tryParse
+  /// can read them. Dart's number parsing only understands ASCII digits.
+  static String _arabicToWestern(String input) {
+    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    const western = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    var result = input;
+    for (var i = 0; i < 10; i++) {
+      result = result.replaceAll(arabic[i], western[i]);
+    }
+    return result;
+  }
+
   Future<void> _submitCommitmentAdd(Map<String, dynamic> values, ChatProvider chatNotifier) async {
     final name = (values['name'] as String?)?.trim();
-    final monthly = double.tryParse(values['monthly_amount'] as String? ?? '');
+    final monthly = double.tryParse(_arabicToWestern(values['monthly_amount'] as String? ?? ''));
     if (name == null || name.isEmpty || monthly == null || monthly <= 0) {
       chatNotifier.addBotMessage('محتاج اسم الالتزام والقسط الشهري على الأقل عشان أسجله.');
       return;
     }
-    final total = double.tryParse(values['total_amount'] as String? ?? '') ?? monthly;
+    final total = double.tryParse(_arabicToWestern(values['total_amount'] as String? ?? '')) ?? monthly;
     try {
       final commitmentService = ref.read(commitmentServiceProvider);
       final saved = await commitmentService.addCommitment(name: name, totalAmount: total, remaining: total, monthlyAmount: monthly, type: _inferCommitmentType(name));
@@ -653,9 +665,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _submitCommitmentAdjust(Map<String, dynamic> action, Map<String, dynamic> values, ChatProvider chatNotifier) async {
-    final remaining = double.tryParse(values['remaining'] as String? ?? '');
+    final remaining = double.tryParse(_arabicToWestern(values['remaining'] as String? ?? ''));
     final id = action['commitment_id'] as String?;
-    if (remaining == null || id == null) return;
+    if (remaining == null || id == null) {
+      chatNotifier.addBotMessage('محتاج رقم صحيح للمبلغ المتبقي.');
+      return;
+    }
     try { await ref.read(commitmentServiceProvider).updateRemaining(id, remaining); chatNotifier.addBotMessage('تم تحديث المبلغ المتبقي ✅'); }
     catch (e) { chatNotifier.setError('فشل التحديث: $e'); }
   }
@@ -677,8 +692,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _submitGoalAdd(Map<String, dynamic> values, ChatProvider chatNotifier) async {
     final name = (values['name'] as String?)?.trim();
-    final target = double.tryParse(values['target_amount'] as String? ?? '');
-    final monthly = double.tryParse(values['monthly_contribution'] as String? ?? '');
+    final target = double.tryParse(_arabicToWestern(values['target_amount'] as String? ?? ''));
+    final monthly = double.tryParse(_arabicToWestern(values['monthly_contribution'] as String? ?? ''));
     if (name == null || name.isEmpty || target == null || target <= 0) {
       chatNotifier.addBotMessage('محتاج اسم الهدف والمبلغ المستهدف على الأقل عشان أسجله.');
       return;
@@ -758,9 +773,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _submitGoalAdjust(Map<String, dynamic> action, Map<String, dynamic> values, ChatProvider chatNotifier) async {
-    final amount = double.tryParse(values['current_amount'] as String? ?? '');
+    final amount = double.tryParse(_arabicToWestern(values['current_amount'] as String? ?? ''));
     final id = action['goal_id'] as String?;
-    if (amount == null || id == null) return;
+    if (amount == null || id == null) {
+      chatNotifier.addBotMessage('محتاج رقم صحيح للمبلغ المدخر.');
+      return;
+    }
     try { await ref.read(goalServiceProvider).updateCurrentAmount(id, amount); chatNotifier.addBotMessage('تم تحديث المبلغ المدخر ✅'); }
     catch (e) { chatNotifier.setError('فشل التحديث: $e'); }
   }
@@ -832,7 +850,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           case 'commitment_edit_amount': await _submitCommitmentAdjust(action, values, chatNotifier); break;
           case 'goal_edit_amount': await _submitGoalAdjust(action, values, chatNotifier); break;
           case 'buy_verdict_clarification':
-            final income = double.tryParse(values['income'] as String? ?? '');
+            final income = double.tryParse(_arabicToWestern(values['income'] as String? ?? ''));
             if (income != null && income > 0) {
               final profileService = ref.read(financialProfileServiceProvider);
               final existing = await profileService.getProfile();
@@ -999,7 +1017,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final amountStr = action['amount'] as String?;
     final category = action['category'] as String? ?? 'متنوع';
     if (amountStr == null || amountStr.isEmpty) return;
-    final amount = double.tryParse(amountStr) ?? 0;
+    final amount = double.tryParse(_arabicToWestern(amountStr)) ?? 0;
     if (amount <= 0) return;
     try {
       final txService = ref.read(transactionServiceProvider);
