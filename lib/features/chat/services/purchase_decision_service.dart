@@ -33,8 +33,7 @@ final class PurchaseDecisionService {
 
     final income = (profileRows as List).isEmpty
         ? 0.0
-        : ((profileRows.first as Map<String, dynamic>)['monthly_income']
-                as num?)
+        : ((profileRows.first as Map)['monthly_income'] as num?)
             ?.toDouble() ??
             0;
 

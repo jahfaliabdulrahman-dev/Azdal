@@ -38,22 +38,21 @@ final class IntegrityScoreService {
     // Clamped to a 30-day rolling window for MVP.
     double loggingConsistency = 0;
     if (totalCount > 0) {
-      final firstTxRows = await _client
+      final firstTxRow = await _client
           .from('transactions')
           .select('created_at')
           .eq('user_id', userId)
           .eq('type', 'expense')
           .eq('is_deleted', false)
           .order('created_at')
-          .limit(1);
+          .limit(1)
+          .single();
 
-      if ((firstTxRows as List).isNotEmpty) {
-        final firstDate = DateTime.parse(
-          (firstTxRows.first as Map<String, dynamic>)['created_at']
-              as String,
-        );
-        final daysSince =
-            DateTime.now().difference(firstDate).inDays.clamp(1, 30);
+      final firstDate = DateTime.parse(
+        (firstTxRow as Map<String, dynamic>)['created_at'] as String,
+      );
+      final daysSince =
+          DateTime.now().difference(firstDate).inDays.clamp(1, 30);
 
         final distinctRows = await _client
             .from('transactions')

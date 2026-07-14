@@ -306,6 +306,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
     }
 
+    // ── Integrity-score query pre-check (additive — Stage 4) ──
+    if (_looksLikeIntegrityQuery(text)) {
+      await _showIntegrityScore(chatNotifier);
+      return;
+    }
+
     final allMessages = ref.read(chatProvider).messages;
     final filteredHistory = allMessages.where((m) {
       if (!m.isUser) return true;

@@ -11,6 +11,8 @@ import '../core/services/gemini_service.dart';
 import '../features/chat/services/commitment_service.dart';
 import '../features/chat/services/financial_profile_service.dart';
 import '../features/chat/services/goal_service.dart';
+import '../features/chat/services/integrity_score_service.dart';
+import '../features/chat/services/purchase_decision_service.dart';
 import '../features/chat/services/transaction_service.dart';
 import '../features/chat/services/voice_service.dart';
 
@@ -52,4 +54,14 @@ final commitmentServiceProvider = Provider<CommitmentService>(
 /// Singleton provider for the goal persistence service.
 final goalServiceProvider = Provider<GoalService>(
   (ref) => GoalService(Supabase.instance.client),
+);
+
+/// Singleton provider for the purchase-decision service (Stage 4).
+final purchaseDecisionServiceProvider = Provider<PurchaseDecisionService>(
+  (ref) => PurchaseDecisionService(Supabase.instance.client),
+);
+
+/// Singleton provider for the integrity-score service (Stage 4).
+final integrityScoreServiceProvider = Provider<IntegrityScoreService>(
+  (ref) => IntegrityScoreService(Supabase.instance.client),
 );
