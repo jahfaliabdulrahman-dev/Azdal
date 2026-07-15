@@ -178,6 +178,20 @@ None at Stage 4. All decisions below are closed.
 
 ---
 
+### DEC-044: Investor-Facing Shell + Real RTL Fix — App Was Rendering LTR Since Day One
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-15 |
+| **Status** | ✅ Closed |
+| **Summary** | Added the investor-facing polish layer (Fable-designed, full consult in session transcript): splash → onboarding (first launch only) → 3-tab shell (المحادثة/الدورات/حسابي) via `IndexedStack` (ChatScreen mounted once, untouched); حسابي hosts a mock 3-step bank-linking flow, a "خطتك نحو الاستثمار" 3-tier vision/journey screen (mock net-worth chart + unlock checklist), and REAL email/password signup+login wired to the existing DEC-017 anonymous-upgrade path (`updateUser`/`signInWithPassword` — same UUID, zero data migration, device-verified end-to-end including a live Supabase check). Corrected a stale doc reference in passing: `azdal-logo.png` was never on disk; the real asset (moved to `assets/branding/Azdal logo.jpeg` during this session) already matched the DEC-013 mark. **Separately, the founder caught a real RTL bug by using the device himself**: every new screen had icons/nav order/chevrons mirrored wrong. Root cause — `MaterialApp.router`'s own `Localizations` widget always re-inserts a fresh `Directionality` below itself, derived from the active `WidgetsLocalizations`; with no `localizationsDelegates` configured that's `DefaultWidgetsLocalizations` → hardcoded LTR, silently overriding the manual `Directionality(rtl)` wrapper in `main.dart` that sat above `MaterialApp`. **The entire app has been rendering LTR since day one** — chat only ever looked correct because it hardcodes explicit RTL on its own key widgets (input bar, TextField, bubble text) instead of trusting ambient direction. Fixed by replacing the dead wrapper with real localization (`locale: ar` + `Global{Material,Widgets,Cupertino}Localizations` delegates) and pinning `chat_screen.dart`'s `build()` in an explicit `Directionality(ltr)` wrapper so the newly-corrected app-wide RTL cannot move a pixel of the already-stabilized chat screen. |
+| **Rationale** | Investor-facing screens: judges respond to seeing the 3-tier vision (Coach → Lender → Wealth Builder) made tangible, not just the Tier-1 MVP; kept as pure mock/static content (bank-linking, journey) plus one genuinely real feature (auth) since DEC-017 already anticipated the exact upgrade path with near-zero extra risk. RTL: verified via SDK source (Flutter 3.41.6) that Material 3's `tall2021`/`englishLike2021` type scales are token-identical, so the locale change carries zero typography risk; the chat pin was verified to reproduce today's exact rendering bit-for-bit (device-compared before/after). |
+| **Alternatives** | RTL: a `MaterialApp.router(builder: ...)`-level `Directionality` override also works and avoids the new `flutter_localizations` dependency, but leaves tooltips/text-selection menus in English and keeps the "hack around the framework" pattern that caused this bug in the first place — rejected once the typography risk of the proper fix was confirmed zero. |
+| **Impact** | New files: `lib/app/{brand,launch_flags}.dart`, `lib/features/{launch/{splash_screen,onboarding_screen},shell/main_shell,courses/courses_screen,account/account_screen,bank/bank_link_flow_screen,journey/journey_screen,auth/{auth_service,auth_ui,login_screen,signup_screen}}.dart`. Modified: `lib/app/{app_router,providers}.dart`, `lib/main.dart` (locale/delegates), `lib/features/chat/chat_screen.dart` (RTL pin), `pubspec.yaml` (`flutter_localizations`). Known deferred (not done tonight, explicitly out of scope): phone/SMS login, password reset, logout, `linkIdentity` OAuth, real bank backend, real course content, chat's own internals still use the legacy LTR-pinned pattern rather than proper RTL (a dedicated follow-up pass, not urgent — chat is correct as pinned). |
+| **Related** | DEC-006 (superseded — chat is no longer the sole screen), DEC-013, DEC-017, DEC-036 through DEC-039 (verification discipline this was built under) |
+
+---
+
 ### DEC-039: Advanced Retest Round — History-Leak Into Coach Chat, Completion-Detection Gap, and 3 Explicitly Deferred Product Gaps
 
 | Field | Value |
@@ -484,6 +498,7 @@ None at Stage 4. All decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-044 | Investor-facing shell (splash/onboarding/tabs/journey/bank/real-auth) + real RTL fix — app rendered LTR since day one | 2026-07-15 | ✅ |
 | DEC-039 | Advanced retest — history-leak fix, completion-detection fix, 3 gaps deferred | 2026-07-15 | ✅ |
 | DEC-038 | Remaining-budget query — new deterministic feature, no LLM | 2026-07-15 | ✅ |
 | DEC-037-B | Can-I-Buy intent detection — safety net now, unified router deferred (Opus consult) | 2026-07-15 | ✅ |
