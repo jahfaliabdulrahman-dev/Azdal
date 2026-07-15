@@ -47,6 +47,15 @@ final class PurchaseDecisionService {
       };
     }
 
+    // Cold Start's rough estimate (DEC-033) — the user is walked through
+    // itemizing it into real commitments one at a time, but until that's
+    // fully done the un-itemized remainder is still real committed money.
+    final commitmentsEstimate = profileRows.isEmpty
+        ? 0.0
+        : ((profileRows.first as Map)['monthly_commitments_estimate'] as num?)
+                ?.toDouble() ??
+            0;
+
     // 2. Fetch active commitments (DEC-026: DTI check)
     final commitmentsRows = await _client
         .from('commitments')
@@ -55,11 +64,17 @@ final class PurchaseDecisionService {
         .eq('is_deleted', false)
         .eq('status', 'active');
 
-    final totalCommitments = (commitmentsRows as List).fold<double>(
+    final itemizedCommitments = (commitmentsRows as List).fold<double>(
       0,
       (sum, c) =>
           sum + ((c['monthly_amount'] as num?)?.toDouble() ?? 0),
     );
+    // Never let itemizing a partial commitment (e.g. rent alone) LOWER the
+    // known total below the Cold Start estimate — take whichever is higher.
+    final totalCommitments =
+        itemizedCommitments > commitmentsEstimate
+            ? itemizedCommitments
+            : commitmentsEstimate;
 
     // 3. DTI check (DEC-026: 33% cap)
     final dti = income > 0 ? totalCommitments / income : 0;
@@ -168,6 +183,14 @@ final class PurchaseDecisionService {
       return {'hasProfile': false};
     }
 
+    // Cold Start's rough estimate (DEC-033) — see [evaluate] for why the
+    // un-itemized remainder still counts.
+    final commitmentsEstimate = profileRows.isEmpty
+        ? 0.0
+        : ((profileRows.first as Map)['monthly_commitments_estimate'] as num?)
+                ?.toDouble() ??
+            0;
+
     final commitmentsRows = await _client
         .from('commitments')
         .select()
@@ -175,10 +198,14 @@ final class PurchaseDecisionService {
         .eq('is_deleted', false)
         .eq('status', 'active');
 
-    final totalCommitments = (commitmentsRows as List).fold<double>(
+    final itemizedCommitments = (commitmentsRows as List).fold<double>(
       0,
       (sum, c) => sum + ((c['monthly_amount'] as num?)?.toDouble() ?? 0),
     );
+    final totalCommitments =
+        itemizedCommitments > commitmentsEstimate
+            ? itemizedCommitments
+            : commitmentsEstimate;
 
     final now = DateTime.now();
     final monthStart =

@@ -178,6 +178,20 @@ None at Stage 4. All decisions below are closed.
 
 ---
 
+### DEC-046: Cold-Start Commitments Estimate Silently Ignored — Purchases Over-Approved
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-15 |
+| **Status** | ✅ Closed |
+| **Summary** | Founder registered a fresh real account end-to-end (Cold Start → chat) and the coach approved a purchase clearly beyond the user's ability — asking "لابتوب بـ 4000 ريال؟" got "تقدر! باقي لك 1740 ريال" as a `yes`. Traced with a real Supabase account (`74e40a09-…`), not a guess: Cold Start correctly wrote `monthly_commitments_estimate = 3500` to `financial_profile` and even echoed it back ("باقي معك 3500 ريال بعد الالتزامات"). But `PurchaseDecisionService.evaluate()` and `.calculateRemainingBudget()` never read that field again — every later "can I afford X" / "كم باقي مصروف" calculation summed **only** the itemized `commitments` table. The user had itemized just one commitment so far (rent, 1000/month — DEC-033's own onboarding message explicitly invites itemizing "one at a time"), so 2500 SAR/month of self-declared, real committed spending was invisible to every affordability check. Reconstructing the exact math (income 7000, itemized commitments 1000, month-spend 60 at eval time, goal 200, laptop 4000) reproduced the buggy `disposable=1740 → yes` byte-for-byte, confirming this — not a formula sign error — was the root cause. Fixed by taking `max(profileEstimate, itemizedSum)` for commitments in both methods, so the un-itemized remainder of the Cold Start estimate keeps counting until (or unless) real itemized commitments exceed it. |
+| **Rationale** | Verified twice, independently: (1) hand-traced the exact pre-fix formula against the real DB rows and got the exact buggy output (1740, yes) that shipped to the user, proving the true root cause rather than a plausible-sounding guess; (2) after the code fix, ran a **fresh, independent SQL query** (not a reuse of the same by-hand arithmetic) against the same live rows, confirming commitments now resolve to 3500, DTI to 50% — over the existing 33% DEC-026 cap — so the fixed code returns `no`, not `yes`. Couldn't drive the exact chat message myself to see it end-to-end in the UI: `adb shell input text` cannot type Arabic (a known, pre-existing tooling limitation), so live confirmation of the *specific reworded chat reply* is left for the founder to re-check (the account and updated build are already in place on-device). |
+| **Alternatives** | Treat the Cold Start estimate as fully superseded once the user itemizes anything — rejected: itemizing one commitment doesn't mean the rest stopped existing; would have re-introduced this exact bug for every user who itemizes gradually. Re-prompting the user to explicitly confirm "did you finish itemizing everything?" would be the more complete fix but is a bigger UX change deferred post-hackathon (noted below). |
+| **Impact** | `lib/features/chat/services/purchase_decision_service.dart` only — `evaluate()` and `calculateRemainingBudget()` both now fetch `monthly_commitments_estimate` and take the max against the itemized sum. **Deferred, not fixed tonight:** there's no mechanism to ever retire the Cold Start estimate once a user has itemized everything for real (it will keep acting as a floor forever) — a real gap, but safer to over-count commitments than under-count them, so left as a post-hackathon follow-up rather than risk a same-night UX change to the itemization flow. |
+| **Related** | DEC-026 (33% DTI cap this now correctly enforces), DEC-033 (the itemization-over-time onboarding flow that created the gap), DEC-038/DEC-039 (the remaining-budget and completion-detection features sharing this same service) |
+
+---
+
 ### DEC-045: Splash Screen Off-Center Logo — Loose-Width Column, Unrelated to RTL
 
 | Field | Value |
@@ -512,6 +526,7 @@ None at Stage 4. All decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-046 | Cold-Start commitments estimate silently ignored — purchases over-approved | 2026-07-15 | ✅ |
 | DEC-045 | Splash screen off-center logo — loose-width Column bug, unrelated to RTL | 2026-07-15 | ✅ |
 | DEC-044 | Investor-facing shell (splash/onboarding/tabs/journey/bank/real-auth) + real RTL fix — app rendered LTR since day one | 2026-07-15 | ✅ |
 | DEC-039 | Advanced retest — history-leak fix, completion-detection fix, 3 gaps deferred | 2026-07-15 | ✅ |
