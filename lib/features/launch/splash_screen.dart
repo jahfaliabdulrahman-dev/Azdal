@@ -46,28 +46,38 @@ class _SplashScreenState extends State<SplashScreen> {
           duration: const Duration(milliseconds: 600),
           builder: (context, opacity, child) =>
               Opacity(opacity: opacity, child: child),
-          child: Column(
-            children: [
-              const Spacer(flex: 3),
-              const BrandMark(size: 140),
-              const SizedBox(height: 20),
-              const Text(
-                Brand.appName,
-                style: TextStyle(
-                  fontSize: 40,
-                  fontWeight: FontWeight.w900,
-                  color: Brand.navy,
+          // A bare Column under Scaffold/SafeArea gets a LOOSE width
+          // constraint and shrink-wraps to its widest child (here, the
+          // "أزدل" title) instead of filling the screen — then that
+          // narrow box sits flush at the left edge since nothing centers
+          // it. The SizedBox forces a tight, full-width constraint so
+          // CrossAxisAlignment.center actually has the full screen to
+          // center within.
+          child: const SizedBox(
+            width: double.infinity,
+            child: Column(
+              children: [
+                const Spacer(flex: 3),
+                const BrandMark(size: 140),
+                const SizedBox(height: 20),
+                const Text(
+                  Brand.appName,
+                  style: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.w900,
+                    color: Brand.navy,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              const BrandTagline(fontSize: 20),
-              const Spacer(flex: 4),
-              const Text(
-                Brand.taglineEn,
-                style: TextStyle(fontSize: 12, color: Brand.muted),
-              ),
-              const SizedBox(height: 24),
-            ],
+                const SizedBox(height: 6),
+                const BrandTagline(fontSize: 20),
+                const Spacer(flex: 4),
+                const Text(
+                  Brand.taglineEn,
+                  style: TextStyle(fontSize: 12, color: Brand.muted),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),

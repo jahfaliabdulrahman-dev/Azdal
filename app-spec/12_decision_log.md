@@ -178,6 +178,20 @@ None at Stage 4. All decisions below are closed.
 
 ---
 
+### DEC-045: Splash Screen Off-Center Logo — Loose-Width Column, Unrelated to RTL
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-15 |
+| **Status** | ✅ Closed |
+| **Summary** | Founder reported the splash screen's logo/title/tagline rendering shifted hard left instead of centered. Root-caused via device instrumentation (RenderBox constraint dump), not guesswork: `splash_screen.dart`'s `Column` sits directly under `Scaffold > SafeArea` with no scrollview/`Expanded`-with-filler child, so it received a **loose** width constraint (`0<=w<=392.7` logical px) from its ancestors and shrank to its widest child (the "أزدل" title, ~178px) instead of the full screen — then that narrow box sat flush at the left edge since nothing centered the box itself (`CrossAxisAlignment.center` only centers children *within* the Column's own resolved width, which was wrong). This is a **plain, pre-existing Flutter layout bug, unrelated to DEC-044's RTL fix** — confirmed by checking every other new screen (onboarding/courses/account/bank/journey/auth): all of them wrap their content in `ListView`/`PageView`, which force a tight full-width cross-axis constraint by construction, so none of them share this bug. Fixed by wrapping the splash Column in `SizedBox(width: double.infinity, ...)` to force a tight full-width constraint before centering. Device-verified via burst screenshots (8 frames, 150ms apart) before and after: before, content was reproducibly stuck at the same off-center position across every frame (ruling out the transition-artifact explanation from an earlier session); after, logo/title/full tagline (previously clipped off the left edge) all render centered, pixel-stable across frames. |
+| **Rationale** | Diagnosed with hard data rather than trial-and-error: added a temporary `RenderBox.constraints`/`.size` poll (removed before commit) that printed `BoxConstraints(0.0<=w<=392.7, ...)` and `colSize=Size(178.3, ...)` to logcat — a loose constraint is the unambiguous signature of this exact Flutter footgun (a bare `Column` with no `CrossAxisAlignment.stretch`, no filling child, and no explicit width shrink-wraps instead of filling). Ruling out RTL as a cause matters because the founder explicitly worried the RTL fix might be damaging screens he liked — it wasn't; this bug predates DEC-044 and was simply never caught because splash is only visible for 1.4s, previously screenshotted once and misdiagnosed as a page-transition artifact. |
+| **Alternatives** | `CrossAxisAlignment.stretch` on the Column — rejected: would force every child (including the fixed-size `BrandMark` image) to accept a tight full-width constraint it doesn't need, a larger behavioral change than necessary for a centering fix. |
+| **Impact** | `lib/features/launch/splash_screen.dart` only — one `SizedBox(width: double.infinity)` wrapper. No other files touched. `flutter analyze` clean, `flutter test` 34/34 passing, device-verified. |
+| **Related** | DEC-044 (the RTL fix this was initially suspected to have caused, but didn't) |
+
+---
+
 ### DEC-044: Investor-Facing Shell + Real RTL Fix — App Was Rendering LTR Since Day One
 
 | Field | Value |
@@ -498,6 +512,7 @@ None at Stage 4. All decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-045 | Splash screen off-center logo — loose-width Column bug, unrelated to RTL | 2026-07-15 | ✅ |
 | DEC-044 | Investor-facing shell (splash/onboarding/tabs/journey/bank/real-auth) + real RTL fix — app rendered LTR since day one | 2026-07-15 | ✅ |
 | DEC-039 | Advanced retest — history-leak fix, completion-detection fix, 3 gaps deferred | 2026-07-15 | ✅ |
 | DEC-038 | Remaining-budget query — new deterministic feature, no LLM | 2026-07-15 | ✅ |
