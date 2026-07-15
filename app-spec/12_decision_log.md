@@ -178,6 +178,20 @@ None at Stage 4. All decisions below are closed.
 
 ---
 
+### DEC-047: "ابدأ من جديد كزائر" — Reset-to-New-Guest for Shared-Device Demo Testing
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-15 |
+| **Status** | ✅ Closed |
+| **Summary** | Founder asked directly: since DEC-017's anonymous session persists on-device, will every judge who hands-on tests the same demo phone at AMAD continue on whatever guest data the previous person (or the founder's own testing) left behind, instead of a genuine first-run experience? Confirmed: yes — that's DEC-017 working exactly as designed for a real production device (one phone = one guest), but it's a real problem when AMAD judges will physically pick up and test the same phone one after another. Added a "الحساب" row in `account_screen.dart`, visible for both guest and real accounts, that shows a confirmation dialog then calls `signOut()` → `signInAnonymously()` (fresh UUID) → sets `azdalFirstLaunch = true` → `context.go('/')`, replaying the full splash → onboarding → Cold Start flow from zero. Old data is never deleted — it stays in Supabase under the old `user_id`, orphaned but harmless (same accepted trade-off DEC-017 already documented), and is recoverable by logging back into that same account. |
+| **Rationale** | Device-verified with full instrumentation, not just code review — an early manual test looked broken (landed back on the Account tab instead of onboarding), which turned out to be **my own adb tap landing on the wrong element** (a coordinate-scaling mistake, confirmed via `uiautomator dump` bounds), not a code bug. Re-verified with temporary debug prints tracing every step (`confirmed=true` → `signed out` → `signed in anon` → `azdalFirstLaunch=true` → `go(/) called` → splash's own `_next` reading `azdalFirstLaunch=true`) plus screenshots, confirming the full splash → onboarding → empty Cold Start sequence renders correctly end-to-end. Diagnostics removed before commit. |
+| **Alternatives** | Manually clearing app storage via Android Settings between judges — rejected as the fallback-only option: slower and more error-prone mid-demo than a single in-app tap, though still works if needed. Auto-resetting on every app launch — rejected: would break guest data persistence for any real single continuous user, defeating the entire point of DEC-017. |
+| **Impact** | `lib/features/account/account_screen.dart` only — one new row + one new method (`_startAsNewGuest`). No changes to auth architecture, RLS, or any other screen. |
+| **Related** | DEC-017 (the persisted-guest-session design this operationalizes a reset for) |
+
+---
+
 ### DEC-046: Cold-Start Commitments Estimate Silently Ignored — Purchases Over-Approved
 
 | Field | Value |
@@ -526,6 +540,7 @@ None at Stage 4. All decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-047 | "ابدأ من جديد كزائر" — reset-to-new-guest for shared-device demo testing | 2026-07-15 | ✅ |
 | DEC-046 | Cold-Start commitments estimate silently ignored — purchases over-approved | 2026-07-15 | ✅ |
 | DEC-045 | Splash screen off-center logo — loose-width Column bug, unrelated to RTL | 2026-07-15 | ✅ |
 | DEC-044 | Investor-facing shell (splash/onboarding/tabs/journey/bank/real-auth) + real RTL fix — app rendered LTR since day one | 2026-07-15 | ✅ |

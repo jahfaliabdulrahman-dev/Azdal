@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:azdal/app/brand.dart';
+import 'package:azdal/app/launch_flags.dart';
 
 /// حسابي tab — hosts bank linking (per the designer's settings-style
 /// reference page), the journey/vision screen, and the OPTIONAL account
@@ -32,6 +33,42 @@ class _AccountScreenState extends State<AccountScreen> {
   void dispose() {
     _authSub?.cancel();
     super.dispose();
+  }
+
+  /// Ends the current session (guest or real) and starts a brand-new
+  /// anonymous one, replaying splash → onboarding → Cold Start from zero.
+  /// Needed because a guest session persists on-device (DEC-017) — without
+  /// this, a second person picking up the same phone continues on the
+  /// previous person's data instead of a fresh first-run experience.
+  Future<void> _startAsNewGuest(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('بدء تجربة جديدة؟'),
+        content: const Text(
+          'راح يبدأ التطبيق من الصفر كزائر جديد — شاشة الترحيب والبداية '
+          'السريعة من جديد. بيانات حسابك الحالي لن تُحذف، لكنها لن تظهر '
+          'على هذا الجهاز إلا إذا رجعت وسجّلت الدخول بنفس الحساب.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('ابدأ من جديد'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final client = Supabase.instance.client;
+    await client.auth.signOut();
+    await client.auth.signInAnonymously();
+    azdalFirstLaunch = true;
+    if (context.mounted) context.go('/');
   }
 
   @override
@@ -99,6 +136,13 @@ class _AccountScreenState extends State<AccountScreen> {
               subtitle: user?.email ?? '',
               onTap: null,
             ),
+          const SizedBox(height: 12),
+          _SettingsRow(
+            icon: Icons.restart_alt,
+            title: 'ابدأ من جديد كزائر',
+            subtitle: 'لتجربة التطبيق من الصفر على هذا الجهاز',
+            onTap: () => _startAsNewGuest(context),
+          ),
           const SizedBox(height: 32),
           const Center(
             child: Text(
