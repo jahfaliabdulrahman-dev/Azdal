@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 // OCR-02: System share sheet (Stage 3)
 // import 'package:receive_sharing_intent/receive_sharing_intent.dart';
@@ -93,19 +94,32 @@ String? consumePendingSharedImage() {
 final sharedImagePathProvider = StateProvider<String?>((ref) => null);
 
 /// Root widget — RTL, light theme, MaterialApp.router + go_router.
+///
+/// RTL is enforced via locale + localizationsDelegates, NOT a manual
+/// Directionality wrapper: MaterialApp's own Localizations widget always
+/// re-inserts a fresh Directionality below itself, derived from the
+/// active WidgetsLocalizations — with no delegates configured that
+/// defaults to LTR and silently overrides any outer wrapper. Setting
+/// locale: ar (with the standard Global*Localizations delegates) makes
+/// that framework-derived Directionality RTL instead, which is what
+/// every screen actually needs to inherit.
 class AzdalApp extends StatelessWidget {
   const AzdalApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: MaterialApp.router(
-        title: 'أزدل',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        routerConfig: appRouter,
-      ),
+    return MaterialApp.router(
+      title: 'أزدل',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      routerConfig: appRouter,
+      locale: const Locale('ar'),
+      supportedLocales: const [Locale('ar')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
     );
   }
 }

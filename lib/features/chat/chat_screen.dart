@@ -1265,26 +1265,37 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final chatState = ref.watch(chatProvider);
     final voiceListeningState = ref.watch(voiceListeningProvider);
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(title: const Text('أزدل'), backgroundColor: _navy, foregroundColor: _white, centerTitle: true),
-      body: Column(children: [
-        Expanded(child: chatState.messages.isEmpty && !_coldStartDone ? const _EmptyState() : ListView.builder(
-          controller: _scrollController, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          itemCount: chatState.messages.length + (chatState.isLoading ? 1 : 0) + (chatState.error != null ? 1 : 0),
-          itemBuilder: (context, index) {
-            if (chatState.error != null && index == chatState.messages.length) return ErrorBubble(message: 'حدث خطأ. حاول مرة أخرى.', onRetry: () => ref.read(chatProvider.notifier).clearError());
-            final typingOffset = chatState.error != null ? 1 : 0;
-            if (chatState.isLoading && index == chatState.messages.length - typingOffset) return const TypingIndicator();
-            final adjustedIndex = chatState.isLoading && index >= chatState.messages.length ? chatState.messages.length - 1 : index.clamp(0, chatState.messages.length - 1);
-            if (adjustedIndex >= chatState.messages.length) return const SizedBox.shrink();
-            final message = chatState.messages[adjustedIndex];
-            return _MessageBubble(message: message, onWidgetAction: _handleWidgetAction);
-          },
-        )),
-        if (!_isOnline) const OfflineBanner(),
-        _InputBar(controller: _textController, focusNode: _focusNode, isOnline: _isOnline, isListening: voiceListeningState.isListening, onSend: _sendMessage, onMic: _toggleVoice, onCamera: _pickReceiptImage),
-      ]),
+    // Chat predates app-level Arabic localization and was built RTL via
+    // explicit per-widget textDirection (input bar, TextField, bubble
+    // text) under an ambient direction that was actually LTR the whole
+    // time (MaterialApp's Localizations always re-derives Directionality
+    // below any outer wrapper). Now that the app locale is properly ar
+    // (RTL), pin this screen's ambient direction back to the LTR it was
+    // always actually rendered under, so this stabilized screen cannot
+    // move a single pixel. Remove only in a dedicated chat-RTL pass.
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF7F8FA),
+        appBar: AppBar(title: const Text('أزدل'), backgroundColor: _navy, foregroundColor: _white, centerTitle: true),
+        body: Column(children: [
+          Expanded(child: chatState.messages.isEmpty && !_coldStartDone ? const _EmptyState() : ListView.builder(
+            controller: _scrollController, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            itemCount: chatState.messages.length + (chatState.isLoading ? 1 : 0) + (chatState.error != null ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (chatState.error != null && index == chatState.messages.length) return ErrorBubble(message: 'حدث خطأ. حاول مرة أخرى.', onRetry: () => ref.read(chatProvider.notifier).clearError());
+              final typingOffset = chatState.error != null ? 1 : 0;
+              if (chatState.isLoading && index == chatState.messages.length - typingOffset) return const TypingIndicator();
+              final adjustedIndex = chatState.isLoading && index >= chatState.messages.length ? chatState.messages.length - 1 : index.clamp(0, chatState.messages.length - 1);
+              if (adjustedIndex >= chatState.messages.length) return const SizedBox.shrink();
+              final message = chatState.messages[adjustedIndex];
+              return _MessageBubble(message: message, onWidgetAction: _handleWidgetAction);
+            },
+          )),
+          if (!_isOnline) const OfflineBanner(),
+          _InputBar(controller: _textController, focusNode: _focusNode, isOnline: _isOnline, isListening: voiceListeningState.isListening, onSend: _sendMessage, onMic: _toggleVoice, onCamera: _pickReceiptImage),
+        ]),
+      ),
     );
   }
 }
