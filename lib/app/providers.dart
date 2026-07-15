@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/services/gemini_service.dart';
+import '../features/auth/auth_service.dart';
 import '../features/chat/services/commitment_service.dart';
 import '../features/chat/services/financial_profile_service.dart';
 import '../features/chat/services/goal_service.dart';
@@ -64,4 +65,9 @@ final purchaseDecisionServiceProvider = Provider<PurchaseDecisionService>(
 /// Singleton provider for the integrity-score service (Stage 4).
 final integrityScoreServiceProvider = Provider<IntegrityScoreService>(
   (ref) => IntegrityScoreService(Supabase.instance.client),
+);
+
+/// Singleton provider for auth (anonymous → permanent upgrade, login).
+final authServiceProvider = Provider<AuthService>(
+  (ref) => AuthService(Supabase.instance.client),
 );

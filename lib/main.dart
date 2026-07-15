@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app_router.dart';
+import 'app/launch_flags.dart';
 import 'app/theme.dart';
 
 // ── Compile-time credentials (injected via --dart-define-from-file=.env) ──
@@ -43,6 +44,10 @@ Future<void> main() async {
   // guest a real UUID → auth.uid() works → all 14 RLS policies work unchanged.
   // Session persists on-device — guest data survives app restarts.
   final supabase = Supabase.instance.client;
+  // First-launch flag for onboarding routing — must be read BEFORE
+  // signInAnonymously() creates a session. No session at process start
+  // ⇔ fresh install ⇔ show onboarding once.
+  azdalFirstLaunch = supabase.auth.currentSession == null;
   if (supabase.auth.currentSession == null) {
     try {
       await supabase.auth.signInAnonymously();
