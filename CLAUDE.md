@@ -1,5 +1,9 @@
 # Azdal (أزدل) — Project Guide for Claude
 
+> **New to this project? Read [`START_HERE.md`](START_HERE.md) first** — it's a
+> short, ordered reading map that ends with the exact next action. This file is
+> step 1 of that map.
+
 > **Read this first.** It orients you to what Azdal is, the rules that are
 > non-negotiable, where the truth lives, and where the project is headed. When
 > this file and the code disagree, trust the code and say so.
