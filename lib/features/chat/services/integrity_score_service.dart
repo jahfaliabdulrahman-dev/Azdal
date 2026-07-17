@@ -100,8 +100,15 @@ final class IntegrityScoreService {
           .eq('is_deleted', true);
 
       final deletedCount = (deletedRows as List).length;
-      noDeletionRate =
-          ((totalCount - deletedCount) / totalCount * 100).clamp(0, 100);
+      // no_deletion_rate = kept / (kept + deleted). `totalCount` is the KEPT
+      // count (is_deleted=false), so the deleted rows must be ADDED BACK to
+      // form the denominator (total ever created). The old formula
+      // (totalCount - deletedCount) / totalCount used the kept count as the
+      // denominator AND subtracted deletions from the numerator — it
+      // understated the score and could even go negative when deletions
+      // outnumbered surviving rows.
+      final totalEver = totalCount + deletedCount;
+      noDeletionRate = (totalCount / totalEver * 100).clamp(0, 100);
     }
 
     // ── Combine: equal weight among 3 real factors ──────────────

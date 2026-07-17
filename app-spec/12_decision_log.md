@@ -178,6 +178,20 @@ None at Stage 4. All decisions below are closed.
 
 ---
 
+### DEC-048: Integrity Score `no_deletion_rate` Math Bug — Wrong Denominator
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-16 |
+| **Status** | ✅ Closed |
+| **Summary** | A teammate's automated repo-analysis report (run via Replit) flagged a math error in the Integrity Score (درجة الأمانة). Verified against code and real data — it was correct. In `IntegrityScoreService.calculate()`, `no_deletion_rate` was computed as `(totalCount - deletedCount) / totalCount`, where `totalCount` is the **kept** (is_deleted=false) count and `deletedCount` is the **deleted** count. Both the numerator and denominator were wrong: the denominator should be total-ever-created (kept + deleted), and the numerator should be just the kept count. Fixed to `totalCount / (totalCount + deletedCount)`. |
+| **Rationale** | Confirmed on real Supabase test accounts, not just reasoning: account `2fe0dc48` (31 kept, 16 deleted) scored **48.4%** under the bug vs **66.0%** correct; account `4bf32f24` (16 kept, 8 deleted) scored **50.0%** vs **66.7%** — a ~17-18 point understatement. Worse, the old formula went **negative** when deletions outnumbered survivors (3 kept, 10 deleted → −233%, clamped to 0). In a product whose entire premise is trustworthiness, a trust metric that reports the wrong number — and punishes far harder than reality — is a serious correctness bug, not cosmetic. The founder's own account (4 kept, 0 deleted) happened to be unaffected (both formulas give 100% at zero deletions), which is why it wasn't caught in his own testing. |
+| **Alternatives** | Leaving the `if (totalCount > 0)` guard means an account that deleted ALL its transactions (kept=0) still shows `no_deletion_rate = 100` (default), same as a brand-new user — a rare degenerate edge case left as-is to avoid scope creep; the whole score is already degenerate at zero surviving transactions. |
+| **Impact** | `lib/features/chat/services/integrity_score_service.dart` (the fix). Also fixed `test/integrity_score_service_test.dart`, which had **encoded the buggy formula as its own expectation** (re-deriving `(totalCount - deletedCount)/totalCount` locally rather than calling the real service) — the exact "tests re-derive formulas as local constants, so 34/34 passing catches nothing" gap flagged in `00_active_capabilities.md` and the Fable personal-build consult. Test now uses correct kept/(kept+deleted) semantics + a regression guard against the negative-rate case. |
+| **Related** | DEC-025 (the Integrity Score design this corrects), `00_active_capabilities.md` (the known fake-test-coverage gap this instance proves real) |
+
+---
+
 ### DEC-047: "ابدأ من جديد كزائر" — Reset-to-New-Guest for Shared-Device Demo Testing
 
 | Field | Value |
@@ -540,6 +554,7 @@ None at Stage 4. All decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-048 | Integrity Score no_deletion_rate math bug — wrong denominator (understated + could go negative) | 2026-07-16 | ✅ |
 | DEC-047 | "ابدأ من جديد كزائر" — reset-to-new-guest for shared-device demo testing | 2026-07-15 | ✅ |
 | DEC-046 | Cold-Start commitments estimate silently ignored — purchases over-approved | 2026-07-15 | ✅ |
 | DEC-045 | Splash screen off-center logo — loose-width Column bug, unrelated to RTL | 2026-07-15 | ✅ |

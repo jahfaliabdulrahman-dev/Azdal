@@ -86,13 +86,23 @@ void main() {
       expect(score, 33); // (0+0+100)/3 = 33
     });
 
-    test('no_deletion_rate is 100 minus deletion percentage', () {
-      // 10 total, 2 deleted → 80% no_deletion_rate
-      const totalCount = 10;
+    test('no_deletion_rate = kept / (kept + deleted)', () {
+      // 8 surviving (is_deleted=false) + 2 deleted = 10 ever → 80% kept.
+      // `keptCount` mirrors the service's `totalCount` (non-deleted only),
+      // so the denominator must add the deleted rows back.
+      const keptCount = 8;
       const deletedCount = 2;
       final noDeletionRate =
-          ((totalCount - deletedCount) / totalCount * 100).clamp(0, 100);
+          (keptCount / (keptCount + deletedCount) * 100).clamp(0, 100);
       expect(noDeletionRate, 80.0);
+
+      // Regression guard: heavy deletion must never go negative. The old
+      // (kept - deleted)/kept formula gave (3-10)/3 = -233% here.
+      const heavyKept = 3;
+      const heavyDeleted = 10;
+      final heavyRate =
+          (heavyKept / (heavyKept + heavyDeleted) * 100).clamp(0, 100);
+      expect(heavyRate, closeTo(23.08, 0.01));
     });
 
     test('receipt_upload_rate measures transactions with receipts', () {
