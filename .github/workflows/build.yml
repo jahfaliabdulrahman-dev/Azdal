@@ -55,6 +55,14 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release --dart-define-from-file=.env
 
+      - name: Point the "latest" tag at this commit
+        # gh release upload --clobber only swaps the asset; without this the
+        # release keeps showing whatever commit the tag was first cut from.
+        # Force-move the rolling tag to the commit we just built.
+        run: |
+          git tag -f latest "$GITHUB_SHA"
+          git push -f origin latest
+
       - name: Publish to the "latest" release
         env:
           GH_TOKEN: ${{ github.token }}
