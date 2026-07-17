@@ -12,6 +12,41 @@ None at Stage 4. All decisions below are closed.
 
 ---
 
+## Open / Forward-Looking Decisions
+
+### DEC-049: Personal Build — Chat-Only, Founder as First Real User (Post-Hackathon Direction)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-17 |
+| **Status** | 🔵 Adopted, in planning (governs the next phase) |
+| **Summary** | The project's permanent next phase is a **personal build**: a chat-only Azdal (no demo shell) developed indefinitely for the founder's own real financial life. Its acceptance criterion is his actual turnaround — changing habits, saving, building an emergency fund — not a feature checklist or demo score. Full plan in `21_personal_build_plan.md`; the emotional "why", goals, and required coach tone in `20_personal_vision_and_goals.md`. |
+| **Rationale** | The founder stated, unprompted and with weight, that regardless of the hackathon he needs this app to work for his own life — he's in real financial stress and wants Azdal to be what gets him out. "Skin in the game": he is the product's first, all-in real user, and his success *is* the branch's success. Building for a real, demanding daily user is also the surest path to a product that works for anyone. |
+| **Key decisions carried in the plan** | (a) **Account durability first** — convert his anonymous account to permanent + backups, before any feature, because it protects data that already exists. (b) **Branch strategy:** not a long-lived git branch (would rot) — a second entry point (`lib/main_personal.dart`) in the same repo, tag the hackathon state, gradually invert `main`. (c) **"My success = the branch's success" made falsifiable** via five real metrics (logging coverage, emergency-fund milestone, savings rate, the app's own model accuracy, consulted-decision count), definitions committed so they can't drift. (d) Phased: Phase 0 (durability, real tests, golden intent matrix) → Phase 0.5 (tool-calling router, DEC-050) → Phases 1–3 (capabilities). |
+| **Coach tone (binding)** | Blunt honesty over flattery, willing to deliver a hard/shock truth when the user has come seeking change — but **never gloating** after advice is ignored (that kills honest logging, which everything depends on). See `20_personal_vision_and_goals.md`. |
+| **Related** | DEC-050, DEC-017 (anonymous→permanent upgrade this relies on), `20_personal_vision_and_goals.md`, `21_personal_build_plan.md` |
+
+---
+
+### DEC-050: Tool-Calling Router — Replace Regex Intent-Gates with Gemini Native Function-Calling (Phase 0.5)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-17 |
+| **Status** | 🔵 Adopted, scheduled for personal-build Phase 0.5 (not yet built) |
+| **Summary** | Re-architect the chat's intent routing from a hand-maintained cascade of Arabic regex keyword-gates (`_looksLikeBuyIntent`, `_looksLikeIntegrityQuery`, `_looksLikeBudgetQuery`, `_looksLikeSetupIntent` + an LLM safety-net call) into **Gemini native function-calling** used as a **single-hop tool dispatcher**: declare the deterministic services as typed tools (`evaluate_purchase`, `log_expense`, `evaluate_installment`, `add_commitment`, `add_goal`, `get_remaining_budget`, `get_integrity_score`, `forecast_month`…), let the model choose, and run the existing pure-Dart services *inside* the tools. This closes the DEC-037-B deferral (the "unified single-classifier router"). |
+| **Trigger** | The founder encountered the "agent harness" concept (a YouTube video whose full transcript we reviewed — it demos an AI coding tool, "Verdent", building a harsh-interview agent) and intuited it might fit Azdal. Evaluated with a Fable consult against the actual code. |
+| **Verdict — yes, but narrowly** | Adopt function-calling as a **single-hop dispatcher, NOT an autonomous multi-step agent loop.** The video's "99% of agents are just chatbots" critique does **not** apply to Azdal: it already IS a harness — deterministic typed tools (DEC-024), a risk-tiered approvals layer (DEC-020/021), bounded output (DEC-022), no-hard-delete (DEC-010), a verification discipline (LL-010). The one harness component it lacks is model-driven dispatch; intent selection is done by regex instead of by the model. That gap is the project's single most documented pain source (the whole "can I buy?" hamza/dialect saga). The video's own example is a **state-machine + tool-calls** (controlled flow), which is closer to the right pattern than a naive ReAct loop — a caution about "tutorials teach over-agentified loops" was checked against the transcript and did not apply here. |
+| **What it fixes / doesn't** | **Fixes:** the regex-gate bug class dies structurally (the failures were never Gemini misunderstanding dialect — the regex prevented Gemini from being asked); the N-intents = N-gates scaling wall (decisive for the personal build's ~8–10 new intents); multi-intent messages ("جوال بـ2000 ودراجة بـ800", DEC-039a) fall out via parallel calls; worst-case latency improves (up to 4 sequential classify calls → 1 routing call). **Does NOT fix:** the math bugs (only ~2–3 of ~14 real bugs were routing bugs — DEC-046/048 etc. are untouched), Arabic comprehension quality, the fake-test gap, or tone. Verification discipline stays the real quality mechanism. |
+| **Evolution, not rewrite** | Carries over unchanged: all six services (already tool-shaped), the widget catalog + rendering, the tiered approvals/undo machinery, the schema, voice, OCR, general-chat prompt, BRP. Rewritten: the dispatch core of `_sendMessage` + one new `GeminiService` method using `Tools`/`FunctionDeclaration`/`FunctionResponse` — mostly a *deletion* of the classifier prompts. ~2–4 focused days + a full intent-matrix retest. |
+| **Discipline rules (non-negotiable — these keep "the model never computes")** | (1) **Tools stay coarse and verdict-shaped** — `evaluate_purchase(item, amount)` fetches its own five inputs internally and returns a verdict; the model never sees raw financial components, so it *cannot* do arithmetic on them. Decomposing into `get_income`+`get_commitments` would let the model subtract between calls and quietly kill DEC-024. (2) **Write-tools never write** — they return a *staged proposal*; the existing tiered approvals (auto-save+undo / confirm card) plus the user's tap commit to Supabase. The model chooses *which* tool; it never causes a write. (3) **Model routes in, Dart speaks out** — skip the final-narration round-trip for anything number-bearing; Dart renders verdict/confirmation widgets from typed results (as today). (4) **Cap at one round** (hard-cap 2 with a deterministic bail-to-clarify) — a finance coach needs zero ReAct steps. (5) **History policy** — the router sees the current message + a compact *Dart-authored* state block (e.g. "pending clarification: buy_intent, item=ساعة, amount=missing"), never the raw transcript, preserving the history-free-classification invariant. |
+| **New infra worth adding** | A **tool-call trace** (one row per routed message: message → tool → args → result → write IDs, local or a Supabase `tool_calls` table). Turns the manual verify-by-Supabase-query ritual into a lookup — pays for itself for a single-user personal build. |
+| **Dependency flag** | `google_generative_ai` (0.4.x) supports function-calling but has been deprecated by Google (successor: Firebase AI Logic / newer Gen AI SDK). The router migration is the natural moment to check pub.dev and move to the maintained SDK **once** — verify status before starting, don't migrate twice. |
+| **Timing** | Personal-build **Phase 0.5** — after Phase 0 (account durability + real tests + a golden intent matrix built against the *current* router, which becomes the migration's safety net), and **before** any Phase 1 capability (building BNPL/budgets on regex means writing gates already slated for deletion). Not before the hackathon submission was frozen. Timebox to ~a week of evenings; if it blows past, ship Phase 1 the old way and return — his real financial life is the point, not architectural purity. |
+| **Related** | DEC-037-B (the deferral this closes), DEC-024 (the "model never computes" rule these disciplines protect), DEC-020/021/033/034 (the tiered approvals that become the harness's write-gate), DEC-049, `21_personal_build_plan.md` §Phase 0.5 |
+
+---
+
 ## Closed Decisions
 
 ### DEC-029: Bounded Reply Pattern — Mandatory for All New LLM-Authored Fields
@@ -554,6 +589,8 @@ None at Stage 4. All decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-050 | Tool-calling router — replace regex intent-gates with Gemini function-calling (personal-build Phase 0.5) | 2026-07-17 | 🔵 Planned |
+| DEC-049 | Personal build — chat-only, founder as first real user (post-hackathon direction) | 2026-07-17 | 🔵 Adopted |
 | DEC-048 | Integrity Score no_deletion_rate math bug — wrong denominator (understated + could go negative) | 2026-07-16 | ✅ |
 | DEC-047 | "ابدأ من جديد كزائر" — reset-to-new-guest for shared-device demo testing | 2026-07-15 | ✅ |
 | DEC-046 | Cold-Start commitments estimate silently ignored — purchases over-approved | 2026-07-15 | ✅ |

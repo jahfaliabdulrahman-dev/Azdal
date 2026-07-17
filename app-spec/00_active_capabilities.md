@@ -153,6 +153,27 @@
 
 ---
 
+### ➡️ NEXT PHASE — The Personal Build (the real successor to the hackathon)
+
+The permanent next phase is **not** the roadmap above (that's the long-term
+business vision). It's the **personal build**: a chat-only Azdal developed
+indefinitely for the founder's own financial life, where his real turnaround is
+the acceptance criterion. This is now the project's primary direction.
+
+| Item | Where documented |
+|------|------------------|
+| The "why", the founder's goals, the coach's required tone | `20_personal_vision_and_goals.md` |
+| The phased plan (Phase 0 durability → 0.5 router → 1–3 capabilities) | `21_personal_build_plan.md` |
+| Personal-build direction decision | DEC-049 |
+| Tool-calling router (replaces regex intent-gates) | DEC-050 |
+
+**Immediate, hackathon-independent priority:** convert the founder's account
+from anonymous to permanent + backups — it protects data that already exists.
+
+---
+
 ## Related
 - `00_project_context.md` — Project identity and team
 - `16_implementation_backlog.md` — Build plan and timeline
+- `20_personal_vision_and_goals.md` — the founder's why, goals, and coach tone
+- `21_personal_build_plan.md` — the personal-build phased plan
