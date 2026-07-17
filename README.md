@@ -1,165 +1,188 @@
-# 🜔 Azdal — درعك المالي
+<div align="center">
 
-> **المستخدم يدخل مديونًا — ويخرج مستثمرًا.**
-> *You enter in debt. You exit as an investor.*
+<img src="assets/branding/Azdal%20logo.jpeg" alt="أزدل — Azdal" width="150" />
 
----
+# أزدل · Azdal
 
-## What Is Azdal?
+### من مديون... إلى **مستثمر**
 
-Azdal is the **first Arabic 3-tier financial rehabilitation program**. We transform debt-trapped consumers into conscious investors through AI, behavioral science, and a proven progression system.
+**أول مدرّب مالي عربي بالذكاء الاصطناعي — يفهم لهجتك، ويجاوبك _قبل_ ما تصرف.**
 
-We are **not** a budgeting app. We are **not** a BNPL clone. We are a **financial transformation platform**.
+<br />
 
----
+## ⬇️ تحميل التطبيق
 
-## Hackathon Context
+<a href="https://github.com/jahfaliabdulrahman-dev/Azdal/releases/latest/download/app-release.apk">
+  <img src="https://img.shields.io/badge/DOWNLOAD%20APK-001F5E?style=for-the-badge&logo=android&logoColor=32C2FF&labelColor=001F5E" alt="Download APK" height="52" />
+</a>
 
-| Field | Value |
-|-------|-------|
-| Event | **AMAD Hackathon** |
-| Track | Financial Education (التعليم المالي) |
-| Dates | July 16–18, 2026 |
-| Format | Online |
-| Status | 🟢 **Stage 4 complete + investor-facing demo shell — ready for AMAD** |
+### 👆 **[أو اضغط هنا لتحميل التطبيق مباشرة](https://github.com/jahfaliabdulrahman-dev/Azdal/releases/latest/download/app-release.apk)**
 
----
+<sub>📱 أندرويد · ~54 ميجا · يُبنى تلقائياً من آخر كود
+عند التثبيت، فعّل «السماح بالتثبيت من مصادر غير معروفة»</sub>
 
-## Team
+<br />
 
-| # | Role | Name |
-|---|------|------|
-| 1 | AI / Backend / Flutter | **Abdulrahman Jahfali** |
-| 2 | Business Model / SWOT / Pitch | **Saja** |
-| 3 | UI / UX Design | **Deema** |
-| 4 | Presentations & Forms | **Hala** |
+[![CI](https://github.com/jahfaliabdulrahman-dev/Azdal/actions/workflows/lint.yml/badge.svg)](https://github.com/jahfaliabdulrahman-dev/Azdal/actions/workflows/lint.yml)
+[![Build APK](https://github.com/jahfaliabdulrahman-dev/Azdal/actions/workflows/build.yml/badge.svg)](https://github.com/jahfaliabdulrahman-dev/Azdal/actions/workflows/build.yml)
+
+</div>
 
 ---
 
-## The Three Tiers
+## ما هو أزدل؟
+
+**أزدل ليس تطبيق ميزانية.** تطبيقات الميزانية تخبرك بما حدث — بعد أن تُصرف أموالك.
+
+أزدل يتدخّل في **اللحظة التي يبدأ فيها الدَّين فعلاً**: لحظة قرار الشراء. تسأله بلغتك العادية، فيحسب وضعك الكامل — دخلك، التزاماتك، مصروف شهرك، أهدافك — ويعطيك قراراً واضحاً في ثانية.
+
+> **لا تسجيل. لا نماذج. لا إدخال بيانات ممل.** افتح التطبيق واكتب مثل ما تتكلم.
+
+<br />
+
+## جرّبه في دقيقة
+
+<table>
+<tr><td>
+
+**أنت:** `اشتريت غدا بـ 45 ريال`
+**أزدل:** ✅ سجّلتها — غداء، 45 ريال.
+
+**أنت:** `كم باقي من مصروفي؟`
+**أزدل:** 📊 باقي لك **1,740 ريال** هالشهر، وقدامك 17 يوم.
+
+**أنت:** `أقدر أشتري لابتوب بـ 4,000 ريال؟`
+**أزدل:** ❌ **لا تقدر.** نسبة التزاماتك **50%** من دخلك — أعلى من الحد الآمن (33%). خفّف الالتزامات أول.
+
+</td></tr>
+</table>
+
+> 💡 **النقطة المهمة:** كل رقم هنا محسوب بـ**رياضيات حقيقية** داخل الكود — الذكاء الاصطناعي يفهم سؤالك فقط، ولا يحسب أبداً. لأن الثقة تُبنى على أرقام صحيحة، لا على تخمين.
+
+<br />
+
+## المميزات
+
+| | الميزة | الوصف |
+|:--:|---|---|
+| 🛡️ | **«هل أقدر أشتري؟»** | قرار فوري (نعم / انتظر / لا) مبني على دخلك والتزاماتك وأهدافك، مع سقف أمان 33% لنسبة الالتزامات |
+| 💬 | **محادثة بلهجتك** | اكتب أو **تكلّم** بالسعودي — بدون نماذج ولا قوائم |
+| 📸 | **تصوير الفواتير** | صوّر الفاتورة، ويستخرج البنود والمبلغ تلقائياً (OCR) |
+| 📊 | **ميزانيتك المتبقية** | «كم باقي من مصروفي؟» — إجابة محسوبة، لا تخمين |
+| 🎯 | **الالتزامات والأهداف** | سجّل أقساطك وأهداف ادخارك، ويحسب أثر كل قرار عليها |
+| 🏅 | **درجة النزاهة** | مقياس صدق تسجيلك — بعوامل حقيقية فقط، والمقفلة تبقى مقفلة بلا أرقام وهمية |
+| 🚀 | **بداية سريعة** | 3 أسئلة فقط، وتبدأ رحلتك |
+
+<br />
+
+## الرحلة: ثلاث مراحل
 
 ```
-COACH (المستشار)  →  SMART LENDER (المُقرِض الواعي)  →  WEALTH BUILDER (باني الثروة)
-   Free                   SAMA License Required                Partnerships
+   المستشار              المُقرِض الواعي            باني الثروة
+    (Coach)          →   (Smart Lender)      →   (Wealth Builder)
+  ────────────           ──────────────          ───────────────
+   مجاني — متاح           يتطلب ترخيص ساما          شراكات استثمارية
+   ويعمل اليوم ✅          (المرحلة القادمة)          (المستقبل)
 ```
+
+**مرحلة «المستشار» حقيقية وتعمل بالكامل اليوم** — محادثة، معاملات، التزامات، أهداف، وقرارات شراء، كلها متصلة بقاعدة بيانات فعلية.
+
+المرحلتان التاليتان معروضتان داخل التطبيق كـ**رؤية توضيحية** (شاشات تعريفية، بدون واجهات خلفية حقيقية) حتى تتضح القصة كاملة — وهذا موضّح صراحةً في التطبيق، لا يُقدَّم كأنه جاهز.
+
+<br />
+
+## الخصوصية
+
+- **ضيف أولاً:** تستخدم التطبيق فوراً بدون تسجيل — وبياناتك محفوظة ومحمية من أول رسالة
+- **عزل كامل:** كل حساب معزول بسياسات أمان على مستوى الصف (RLS)
+- **بدون بيانات شخصية حساسة:** لا نطلب هوية ولا معلومات بنكية في هذه المرحلة
+- **متوافق مع PDPL**
+
+<br />
 
 ---
 
-## What's Built
+<details>
+<summary><b>🛠️ للمطوّرين — التشغيل والبناء</b></summary>
 
-The Coach tier (Tier 1) is real and functional end-to-end — real Supabase-backed chat, transactions, commitments, goals, and purchase-affordability decisions. The Lender and Wealth Builder tiers are represented in the app as an investor-facing vision layer (mock content, clearly a preview, not wired to real backends) so the full 3-tier story is demonstrable in one build.
-
-| App area | What it does |
-|---|---|
-| **المحادثة (Chat)** | Natural-language expense logging, voice input, receipt photo OCR, remaining-budget queries, commitments/goals tracking, "can I afford this?" purchase decisions (DTI-aware) |
-| **حسابي (Account)** | Guest → real account upgrade (same data, zero migration), bank-linking flow (mock), "start as new guest" reset for demo/testing |
-| **خطتك نحو الاستثمار (Journey)** | The 3-tier vision made tangible — mock net-worth projection, unlock requirements tied to real app concepts (DTI, integrity score) |
-| **الدورات (Courses)** | Financial education content (mock, preview) |
-
-Auth is **anonymous-first** (DEC-017): every guest gets a real Supabase user with full data persistence from message one — no signup wall. Creating a real account later upgrades the same identity in place; nothing is lost.
-
-See [`app-spec/00_active_capabilities.md`](app-spec/00_active_capabilities.md) for the authoritative, up-to-date capability list, and [`app-spec/12_decision_log.md`](app-spec/12_decision_log.md) for every architecture/product decision with full rationale.
-
----
-
-## Project Structure
-
-```
-Azdal/
-├── app-spec/           ← Specification + decision log (source of truth — 30 files)
-├── docs/               ← Reference materials
-│   ├── business/       ← SWOT, PESTLE, Porter's, BMC, pitch deck
-│   ├── research/       ← Financial Knowledge Layer (23 academic refs)
-│   ├── design/         ← Visual identity, design system
-│   └── archive/        ← Historical brainstorming, stage handoffs, superseded analysis
-├── assets/branding/    ← Logo, brand assets
-├── lib/                ← Flutter source
-│   ├── app/            ← Router, theme, brand tokens, providers
-│   ├── core/services/  ← Gemini AI service
-│   └── features/
-│   │   ├── chat/        ← Core coach chat (screen, providers, services, widget catalog)
-│   │   ├── auth/        ← Signup/login, anonymous-upgrade service
-│   │   ├── account/      ← Account tab (identity, bank-link entry, reset-to-guest)
-│   │   ├── launch/       ← Splash + onboarding
-│   │   ├── shell/        ← Bottom-nav tab shell (IndexedStack)
-│   │   ├── bank/         ← Mock bank-linking flow
-│   │   ├── courses/      ← Mock courses tab
-│   │   └── journey/      ← Investment-journey vision screen
-├── test/               ← Unit/widget tests
-├── supabase/           ← Schema/migrations reference
-└── README.md           ← You are here
-```
-
----
-
-## Getting Started
+<br />
 
 ```bash
 flutter pub get
 
-# Copy the template and fill in your own Supabase + Gemini credentials
+# انسخ القالب واملأ مفاتيحك (Supabase + Gemini)
 cp .env.template .env
 
-# Run on a connected device/emulator
+# التشغيل على جهاز متصل
 flutter run --dart-define-from-file=.env
 
-# Build a debug APK
-flutter build apk --debug --dart-define-from-file=.env
+# بناء APK
+flutter build apk --release --dart-define-from-file=.env
 ```
 
-Credentials are compile-time constants (`--dart-define-from-file=.env`), **not** read from the OS environment — this matters on Android, where `Platform.environment` doesn't see your shell's variables.
+المفاتيح تُحقن **وقت الترجمة** عبر `--dart-define-from-file=.env` — وليس من متغيّرات النظام، لأن `Platform.environment` لا يرى متغيّرات الطرفية على أندرويد.
+
+**البناء التلقائي:** كل تحديث على `main` يبني APK جديداً عبر GitHub Actions ويرفعه تلقائياً إلى صفحة الإصدارات — فرابط التحميل بالأعلى دائماً محدّث.
+
+</details>
+
+<details>
+<summary><b>⚙️ التقنيات المستخدمة</b></summary>
+
+<br />
+
+| الطبقة | التقنية |
+|---|---|
+| اللغة | Dart |
+| الواجهة | Flutter — Material 3، دعم RTL كامل، الوضع الفاتح |
+| إدارة الحالة | Riverpod |
+| التنقّل | go_router |
+| الذكاء الاصطناعي | Google Gemini (Flash · Pro · Vision) |
+| الواجهة الخلفية | Supabase — PostgreSQL + RLS + Auth + Storage |
+| الصوت | speech_to_text |
+| الخط | Cairo (مضمّن محلياً) |
+
+**قاعدة معمارية ثابتة:** كل العمليات الحسابية المالية بلغة Dart — لا حسابات من الذكاء الاصطناعي، ولا Edge Functions للحساب.
+
+</details>
+
+<details>
+<summary><b>📚 التوثيق</b></summary>
+
+<br />
+
+| الملف | المحتوى |
+|---|---|
+| [`app-spec/00_active_capabilities.md`](app-spec/00_active_capabilities.md) | الحالة الفعلية والدقيقة لكل ميزة |
+| [`app-spec/12_decision_log.md`](app-spec/12_decision_log.md) | سجل كل قرار معماري ومنتجي مع مبرراته |
+| [`app-spec/01_prd.md`](app-spec/01_prd.md) | متطلبات المنتج الكاملة |
+| [`app-spec/07_flutter_architecture.md`](app-spec/07_flutter_architecture.md) | المعمارية التقنية |
+| [`docs/business/`](docs/business/) | نموذج العمل، SWOT، PESTLE، عرض المستثمرين |
+| [`docs/research/`](docs/research/) | الأساس السلوكي والمعرفي (23 مرجعاً أكاديمياً) |
+
+</details>
+
+<br />
 
 ---
 
-## Quick Start — Navigate the Spec Pack
+<div align="center">
 
-| Start Here | If You Want |
-|-----------|-------------|
-| [`app-spec/00_active_capabilities.md`](app-spec/00_active_capabilities.md) | The live, accurate status of every feature |
-| [`app-spec/00_product_discovery.md`](app-spec/00_product_discovery.md) | The vision, problem, solution, and competitive moat |
-| [`app-spec/01_prd.md`](app-spec/01_prd.md) | Complete product requirements and behaviors |
-| [`app-spec/07_flutter_architecture.md`](app-spec/07_flutter_architecture.md) | Technical architecture and stack |
-| [`app-spec/12_decision_log.md`](app-spec/12_decision_log.md) | Every architecture/product decision, with rationale (DEC-001 → DEC-047+) |
-| [`app-spec/16_implementation_backlog.md`](app-spec/16_implementation_backlog.md) | Build plan and task breakdown |
+### الفريق
 
----
+**عبدالرحمن جحفلي** — الذكاء الاصطناعي والتطوير
 
-### For Non-Technical Team Members
+**سجى** — نموذج العمل والعرض · **ديمة** — تصميم الواجهات · **هالة** — العروض والنماذج
 
-- 📊 **Business strategy:** [`docs/business/`](docs/business/) — SWOT, PESTLE, BMC, Pitch Deck
-- 🧠 **Behavioral foundation:** [`docs/research/financial-knowledge-layer.md`](docs/research/financial-knowledge-layer.md) — 23 academic references
-- 🎨 **Design:** [`docs/design/`](docs/design/) — visual identity guide, design system
-- 🎤 **Pitch preparation:** [`docs/business/pitch-deck.md`](docs/business/pitch-deck.md) — investor pitch
+<br />
 
----
+**هاكاثون AMAD 2026** · مسار التعليم المالي
 
-## Tech Stack
+<br />
+<br />
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Flutter (Dart) — Material 3, RTL (real localization, not a manual wrapper), **light mode only** |
-| State | Riverpod |
-| Routing | go_router |
-| AI | Gemini (Flash + Pro + Vision) |
-| Backend | Supabase (PostgreSQL, Row-Level Security, Anonymous Auth) |
-| Voice | `speech_to_text` (cross-platform, Android-first) |
-| Local Cache | None yet — Isar deferred post-hackathon (DEC-015) |
+<a href="https://github.com/jahfaliabdulrahman-dev/Azdal/releases/latest/download/app-release.apk">
+  <img src="https://img.shields.io/badge/⬇%20%D8%AD%D9%85%D9%91%D9%84%20%D8%A3%D8%B2%D8%AF%D9%84%20%D8%A7%D9%84%D8%A2%D9%86-2E7D32?style=for-the-badge&labelColor=2E7D32" alt="حمّل أزدل الآن" height="46" />
+</a>
 
----
-
-## Rules
-
-1. **app-spec is the source of truth** — docs/ are reference only
-2. **No hard delete on app data** — `is_deleted`/`deleted_at` flags (anti-ghost protocol); this is a data-model rule, unrelated to repo file housekeeping
-3. **Backend validates entitlements** — client is UX-only
-4. **Traceability mandatory** — every feature → spec files → decision log entry
-5. **All financial math is pure Dart** — no LLM arithmetic, no Edge Functions for calculations (DEC-024)
-
----
-
-## License & Regulatory
-
-- **Phase 1 (Coach):** No license required — educational tool
-- **Phase 2 (B2B Insights):** No license — anonymized behavioral scores
-- **Phase 3 (Smart Lender):** SAMA Consumer Finance License required
-- **Privacy:** PDPL-compliant. Guest-first. Anonymous by default, real identity opt-in only.
+</div>
