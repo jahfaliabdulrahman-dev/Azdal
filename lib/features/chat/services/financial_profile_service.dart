@@ -34,6 +34,6 @@ final class FinancialProfileService {
         .eq('user_id', userId)
         .eq('is_deleted', false)
         .limit(1);
-    return (rows as List).isEmpty ? null : rows.first as Map<String, dynamic>;
+    return rows.isEmpty ? null : rows.first;
   }
 }

@@ -1,21 +1,24 @@
 # =============================================================================
-# Azdal CI — Stage 1: Lint Only
+# Azdal CI — analyze + test
 # =============================================================================
-# This workflow runs static analysis (`flutter analyze`) on every push and
-# pull request to the `main` branch.
+# Runs on every push and pull request to `main`.
 #
-# STAGE 1 SCOPE: Lint only. No test runner, no build, no deploy, no release.
-#   - Test runner (flutter test)  → Stage 2
-#   - Build (flutter build)       → Stage 3
-#   - Deploy / release            → Stage 4
+# Fails only on REAL problems (analyzer errors + warnings) and failing tests.
+# Style-level infos (avoid_print for gated debug logging, prefer_const, etc.)
+# are reported but non-blocking via --no-fatal-infos, so day-to-day commits
+# aren't marked red for cosmetic lints.
 #
-# NOTE: Building this project requires --dart-define-from-file=.env
-# (see scripts/build_debug.sh). flutter analyze does NOT need credentials
-# because String.fromEnvironment() returns '' at analysis time and the
-# asserts don't fire at compile time — no build step = no flag needed.
+# Flutter version MUST match local dev (3.44.6): the code uses
+# Color.withValues() (Flutter 3.27+). An older CI Flutter (this was pinned to
+# 3.24) fails to compile it and turned every commit red — which is exactly why
+# the repo *looked* broken even though the app builds and runs fine.
+#
+# flutter test does NOT need Supabase/Gemini credentials — the suite handles a
+# missing session gracefully. The APK build (which does need them) lives in
+# build.yml, not here.
 # =============================================================================
 
-name: Azdal CI — Lint
+name: Azdal CI
 
 on:
   push:
@@ -24,14 +27,15 @@ on:
     branches: [main]
 
 jobs:
-  analyze:
-    name: Flutter Analyze
+  analyze-and-test:
+    name: Analyze & Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24'
+          flutter-version: '3.44.6'
           channel: 'stable'
       - run: flutter pub get
-      - run: flutter analyze
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
