@@ -119,6 +119,61 @@ The app will *feel* like it knows him because it remembers what he told it and
 doesn't make him repeat himself — that is real and sufficient, and it doesn't
 overpromise a mind-reading it can't deliver.
 
+## The agent he imagines — concrete examples (his words, 2026-07-19)
+
+> Captured during a personal-build planning session. His diagnosis of today's
+> app: it feels **مقيّد / آلي** (constrained / robotic) — a rule engine, not an
+> agent that remembers him, connects his numbers, takes initiative, and reaches
+> into the world. These four examples are the acceptance target for "a real,
+> effective, intelligent agent" — concrete behaviours, not adjectives.
+
+1. **Detect a habit and proactively propose a cheaper substitution, saving
+   computed.** e.g. "you buy coffee every day → a machine + ground coffee saves
+   you X/month" — pushed as a notification, not waited-for.
+2. **Carry real domain knowledge — financial principles, current market products,
+   new investment options — and actively push him toward investing, convincing
+   him with evidence/proofs.** The "من مديون إلى مستثمر" thesis made active.
+3. **Reason about unit economics / consumption patterns.** e.g. "you keep buying
+   small milk → switch to the family size, it saves X"; or on demand: "should I
+   buy the small or the large, and how does each hit my budget?"
+4. **Decide cash-allocation: pay off debt vs. invest.** "I have cash and an
+   installment I could clear with it — better to pay it off and be done, or keep
+   paying installments and put the cash into an investment?"
+
+**Underlying capabilities implied:** memory (never re-ask; connect his numbers to
+his goals/history); pattern detection over his own data; proactivity (initiate at
+the right moment); world-facing tools (price/product/market lookup — grounded,
+never invented); domain knowledge + evidence-based persuasion — all steering the
+debt→emergency→invest trajectory. Delivery mechanism = the DEC-050 tool-calling
+router, extended with **world-facing tools**, plus a **proactivity engine** and a
+**memory layer**.
+
+**The trust reconciliation (how "smart" and "trustworthy" coexist):** split the
+two domains. Anything computing *his money* (disposable, DTI, verdicts, savings)
+stays **deterministic Dart** (DEC-024) — the model never computes it. The *world*
+side (search a price, propose a cheaper alternative, weigh options, initiate)
+gets **real tools and free reasoning** — but every external fact/price must come
+from a **real fetched source, never invented** (extend "the LLM never fabricates
+numbers" to prices/products). Intelligence lives on the world side; trust lives on
+the money side; they don't conflict.
+
+**Two honest guardrails on this vision (do not lose these):**
+
+- **Most of it is data-gated.** Habit/consumption detection (examples 1 & 3) is
+  only honest with ~4 weeks of consistent logging and a fixed category taxonomy
+  (so قهوة/كوفي/مقهى don't fragment). The intelligence is *built on* the logging,
+  not separable from it — logging is the substrate even when it isn't the felt
+  bottleneck.
+- **The invest side has a line the app must not cross.** Example 4 is the crown
+  jewel and the thesis itself — and usually its honest answer is "pay the
+  high-cost debt off first" (a guaranteed return that beats an uncertain market
+  one). The app **may** compute that tradeoff with his real numbers and teach the
+  principle; it **must not** recommend a specific security/fund or promise a
+  market return — regulated, personalized investment advice and a trust landmine.
+  Teach the framework and do the math; never pick the instrument. (Consistent with
+  this doc's honest-limits stance and `21`'s "investment-quality judgment stays
+  his".)
+
 ## Related
 
 - `21_personal_build_plan.md` — the phased plan that operationalizes all of this

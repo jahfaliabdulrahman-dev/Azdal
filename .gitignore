@@ -11,6 +11,7 @@ build/
 # IDE
 .idea/
 .vscode/
+.claude/
 *.iml
 *.ipr
 *.iws
@@ -64,3 +65,6 @@ test/.test_runner.dart
 .hermes/sessions/
 .hermes/workspace/
 android/.kotlin/
+
+# DB backups — only the age-encrypted output may be committed, never the raw dump
+backups/*.sql

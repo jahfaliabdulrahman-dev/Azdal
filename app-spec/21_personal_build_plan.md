@@ -127,6 +127,69 @@ scheduled `pg_dump`).
   TCO on large purchases; explicit preference profile; SMS parsing if the week-1
   gate didn't already promote it.
 
+## Unified build order — the agentic-coach quartet (2026-07-19)
+
+> This section **refines** the "Phased build order" above with the four deep
+> consults (DEC-051…054, research docs 22–26). Ordering principle, stated bluntly:
+> **foundation before bling.** Three things recur as the prerequisite for every
+> impressive behaviour — the router, the fixed category taxonomy + 4 weeks of
+> logging, and the memory layer. The features that dazzle (cheaper-alternative
+> search, habit detection, proactivity) all stand on top of them.
+
+**Gate checks first — cheap, before any code:**
+- **G1 — App Check × sideloaded APK** (Firebase console): decides `firebase_ai`
+  vs `googleai_dart` for the router *and* the world tools. Blocks DEC-050/054.
+- **G2 — live Supabase check**: plan tier (backup path) + confirm the pre-existing
+  anonymous data is throwaway before deleting it (DEC-051).
+
+**Phase 0 — foundation (durability, simplified by DEC-051):**
+- Remove guest sign-in; require email login from first launch; delete the guest
+  reset; clean-slate the throwaway data.
+- Backups: nightly `pg_dump` via GitHub Actions, `age`-encrypted, private repo,
+  **including `-s auth`** (doc 22).
+- Migration baseline: `supabase db pull`; production-migration discipline
+  henceforth.
+- Real tests for `PurchaseDecisionService` + `IntegrityScoreService`; fix the
+  commitment-payoff-creates-no-transaction gap.
+- Build the **golden intent matrix against the *current* router** (the migration
+  safety net).
+- Task-zero cheap fix: soften/remove `financial-knowledge-layer.md` §7.2 (DEC-053).
+
+**Phase 0.5 — the router (DEC-050):** migrate to `firebase_ai` behind a
+`RouterLlm` interface; forced ANY + `general_chat` + `ask_clarification`;
+open/closed tool registry; `tool_calls` trace. Retire the regex gates.
+
+**Phase 1 — the intelligence foundation ("before the bling"):**
+- **Fixed category taxonomy** + migration + backfill (DEC-053) — do EARLY (may
+  overlap Phase 0.5); it starts the 4-week clock.
+- **Memory M0**: `user_facts` + `preference_profile` + `remember_fact` /
+  `recall_memory` / `update_preference` (DEC-052) — kills most of "it doesn't
+  remember me."
+- **Tone**: no-gloat constants + profile-driven BRP variants + the vision-doc
+  tone/disobedience prompt.
+
+**Phase 2 — value-now engines (no data gate):**
+- `evaluate_payoff_vs_invest` — the crown jewel; capture `principal_cash_price` +
+  `total_payable`; IRR + real tests (DEC-053).
+- `compare_unit_options` on-demand (DEC-053).
+- World **W0 spike** (10 real KSA grounded queries — retires the biggest unknown)
+  → **W1** `search_price` + `WorldOutcome` card + grounded-or-silent enforcement +
+  `price_observations` (DEC-054).
+
+**Phase 3 — world + composition:** **W2** `find_cheaper_alternative` composing
+into the substitution/unit engines; **W3** `get_market_info` (DEC-054).
+
+**Phase 4 — data-gated (after ~4 weeks of taxonomy-clean logging):**
+- `detect_habits` + `SubstitutionService` (DEC-053); proactivity **M2** in-app
+  insights → **M3** background nudges (DEC-052); the weekly review / mirror
+  (المرآة).
+- **W4 (conditional)** SerpApi behind `WorldPriceProvider`, only if telemetry
+  shows a real price-precision gap (DEC-054).
+
+**Guardrail (from DEC-050's timing note):** timebox each phase; if one overruns,
+ship the value you have and return — his real financial life is the point, not
+architectural purity.
+
 ## Honest limits (tell the founder as-is, don't oversell)
 
 - **"Understands my personality"** — not achievable as real inference now. The
@@ -147,6 +210,17 @@ scheduled `pg_dump`).
 
 ## Sources & consultations behind this plan
 
+- **Fable-model deep consults, verified against live official docs, captured in
+  full:** `22_research_account_durability.md` (Phase 0 — conversion, backups,
+  migrations) · `23_research_tool_calling_router.md` (Phase 0.5 — SDK verdict +
+  router architecture) · `24_research_memory_and_proactivity.md` (the memory layer
+  + proactivity/nudge engine — the "personal assistant" infrastructure) ·
+  `25_research_financial_intelligence_engines.md` (fixed category taxonomy, habit/
+  substitution/unit-economics engines, payoff-vs-invest, and the CMA/SAMA advice
+  line) · `26_research_world_facing_tools.md` (Gemini Google-Search grounding for
+  real KSA price/product/market lookup — two-call architecture, grounded-or-silent
+  enforcement, the ToS "no price database" rule). Read the relevant one before
+  building that layer; they supersede the summary bullets below where they conflict.
 - Two Fable-model consultations (2026-07): the full product/feature plan, and a
   focused architecture read of the current chat routing.
 - The founder's own stated needs and philosophy — `20_personal_vision_and_goals.md`.

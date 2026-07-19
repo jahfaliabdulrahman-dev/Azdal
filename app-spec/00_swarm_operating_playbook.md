@@ -1,6 +1,6 @@
 # Azdal — Swarm Operating Playbook
 
-> **Purpose:** How the 8 Hermes agent profiles operate for the Azdal project.  
+> **Purpose:** How the 10 Hermes agent profiles operate for the Azdal project.  
 > **Status:** Template — populated when swarm is activated (Stage 1+).  
 > **Last Updated:** 2026-06-29
 
@@ -18,6 +18,8 @@
 | 6 | flutter-qa-tester | 🧪 | Test coverage, acceptance, regression | Standby |
 | 7 | flutter-zero-trust-auditor | 🔴 | Hostile audit, Black Swan, attack vectors | Standby |
 | 8 | flutter-devops-release-engineer | 🚀 | CI/CD, secrets, build flavors, release gates | Standby |
+| 9 | flutter-documentation-steward | 📝 | Documentation, lessons-learned routing, spec cross-references, traceability | Standby |
+| 10 | flutter-curiosity-hunter | 🛡️ (صيّاد) | SCSI Guardian — proactive bug hunting, pattern scanning, Red Team attacks, RCA pipeline, gate factory | Standby |
 
 ---
 
@@ -52,7 +54,7 @@ Only the Lead Architect is active during Stage 0:
 | Stage 2 — Chat + Transaction | Architect + State Engineer + Product Steward | Flutter project scaffolded |
 | Stage 3 — OCR + "Can I Buy?" | Architect + State Engineer + QA Tester | Chat core working |
 | Stage 4 — Goals + Simulation | Architect + State Engineer + QA Tester | Purchase engine working |
-| Stage 5 — Polish + Audit | All 8 profiles | All features implemented |
+| Stage 5 — Polish + Audit | All 10 profiles | All features implemented |
 | Stage 6 — Release | Architect + DevOps + Auditor | QA passed |
 
 ---

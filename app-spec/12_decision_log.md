@@ -24,7 +24,7 @@ None at Stage 4. All decisions below are closed.
 | **Rationale** | The founder stated, unprompted and with weight, that regardless of the hackathon he needs this app to work for his own life — he's in real financial stress and wants Azdal to be what gets him out. "Skin in the game": he is the product's first, all-in real user, and his success *is* the branch's success. Building for a real, demanding daily user is also the surest path to a product that works for anyone. |
 | **Key decisions carried in the plan** | (a) **Account durability first** — convert his anonymous account to permanent + backups, before any feature, because it protects data that already exists. (b) **Branch strategy:** not a long-lived git branch (would rot) — a second entry point (`lib/main_personal.dart`) in the same repo, tag the hackathon state, gradually invert `main`. (c) **"My success = the branch's success" made falsifiable** via five real metrics (logging coverage, emergency-fund milestone, savings rate, the app's own model accuracy, consulted-decision count), definitions committed so they can't drift. (d) Phased: Phase 0 (durability, real tests, golden intent matrix) → Phase 0.5 (tool-calling router, DEC-050) → Phases 1–3 (capabilities). |
 | **Coach tone (binding)** | Blunt honesty over flattery, willing to deliver a hard/shock truth when the user has come seeking change — but **never gloating** after advice is ignored (that kills honest logging, which everything depends on). See `20_personal_vision_and_goals.md`. |
-| **Related** | DEC-050, DEC-017 (anonymous→permanent upgrade this relies on), `20_personal_vision_and_goals.md`, `21_personal_build_plan.md` |
+| **Related** | DEC-050, DEC-017 (anonymous→permanent upgrade this relies on), `20_personal_vision_and_goals.md`, `21_personal_build_plan.md`, `22_research_account_durability.md` (verified Phase-0 research: conversion mechanism, backups, migration discipline) |
 
 ---
 
@@ -43,7 +43,83 @@ None at Stage 4. All decisions below are closed.
 | **New infra worth adding** | A **tool-call trace** (one row per routed message: message → tool → args → result → write IDs, local or a Supabase `tool_calls` table). Turns the manual verify-by-Supabase-query ritual into a lookup — pays for itself for a single-user personal build. |
 | **Dependency flag** | `google_generative_ai` (0.4.x) supports function-calling but has been deprecated by Google (successor: Firebase AI Logic / newer Gen AI SDK). The router migration is the natural moment to check pub.dev and move to the maintained SDK **once** — verify status before starting, don't migrate twice. |
 | **Timing** | Personal-build **Phase 0.5** — after Phase 0 (account durability + real tests + a golden intent matrix built against the *current* router, which becomes the migration's safety net), and **before** any Phase 1 capability (building BNPL/budgets on regex means writing gates already slated for deletion). Not before the hackathon submission was frozen. Timebox to ~a week of evenings; if it blows past, ship Phase 1 the old way and return — his real financial life is the point, not architectural purity. |
-| **Related** | DEC-037-B (the deferral this closes), DEC-024 (the "model never computes" rule these disciplines protect), DEC-020/021/033/034 (the tiered approvals that become the harness's write-gate), DEC-049, `21_personal_build_plan.md` §Phase 0.5 |
+| **Related** | DEC-037-B (the deferral this closes), DEC-024 (the "model never computes" rule these disciplines protect), DEC-020/021/033/034 (the tiered approvals that become the harness's write-gate), DEC-049, `21_personal_build_plan.md` §Phase 0.5, `23_research_tool_calling_router.md` (verified deep-research: SDK verdict + router architecture + testing story) |
+| **Verified research (2026-07-18)** | A Fable deep-research consult against current official docs confirmed this design holds, and surfaced the decisive new fact: **`google_generative_ai` is deprecated (frozen since 2025-04)** → migrate once to **`firebase_ai`** behind a ~50-line `RouterLlm` interface. **Biggest risk is not the router — it is the July-2026 Firebase App Check auto-enforcement colliding with a sideloaded personal APK**, which must be live-checked in the Firebase console *before* any router code (fallback SDK: `googleai_dart`). Full brief, alternatives, and pitfalls: `23_research_tool_calling_router.md`. |
+
+---
+
+### DEC-051: Personal Build — Remove Guest Sign-In, Require Login From First Launch
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-19 |
+| **Status** | 🔵 Adopted (personal build) |
+| **Summary** | The personal build **removes anonymous/guest sign-in entirely**. The app requires a simple email/password login from first launch, so every account is **permanent from message one**. Deletes the "start as new guest" reset (DEC-047, demo-only) and **supersedes anonymous-first (DEC-017) for the personal build.** |
+| **Rationale** | The founder's explicit call: the app has no users but himself, and the pre-existing anonymous test data is throwaway (delete it — clean slate). This **dissolves the hardest part of Phase 0** — the anonymous→permanent conversion analysed in `22_research_account_durability.md`: with login-from-launch there is no in-place upgrade, no same-UUID conversion, no data-orphaning risk. The account is durable by construction. |
+| **What still applies from doc 22** | Backups (nightly `pg_dump` via GitHub Actions, `age`-encrypted, private repo, **including `-s auth`**) and the migration baseline (`supabase db pull`) still matter the moment real data accrues. |
+| **Caveat** | If any already-logged rows are his *real* expenses (not test), convert once before deleting; he stated it's throwaway → clean slate. |
+| **Related** | DEC-017 (superseded for the personal build), DEC-047 (deleted), `22_research_account_durability.md`, `21_personal_build_plan.md`, `20_personal_vision_and_goals.md` |
+
+---
+
+### DEC-052: Memory Layer + Preference Profile + Proactivity Engine
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-19 |
+| **Status** | 🔵 Adopted, scheduled (personal build). Full design: `24_research_memory_and_proactivity.md` |
+| **Summary** | Give the coach durable memory and initiative — the fix for "it doesn't remember me" (literally accurate today: the coach prompt receives zero user context). Two Supabase tables: `user_facts` (keyed, supersede-chain, soft-delete) and `preference_profile` (explicit, user-editable). **Deterministic recall, no embeddings / no vector search** (a single user's memory is ~20–100 keyed facts, not a corpus). Plus an on-device proactivity/nudge engine. |
+| **New hard rule** | **Memory stores context, never money.** Financial magnitudes live only in the ledger tables; `UserFactsService.upsert()` structurally bars financial-magnitude keys. This prevents memory from becoming a back-channel for LLM arithmetic (DEC-024). |
+| **Injection (preserves DEC-050 rule 5)** | Memory enters as **Dart-authored state, never transcript**: `known_fact_keys` (keys only, no values) into the router's state block; a `fact_text_ar` block (prompt-safe facts only) into the coach prompt. Three new router tools: `remember_fact` (write tier confirmCard — memory writes get money-grade trust treatment), `recall_memory`, `update_preference`. |
+| **Proactivity** | **On-device** (`workmanager` + `flutter_local_notifications`), **zero LLM calls in the background path** (deterministic Arabic templates), foreground sweep on app-open as the reliable delivery layer. Server-side pg_cron→Edge-Function→FCM **rejected** — it rebuilds the compute layer DEC-024 cancelled, in TypeScript, and drags in FCM/App Check. Anti-nagging: opt-in + evidence gate (≥4 weeks) + materiality threshold + cadence caps + quiet hours + **a 72-hour post-override grace = the no-gloat rule mechanized** (a substitution nudge the morning after he ignored the advice *is* gloating by cron). |
+| **Build order** | memory → profile → in-app (pulled) insights → background (pushed) nudges. |
+| **Related** | `24_research_memory_and_proactivity.md`, DEC-050 (router these plug into), DEC-024 (money-never-in-model), DEC-022 (BRP), DEC-020/021 (staged-confirm), `20_personal_vision_and_goals.md` |
+
+---
+
+### DEC-053: Financial-Intelligence Engines + Fixed Category Taxonomy + the CMA/SAMA Advice Line
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-19 |
+| **Status** | 🔵 Adopted, scheduled (personal build). Full design: `25_research_financial_intelligence_engines.md` |
+| **Summary** | The engines behind doc 20's examples 1/3/4: habit detection + substitution, unit economics, and the payoff-vs-invest decision — all coarse, verdict-shaped, **pure-Dart** tools per DEC-024/DEC-050. |
+| **Fixed category taxonomy (build first)** | Replace today's **free-text Gemini category string** (the قهوة/كوفي/مقهى fragmentation doc 20 warns about) with a **fixed 14-key taxonomy**. It is built first because it **starts the 4-week honest-data clock**. Assignment: deterministic Dart keyword map → closed-set LLM classification (enum, Dart-validated) → a `user_category_overrides` table that grows the deterministic layer at **zero model cost**. Additive migration (add `category_key`/`category_source`/`item_key`/`qty`/`unit_size`/`unit`; keep old text as `category_raw`). |
+| **Engines** | `detect_habits` (data-gated; `insufficient_data` is a first-class verdict, not an error), `compare_unit_options` (pure function; on-demand from day one), `evaluate_payoff_vs_invest` (**no data gate** — runs off today's commitments; represents KSA BNPL cost by capturing `principal_cash_price` + `total_payable` → IRR in Dart, sidestepping provider marketing; emergency-floor-first cascade; the honest answer is usually "clear the high-cost debt first" — which *is* the thesis). |
+| **The safe advice line (CMA/SAMA, verified)** | **DO:** compute his own money + teach general principles with his numbers ("سداد قسط كلفته ١٢٪ = عائد مضمون ١٢٪؛ الاستثمار غير مضمون"). **DON'T:** name a specific instrument/platform, or promise/assume a market return in a personalized computation — that is CMA-regulated advice. Enforced in tools (categorical comparison only) AND the prompt (refusal rule + few-shot). |
+| **Required fix to an existing doc** | `docs/research/financial-knowledge-layer.md` §7.2 ("directs users to the most suitable platform — Tamra/Abyan by size/risk") crosses this line — **soften to non-personalized education or remove.** |
+| **Discipline** | All math pure Dart (DEC-024); **real tests** (esp. the IRR helper) per DEC-048's proven fake-coverage gap. |
+| **Related** | `25_research_financial_intelligence_engines.md`, DEC-024, DEC-026 (DTI cap/buy engine), DEC-048 (real tests), `docs/research/financial-knowledge-layer.md`, `20_personal_vision_and_goals.md` |
+
+---
+
+### DEC-054: World-Facing Tools — Grounded Google Search for Real KSA Price/Product/Market Lookup
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-19 |
+| **Status** | 🔵 Adopted, scheduled (personal build). Full design: `26_research_world_facing_tools.md` |
+| **Summary** | The capability the founder named as the core of "a real, non-robotic agent": reach into the real world, find a cheaper alternative, know the market — **grounded, never invented.** Built on `firebase_ai`'s `Tool.googleSearch()` (GA), which returns citable `groundingMetadata`. |
+| **Two-call architecture** | The router call stays **function-calling only** (forced ANY, no built-in tools); a world tool's `run()` makes a **second, separate, stateless grounded call** with `Tool.googleSearch()` only. Mixing built-in + custom tools is Preview, Gemini-3-only, and requires multi-turn history — it would break DEC-050 rule 5. |
+| **Anti-hallucination (structural)** | **Grounded-or-silent:** no `groundingMetadata` ⇒ the model text is discarded unread and a deterministic fallback renders — the code path that shows an ungrounded sentence as a price does not exist. Extends "the LLM never fabricates numbers" to **prices/products**. **Provenance gate:** a grounded price is *evidence*, not data, until the founder confirms it with one tap → only then is it written to `price_observations` (`source: user_confirmed_from_search`) and consumed by the Dart engines (the "fetched cited price" slot doc 25 reserved). |
+| **ToS (binding design input)** | May store grounded text in the user's own chat history (≤2 yrs); **may NOT build a database/index from grounded results** → **never cache grounded prices into a reusable price table.** Encode this so a future refactor doesn't add a "price cache." Render the required Search Suggestions widget + sources verbatim. |
+| **Tools & voice** | `search_price`, `find_cheaper_alternative`, `get_market_info` (info-only, fixed un-softenable footer "معلومة عامة… مو توصية استثمارية", carries no `candidates` so **no code path into any financial engine** — consistent with DEC-053's advice line). World side: the model speaks the grounded text verbatim (the one principled exception to "Dart speaks out", safe by the grounded-or-silent gate); money side: Dart computes any budget impact in a separate card section. |
+| **Deferred / rejected** | Structured price APIs (SerpApi Google Shopping, `gl=sa` verified) held behind a `WorldPriceProvider` interface, added only if measured precision gaps justify it (server-proxied, math-free). Direct scraping and Amazon PA-API **rejected**. |
+| **Inherited risk** | Same **App Check × sideloaded-APK** risk as DEC-050/doc 23 — resolve first. |
+| **Related** | `26_research_world_facing_tools.md`, `23_research_tool_calling_router.md`, DEC-050, DEC-024, DEC-053, `20_personal_vision_and_goals.md` |
+
+---
+
+### DEC-055: Hermes Swarm — All 10 Profiles Switched from DeepSeek to Claude Sonnet 5
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-19 |
+| **Status** | 🔵 Adopted |
+| **Summary** | `.hermes/swarm.yaml` — config for the 10-agent Hermes swarm (Route B: EPIC → Kanban → swarm) — had every profile (leader + 9 workers) set to `deepseek-v4-pro`, with `flutter-documentation-steward` on `deepseek-v4-pro`. All 10 are now `claude-sonnet-5`. Route A (`Sulaiman`/`quick_task`, small ≤2-file tasks) is unaffected — it stays direct execution in the Cowork chat session, not a config value in this file. |
+| **Rationale** | Founder's explicit decision, made via Cowork: Sonnet 5 runs the full swarm — the 10 profiles between them cover every needed specialization (product, design, backend, implementation, QA, audit, DevOps, docs, guardian, orchestration) — while Claude (this session, the Executive Controller) remains the guarantor who verifies the swarm's reported work rather than trusting a DONE status at face value. Claude Opus 4.8 is deliberately *not* wired into this config — it's reserved as a manual escalation the founder invokes himself only if a small Route A task fails to resolve after repeated attempts, not an automatic routing rule. |
+| **Verification note** | The `claude-sonnet-5` string follows the file's existing bare-slug convention (`deepseek-v4-pro`, no provider prefix or date suffix) and is the canonical identifier for Claude Sonnet 5. Not yet confirmed against Hermes' actual model-routing gateway — if `lead_delegate`/`lead_ultra_check` calls fail or misroute after this change, check whether the gateway expects a different exact string and correct here. |
+| **Related** | `.hermes/swarm.yaml`, `app-spec/00_swarm_operating_playbook.md`, DEC-050 (tool-calling router — a separate, unrelated change) |
 
 ---
 

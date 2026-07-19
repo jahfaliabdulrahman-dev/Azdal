@@ -16,10 +16,13 @@
 - **The next phase (this is the real work now):** a permanent, chat-only
   **personal build** for the founder's own financial life. His real turnaround —
   saving, an emergency fund, changed habits — is the definition of "done."
-- **⏭️ THE IMMEDIATE NEXT ACTION:** convert the founder's account from anonymous
-  to a permanent email-linked account, and set up backups. It protects real data
-  that already exists and is independent of everything else. (Personal-build
-  Phase 0 — see file #4 below.)
+- **⏭️ THE IMMEDIATE NEXT ACTION:** two cheap gate checks before any code — (G1)
+  App Check × sideloaded-APK in the Firebase console (decides the LLM SDK), and
+  (G2) a live Supabase check (plan tier + confirm the throwaway data). Then Phase 0
+  foundation: **remove guest sign-in, require email login from first launch**
+  (DEC-051, which retired the old anonymous→permanent plan), backups, migration
+  baseline, real tests. See the **"Unified build order"** section of
+  `21_personal_build_plan.md`.
 - **The one rule you must never break:** the LLM never does financial math. All
   arithmetic is pure Dart in the service layer. A number the model produced is a
   bug. (More guardrails at the bottom.)
@@ -65,10 +68,13 @@ the always-relevant overview/status ones.
 ## ⏭️ Your next step, concretely
 
 1. Confirm you've read files 1–5 above.
-2. The first real work item is **Phase 0** in `21_personal_build_plan.md`:
-   **account durability** — convert the founder's anonymous Supabase account to a
-   permanent email-linked one (same UUID, zero data migration — see DEC-017), and
-   set up backups (PITR if the plan allows, else a scheduled `pg_dump`).
+2. The first real work item is the **"Unified build order"** in
+   `21_personal_build_plan.md`: gate checks (G1 App Check, G2 Supabase) → **Phase 0
+   foundation** — remove guest sign-in and require email login from first launch
+   (DEC-051, which supersedes the old anonymous→permanent conversion), a scheduled
+   `pg_dump` backup (incl. `-s auth`), the migration baseline, and real tests. The
+   four agentic-coach layers (memory, financial engines, world tools, proactivity)
+   are DEC-051…054, designed in research docs 22–26.
 3. Everything else in the plan (BNPL decisions, forecasting, the tool-calling
    router in Phase 0.5, emergency fund, etc.) comes *after* durability. Don't
    reorder it without a reason — the sequence is deliberate and explained in the

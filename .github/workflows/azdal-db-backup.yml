@@ -1,0 +1,51 @@
+name: azdal-db-backup
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 1 * * *'   # 01:00 UTC = 04:00 KSA
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Install age
+        run: sudo apt-get update && sudo apt-get install -y age
+
+      - name: Create backups directory
+        run: mkdir -p backups
+
+      - name: Dump roles
+        run: supabase db dump --db-url "$DB_URL" -f backups/roles.sql --role-only
+
+      - name: Dump schema
+        run: supabase db dump --db-url "$DB_URL" -f backups/schema.sql
+
+      - name: Dump data (public schema)
+        run: supabase db dump --db-url "$DB_URL" -f backups/data.sql --data-only --use-copy
+
+      - name: Dump auth schema data
+        run: supabase db dump --db-url "$DB_URL" -f backups/auth.sql --data-only --use-copy -s auth
+
+      - name: Encrypt backups
+        run: |
+          for f in backups/*.sql; do
+            age -r "${{ secrets.AGE_PUBLIC_KEY }}" -o "$f.age" "$f"
+            rm "$f"
+          done
+
+      - name: Commit encrypted backups
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Azdal DB backup"
+          file_pattern: "backups/*.age"

@@ -1,10 +1,19 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# AZDAL — HERMES SWARM CONFIGURATION v2.0
+# AZDAL — HERMES SWARM CONFIGURATION v2.1
 # ═══════════════════════════════════════════════════════════════════════════════
-# Updated: 2026-07-12
+# Updated: 2026-07-19
 # Governance: ~/.hermes/swarm/constitution.yaml (8 Articles — system-wide)
 # Project: Azdal — 3-tier financial transformation platform (Flutter mobile)
 # Repository: /Users/abdurrahmanjahfali/Azdal
+#
+# 2026-07-19 — Model switch: leader + all 9 workers moved from
+# deepseek-v4-pro/flash to claude-sonnet-5 (Abdulrahman's decision, confirmed
+# via Cowork). Route A (Sulaiman/quick_task) is unaffected by this file — it
+# stays direct execution in chat. Opus 4.8 is not a config value here; it's a
+# manual escalation path Abdulrahman invokes himself when a small Route A task
+# fails to resolve after repeated attempts. Executive Controller (this chat,
+# running on Sonnet 5) remains responsible for verifying swarm output — the
+# swarm reporting DONE is not itself proof of correctness.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 meta:
@@ -75,7 +84,7 @@ leader:
   name: "Lead Architect Orchestrator"
   emoji: "🜔"
   profile: "flutter-lead-architect"
-  model: "deepseek-v4-pro"
+  model: "claude-sonnet-5"
   wrapper: "architect:plan"
   role: >
     Orchestrator — decomposes epics, routes tasks, resolves conflicts,
@@ -204,7 +213,7 @@ workers:
     name: "Product Requirements Steward"
     emoji: "📋"
     profile: "flutter-product-steward"
-    model: "deepseek-v4-pro"
+    model: "claude-sonnet-5"
     wrapper: "flutter-product-steward"
     role: >
       Product scope owner — converts product ideas into clear, testable,
@@ -260,7 +269,7 @@ workers:
     name: "UI/UX Product Designer"
     emoji: "🎨"
     profile: "flutter-ui-ux-designer"
-    model: "deepseek-v4-pro"
+    model: "claude-sonnet-5"
     wrapper: "designer:spec"
     role: >
       Design system owner — defines user flows, screen structures, navigation,
@@ -322,7 +331,7 @@ workers:
     name: "Backend & DB Architect"
     emoji: "🗄️"
     profile: "flutter-backend-db-architect"
-    model: "deepseek-v4-pro"
+    model: "claude-sonnet-5"
     wrapper: "backend:design"
     role: >
       Data architect — designs Isar schema, enforces ACID, detects nested
@@ -386,7 +395,7 @@ workers:
     name: "Flutter State Engineer"
     emoji: "💻"
     profile: "flutter-state-engineer"
-    model: "deepseek-v4-pro"
+    model: "claude-sonnet-5"
     wrapper: "engineer:task"
     role: >
       Client Executor — implements screens, state management, routing,
@@ -469,7 +478,7 @@ workers:
     name: "QA Test Engineer"
     emoji: "🧪"
     profile: "flutter-qa-tester"
-    model: "deepseek-v4-pro"
+    model: "claude-sonnet-5"
     wrapper: "qa:test"
     role: >
       Quality gate — transforms requirements into executable validation coverage.
@@ -534,7 +543,7 @@ workers:
     name: "Zero-Trust Red Team Auditor"
     emoji: "🔴"
     profile: "flutter-zero-trust-auditor"
-    model: "deepseek-v4-pro"
+    model: "claude-sonnet-5"
     wrapper: "auditor:attack"
     role: >
       Hostile Auditor — tears down lazy models, exposes architectural paradoxes,
@@ -600,7 +609,7 @@ workers:
     name: "DevOps Release Engineer"
     emoji: "🚀"
     profile: "flutter-devops-release-engineer"
-    model: "deepseek-v4-pro"
+    model: "claude-sonnet-5"
     wrapper: "devops:check"
     role: >
       Release owner — manages environment config, CI/CD, secrets, build flavors,
@@ -679,7 +688,7 @@ workers:
     name: "Documentation & Traceability Steward"
     emoji: "📝"
     profile: "flutter-documentation-steward"
-    model: "deepseek-v4-flash"
+    model: "claude-sonnet-5"
     wrapper: "docs:steward"
     role: >
       Documentation owner — maintains app-spec/ as the single source of truth.
@@ -740,7 +749,7 @@ workers:
     name: "SCSI Guardian — صيّاد (Sayyad)"
     emoji: "🛡️"
     profile: "flutter-curiosity-hunter"
-    model: "deepseek-v4-pro"
+    model: "claude-sonnet-5"
     wrapper: "hunter:scan"
     role: >
       SCSI Layer 1 — proactive bug hunter, pattern scanner, and FINAL GATEKEEPER.
