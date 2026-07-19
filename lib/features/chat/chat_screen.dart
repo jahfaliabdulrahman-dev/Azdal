@@ -26,6 +26,7 @@ import '../../app/providers.dart';
 import '../../main.dart';
 import 'models/chat_message.dart';
 import 'providers/chat_provider.dart';
+import 'routing/intent_router.dart';
 import 'widgets/chat_widgets.dart';
 import 'widgets/widget_catalog.dart';
 
@@ -38,66 +39,6 @@ const _cyan = Color(0xFF32C2FF);
 const _userBubbleBg = Color(0xFFE3E8F5);
 const _muted = Color(0xFF6B7280);
 const _white = Colors.white;
-
-// ── Arabic text normalization — casual/dialectal typing frequently drops
-// hamza (أ/إ/آ → ا) and varies ta-marbuta/alef-maqsura. Keyword regexes below
-// are written with plain alef only; normalize user input the same way before
-// matching, or common phrasings like "ابي اشتري" silently miss a pattern
-// written as "أبي أشتري".
-String _normalizeArabic(String s) => s
-    .replaceAll(RegExp('[أإآ]'), 'ا')
-    .replaceAll('ى', 'ي')
-    .replaceAll('ة', 'ه');
-
-// ── Setup-intent heuristic (commitments/goals) — cheap local pre-filter ──
-final RegExp _commitmentKeywords = RegExp(_normalizeArabic(
-  'قسط|اقساط|التزام|التزامات|تمارا|تابي|تابى|سله|ايجار|قرض|تمويل|'
-  'ديون|دين|اشتراك|اشتراكات',
-));
-final RegExp _goalKeywords = RegExp(_normalizeArabic(
-  'هدف|اهداف|هدفي|ادخار|ادخر|ابي ادخر|اوفر|صندوق الطوارئ|'
-  'عمره|حج',
-));
-
-bool _looksLikeSetupIntent(String text) {
-  final normalized = _normalizeArabic(text);
-  return _commitmentKeywords.hasMatch(normalized) ||
-      _goalKeywords.hasMatch(normalized);
-}
-
-// ── Buy-intent heuristic (Stage 4) — cheap local pre-filter ──
-// Not authoritative: a miss falls through to classifyTransaction, whose
-// 'chat' branch runs one more classifyBuyIntent safety-net check before
-// giving up (see the 'chat' case in _sendMessage) — this regex only
-// decides whether to skip a redundant round-trip, never whether the
-// feature can fire at all.
-final RegExp _buyKeywords = RegExp(_normalizeArabic(
-  'ابي اشتري|ودي اشتري|ابغى اشتري|بشتري|كم سعر|هل اقدر|ينفع اشتري|'
-  'اقدر اشتري|نفسي اشتري|افكر اشتري',
-));
-
-bool _looksLikeBuyIntent(String text) =>
-    _buyKeywords.hasMatch(_normalizeArabic(text));
-
-// ── Integrity-score query heuristic (Stage 4) ──
-final RegExp _integrityKeywords = RegExp(_normalizeArabic(
-  'كيف ادائي|كم درجه النزاهه|درجه النزاهه|نقاط النزاهه|نزاهتي|كيف نزاهتي',
-));
-
-bool _looksLikeIntegrityQuery(String text) =>
-    _integrityKeywords.hasMatch(_normalizeArabic(text));
-
-// ── Remaining-budget query heuristic — deterministic, no LLM (DEC-003:
-// this is a pure calculation, not something the LLM should ever answer
-// in free-form chat, which is how "كم باقي من المصروف" previously got a
-// stale reply about an unrelated earlier topic instead of a real number).
-final RegExp _budgetQueryKeywords = RegExp(_normalizeArabic(
-  'كم باقي|باقي من مصروفي|باقي من الشهر|باقي من ميزانيتي|كم فاضل|فاضل لي|'
-  'وش وضع ميزانيتي|وضعي المالي|كم متبقي|باقي مصروف|كم باقي ميزانيه',
-));
-
-bool _looksLikeBudgetQuery(String text) =>
-    _budgetQueryKeywords.hasMatch(_normalizeArabic(text));
 
 // ─────────────────────────────────────────────────────────────────────
 // ChatScreen
@@ -320,7 +261,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _storedClassifications[userMsgId] = <String, dynamic>{};
 
     // ── Commitment/goal setup-intent pre-check (additive — DEC-033) ──
-    if (_looksLikeSetupIntent(text)) {
+    if (IntentRouter.looksLikeSetupIntent(text)) {
       final setupResult = await geminiService.classifySetupIntent(text);
       final setupKind = setupResult.widget?['kind'] as String?;
       if (setupKind != null && setupKind != 'none') {
@@ -330,7 +271,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     // ── Buy-intent pre-check (additive — Stage 4) ──
-    if (_looksLikeBuyIntent(text)) {
+    if (IntentRouter.looksLikeBuyIntent(text)) {
       final buyResult = await geminiService.classifyBuyIntent(text);
       final buyKind = buyResult.widget?['kind'] as String?;
       if (buyKind != null && buyKind != 'none') {
@@ -340,13 +281,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     // ── Integrity-score query pre-check (additive — Stage 4) ──
-    if (_looksLikeIntegrityQuery(text)) {
+    if (IntentRouter.looksLikeIntegrityQuery(text)) {
       await _showIntegrityScore(chatNotifier);
       return;
     }
 
     // ── Remaining-budget query pre-check (additive) ──
-    if (_looksLikeBudgetQuery(text)) {
+    if (IntentRouter.looksLikeBudgetQuery(text)) {
       await _showRemainingBudget(chatNotifier);
       return;
     }

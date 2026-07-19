@@ -12,6 +12,78 @@ final class PurchaseDecisionService {
   PurchaseDecisionService(this._client);
   final SupabaseClient _client;
 
+  /// Pure synchronous verdict — all decision logic, no Supabase.
+  ///
+  /// Takes pre-fetched financial numbers and returns the same map
+  /// [evaluate] would after its Supabase queries.  BYTE-IDENTICAL
+  /// for the same inputs — the only difference is that this method
+  /// never touches the network.
+  static Map<String, dynamic> decideVerdict({
+    required double income,
+    required double totalCommitments,
+    required double monthlySpend,
+    required double totalGoalMonthly,
+    required double amount,
+  }) {
+    if (income <= 0) {
+      return {
+        'verdict': 'need_info',
+        'reply': 'عشان أقدر أساعدك — كم دخلك الشهري التقريبي؟',
+        'disposable': 0.0,
+        'dti': 0.0,
+        'goalImpact': null,
+      };
+    }
+
+    // 3. DTI check (DEC-026: 33% cap)
+    final dti = income > 0 ? totalCommitments / income : 0;
+    if (dti > 0.33) {
+      final dtiPercent = (dti * 100).round();
+      return {
+        'verdict': 'no',
+        'dti': dti,
+        'disposable': 0.0,
+        'goalImpact': null,
+        'reply':
+            'نسبة التزاماتك ${dtiPercent}% من دخلك — أعلى من الحد الآمن (33%). '
+            'خفّف الالتزامات أول.',
+      };
+    }
+
+    // 6. Disposable calculation
+    final disposable =
+        income - totalCommitments - monthlySpend - totalGoalMonthly - amount;
+
+    if (disposable >= 0) {
+      return {
+        'verdict': 'yes',
+        'disposable': disposable,
+        'dti': dti,
+        'goalImpact': null,
+        'reply': 'تقدر! باقي لك ${disposable.round()} ريال.',
+      };
+    } else if (totalGoalMonthly > 0) {
+      return {
+        'verdict': 'wait',
+        'disposable': disposable,
+        'dti': dti,
+        'goalImpact': 'عندك أهداف ادخار نشطة — الشراء الآن يأخر تحقيقها.',
+        'reply': 'عندك أهداف ادخار نشطة. '
+            'إذا اشتريت الآن — راح يتأخر هدفك.',
+      };
+    } else {
+      return {
+        'verdict': 'no',
+        'disposable': disposable,
+        'dti': dti,
+        'goalImpact': null,
+        'reply':
+            'ما يكفي. المصروف الحالي (${monthlySpend.round()}) '
+            '+ الالتزامات (${totalCommitments.round()}) أعلى من المتبقي.',
+      };
+    }
+  }
+
   /// Evaluate whether [item] can be purchased for [amount] SAR.
   ///
   /// Returns a map with:
@@ -76,22 +148,8 @@ final class PurchaseDecisionService {
             ? itemizedCommitments
             : commitmentsEstimate;
 
-    // 3. DTI check (DEC-026: 33% cap)
-    final dti = income > 0 ? totalCommitments / income : 0;
-    if (dti > 0.33) {
-      final dtiPercent = (dti * 100).round();
-      return {
-        'verdict': 'no',
-        'dti': dti,
-        'disposable': 0.0,
-        'goalImpact': null,
-        'reply':
-            'نسبة التزاماتك ${dtiPercent}% من دخلك — أعلى من الحد الآمن (33%). '
-            'خفّف الالتزامات أول.',
-      };
-    }
-
-    // 4. Current-month spending (expenses only — DEC-026 filter)
+    // 3-6. Delegate all decision math to the pure function
+    // Fetch remaining data the pure function needs
     final now = DateTime.now();
     final monthStart =
         DateTime(now.year, now.month, 1).toIso8601String();
@@ -108,7 +166,7 @@ final class PurchaseDecisionService {
       (sum, r) => sum + ((r['amount'] as num?)?.toDouble() ?? 0),
     );
 
-    // 5. Active goals impact
+    // Active goals impact
     final goalsRows = await _client
         .from('goals')
         .select()
@@ -122,38 +180,13 @@ final class PurchaseDecisionService {
           sum + ((g['monthly_contribution'] as num?)?.toDouble() ?? 0),
     );
 
-    // 6. Disposable calculation
-    final disposable =
-        income - totalCommitments - monthlySpend - totalGoalMonthly - amount;
-
-    if (disposable >= 0) {
-      return {
-        'verdict': 'yes',
-        'disposable': disposable,
-        'dti': dti,
-        'goalImpact': null,
-        'reply': 'تقدر! باقي لك ${disposable.round()} ريال.',
-      };
-    } else if (totalGoalMonthly > 0) {
-      return {
-        'verdict': 'wait',
-        'disposable': disposable,
-        'dti': dti,
-        'goalImpact': 'عندك أهداف ادخار نشطة — الشراء الآن يأخر تحقيقها.',
-        'reply': 'عندك أهداف ادخار نشطة. '
-            'إذا اشتريت الآن — راح يتأخر هدفك.',
-      };
-    } else {
-      return {
-        'verdict': 'no',
-        'disposable': disposable,
-        'dti': dti,
-        'goalImpact': null,
-        'reply':
-            'ما يكفي. المصروف الحالي (${monthlySpend.round()}) '
-            '+ الالتزامات (${totalCommitments.round()}) أعلى من المتبقي.',
-      };
-    }
+    return decideVerdict(
+      income: income,
+      totalCommitments: totalCommitments,
+      monthlySpend: monthlySpend,
+      totalGoalMonthly: totalGoalMonthly,
+      amount: amount,
+    );
   }
 
   /// Calculate how much disposable budget is left for the current month.

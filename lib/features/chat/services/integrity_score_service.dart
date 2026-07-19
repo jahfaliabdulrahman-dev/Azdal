@@ -16,59 +16,21 @@ final class IntegrityScoreService {
   IntegrityScoreService(this._client);
   final SupabaseClient _client;
 
-  /// Calculate the integrity score for the current user.
+  /// Pure synchronous score computation — all factor math, no Supabase.
   ///
-  /// Returns a map with `score` (0-100), plus individual factor
-  /// percentages and the locked factors set to null.
-  Future<Map<String, dynamic>> calculate() async {
-    final userId = _client.auth.currentUser!.id;
-
-    // Count total expense transactions (non-deleted)
-    final totalRows = await _client
-        .from('transactions')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('type', 'expense')
-        .eq('is_deleted', false);
-
-    final totalCount = (totalRows as List).length;
-
+  /// Takes pre-fetched numbers and returns the same map [calculate] would.
+  /// All three factors are clamped 0–100; the final score is their average
+  /// rounded and clamped. Locked factors remain null per DEC-025.
+  static Map<String, dynamic> computeScore({
+    required int totalCount,
+    required int deletedCount,
+    required int uniqueDays,
+    required int daysSince,
+    required int withReceipt,
+  }) {
     // ── 1. logging_consistency ──────────────────────────────────
-    // Distinct days with at least one transaction / days since first tx.
-    // Clamped to a 30-day rolling window for MVP.
     double loggingConsistency = 0;
     if (totalCount > 0) {
-      final firstTxRow = await _client
-          .from('transactions')
-          .select('created_at')
-          .eq('user_id', userId)
-          .eq('type', 'expense')
-          .eq('is_deleted', false)
-          .order('created_at')
-          .limit(1)
-          .single();
-
-      final firstDate = DateTime.parse(
-        firstTxRow['created_at'] as String,
-      );
-      final daysSince =
-          DateTime.now().difference(firstDate).inDays.clamp(1, 30);
-
-      final distinctRows = await _client
-          .from('transactions')
-          .select('created_at')
-          .eq('user_id', userId)
-          .eq('type', 'expense')
-          .eq('is_deleted', false);
-
-      final uniqueDays = (distinctRows as List)
-          .map((r) => DateTime.parse(
-                  (r as Map<String, dynamic>)['created_at'] as String)
-              .toIso8601String()
-              .substring(0, 10))
-          .toSet()
-          .length;
-
       loggingConsistency =
           (uniqueDays / daysSince * 100).clamp(0, 100);
     }
@@ -76,37 +38,13 @@ final class IntegrityScoreService {
     // ── 2. receipt_upload_rate ──────────────────────────────────
     double receiptUploadRate = 0;
     if (totalCount > 0) {
-      final withReceiptRows = await _client
-          .from('transactions')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('type', 'expense')
-          .eq('is_deleted', false)
-          .not('receipt_url', 'is', null);
-
-      final withReceipt = (withReceiptRows as List).length;
       receiptUploadRate =
-          ((withReceipt) / totalCount * 100).clamp(0, 100);
+          (withReceipt / totalCount * 100).clamp(0, 100);
     }
 
     // ── 3. no_deletion_rate ─────────────────────────────────────
     double noDeletionRate = 100;
     if (totalCount > 0) {
-      final deletedRows = await _client
-          .from('transactions')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('type', 'expense')
-          .eq('is_deleted', true);
-
-      final deletedCount = (deletedRows as List).length;
-      // no_deletion_rate = kept / (kept + deleted). `totalCount` is the KEPT
-      // count (is_deleted=false), so the deleted rows must be ADDED BACK to
-      // form the denominator (total ever created). The old formula
-      // (totalCount - deletedCount) / totalCount used the kept count as the
-      // denominator AND subtracted deletions from the numerator — it
-      // understated the score and could even go negative when deletions
-      // outnumbered surviving rows.
       final totalEver = totalCount + deletedCount;
       noDeletionRate = (totalCount / totalEver * 100).clamp(0, 100);
     }
@@ -125,5 +63,90 @@ final class IntegrityScoreService {
       'data_match_accuracy': null,
       'response_time_factor': null,
     };
+  }
+
+  /// Calculate the integrity score for the current user.
+  ///
+  /// Returns a map with `score` (0-100), plus individual factor
+  /// percentages and the locked factors set to null.
+  Future<Map<String, dynamic>> calculate() async {
+    final userId = _client.auth.currentUser!.id;
+
+    // Count total expense transactions (non-deleted)
+    final totalRows = await _client
+        .from('transactions')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('type', 'expense')
+        .eq('is_deleted', false);
+
+    final totalCount = (totalRows as List).length;
+
+    // ── Gather pre-fetched numbers for the pure function ────────
+    int uniqueDays = 0;
+    int daysSince = 0;
+    if (totalCount > 0) {
+      final firstTxRow = await _client
+          .from('transactions')
+          .select('created_at')
+          .eq('user_id', userId)
+          .eq('type', 'expense')
+          .eq('is_deleted', false)
+          .order('created_at')
+          .limit(1)
+          .single();
+
+      final firstDate = DateTime.parse(
+        firstTxRow['created_at'] as String,
+      );
+      daysSince =
+          DateTime.now().difference(firstDate).inDays.clamp(1, 30);
+
+      final distinctRows = await _client
+          .from('transactions')
+          .select('created_at')
+          .eq('user_id', userId)
+          .eq('type', 'expense')
+          .eq('is_deleted', false);
+
+      uniqueDays = (distinctRows as List)
+          .map((r) => DateTime.parse(
+                  (r as Map<String, dynamic>)['created_at'] as String)
+              .toIso8601String()
+              .substring(0, 10))
+          .toSet()
+          .length;
+    }
+
+    int withReceipt = 0;
+    if (totalCount > 0) {
+      final withReceiptRows = await _client
+          .from('transactions')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('type', 'expense')
+          .eq('is_deleted', false)
+          .not('receipt_url', 'is', null);
+      withReceipt = (withReceiptRows as List).length;
+    }
+
+    int deletedCount = 0;
+    if (totalCount > 0) {
+      final deletedRows = await _client
+          .from('transactions')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('type', 'expense')
+          .eq('is_deleted', true);
+      deletedCount = (deletedRows as List).length;
+    }
+
+    return computeScore(
+      totalCount: totalCount,
+      deletedCount: deletedCount,
+      uniqueDays: uniqueDays,
+      daysSince: daysSince,
+      withReceipt: withReceipt,
+    );
   }
 }
