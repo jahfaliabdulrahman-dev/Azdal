@@ -159,6 +159,28 @@
 
 ---
 
+## LL-044: Documentation Path Drift Is a Traceability Defect
+
+- **Discovered:** 2026-07-21 — Phase 7 Documentation Closeout
+- **Lesson:** When service files are referenced in documentation under the wrong directory path (e.g., `lib/core/services/` for files that actually live at `lib/features/chat/services/`), every reference becomes a dead link for anyone reading the spec pack. Phase 7 found 2 wrong service paths in `00_active_capabilities.md`, 2 in `12_decision_log.md` (DEC-035's impact field), and 2 cross-file path references — plus a stale repo path in `00_project_context.md` (`/Users/abdurrahmanjahfali/Azdal` instead of `/Users/abdurrahmanjahfali/Projects/Azdal`). Each wrong path is a silent traceability break — the capability claims to derive from a file that doesn't exist at the stated location.
+- **Impact:** The path drift went undetected across multiple stages (from Stage 4 through Phase 0) because no gate checks that file paths in documentation match the actual file tree. A reader checking `lib/core/services/purchase_decision_service.dart` against the stated capability would find no such file — the real service is at `lib/features/chat/services/purchase_decision_service.dart`. The `gemini_service.dart` path (`lib/core/services/`) IS correct — the drift only affects the services that live under `lib/features/chat/services/`, which is most of them. The `swarm.yaml` repo path drift (`/Azdal` → `/Projects/Azdal`) was flagged but not fixed — it's outside `app-spec/` and falls under DevOps scope.
+- **Rule:** At every stage close, the Documentation Steward must verify that every file path referenced in the spec pack's File/Evidence columns resolves to an actual file. A `search_files(target='files')` check against `lib/` for each referenced filename catches the mismatch. This check should be part of the DEC-045 gate protocol.
+- **Source:** `00_active_capabilities.md`, `12_decision_log.md` (DEC-035 impact field), `00_project_context.md`, `goal_phase_0.5_tool_calling_router_DRAFT.md` line 178
+- **Linked Decision ID:** DEC-045
+
+---
+
+## LL-045: Decision Flipping Requires a Trail — the DEC-050 SDK Case
+
+- **Discovered:** 2026-07-21 — Phase 7 Documentation Closeout
+- **Lesson:** When a decision's key parameter changes (e.g., DEC-050's target SDK from `firebase_ai` to `googleai_dart`), the flip must be explicit in the decision record itself — a new "SDK decision (flipped)" field, an updated date, and a clear rationale trail. A silent flip would leave downstream consumers (the personal build plan, the research doc, the goal DRAFT) referencing the old SDK, creating a fork between the decision log and the execution plan.
+- **Impact:** DEC-050 originally recommended `firebase_ai` behind a `RouterLlm` interface (2026-07-18 research). The Phase 7 closeout flipped it to `googleai_dart` as primary — no Firebase dependency, works with the sideloaded APK that is the personal build's distribution path. `firebase_ai` remains the alternative, gated on the App Check pre-flight. The flip is recorded inline in DEC-050's own record (the "SDK decision (flipped 2026-07-21)" field), in the summary table status, and in `00_active_capabilities.md`. The personal build plan (`21_personal_build_plan.md`) still says `firebase_ai` at line 158 — that's now a drift that the next stage must reconcile.
+- **Rule:** Any change to a decision's core parameter (SDK, architecture, timing) must be recorded as an explicit inline update to the decision record itself, not just in a separate DEC or the summary table. The update must include: the date it was flipped, the new recommendation, the rationale, and a flag noting any downstream documents that now drift and need reconciliation.
+- **Source:** `12_decision_log.md` DEC-050, `21_personal_build_plan.md` line 158, `23_research_tool_calling_router.md`
+- **Linked Decision ID:** DEC-050
+
+---
+
 ## Key Decisions (Permanent)
 
 | ID | Decision | Date | Rationale |

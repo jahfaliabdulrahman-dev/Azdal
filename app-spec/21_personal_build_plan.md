@@ -190,6 +190,28 @@ into the substitution/unit engines; **W3** `get_market_info` (DEC-054).
 ship the value you have and return — his real financial life is the point, not
 architectural purity.
 
+## Tech-debt track — runs alongside the phases above (2026-07-21)
+
+A whole-codebase audit (`TECH_DEBT_AUDIT_20260721.md`) found 13 items, scored
+and given their own phasing (A–E) that is deliberately separate from the
+capability phases above — **this track runs alongside Phase 1+, not instead
+of it**, the same way Phase 0.5 was a foundational detour rather than a
+replacement for the feature roadmap.
+
+One item jumps the queue regardless of which capability phase is active: the
+Arabic-Indic digit-normalization duplication (`chat_screen.dart` vs
+`tools.dart` — likely silently drops comma-formatted amounts to 0 across 14
+form fields) is cheap to fix and touches DEC-024's core trust guarantee
+directly. Fix it before or alongside whatever phase is underway when this is
+read, don't defer it to "later." Everything else in the audit (test-coverage
+gaps, no crash monitoring, the debug-signed APK, the `gemini_service.dart`
+SDK migration, doc staleness) can wait for its scheduled slot without
+blocking capability work.
+
+Re-run the audit periodically rather than treating it as a one-time
+snapshot — code health drifts as fast as feature scope does. Full detail and
+the phased remediation plan live in `TECH_DEBT_AUDIT_20260721.md`.
+
 ## Honest limits (tell the founder as-is, don't oversell)
 
 - **"Understands my personality"** — not achievable as real inference now. The

@@ -1,8 +1,8 @@
 # Azdal — Project Context
 
 > **Type:** Project-specific  
-> **Status:** 🟢 Stage 0 — Planning (Accepted to AMAD Hackathon)  
-> **Last Updated:** 2026-06-29
+> **Status:** 🟢 Post-Hackathon — Personal Build Phase 0 Foundation complete (DEC-051)  
+> **Last Updated:** 2026-07-21
 
 ---
 
@@ -14,7 +14,7 @@
 | Type | Mobile App (Flutter) |
 | Category | FinTech — Financial Education |
 | Stage | Pre-code — Specification & Planning |
-| Repository | `/Users/abdurrahmanjahfali/Azdal` |
+| Repository | `/Users/abdurrahmanjahfali/Projects/Azdal` |
 | Language | Arabic-first (Saudi dialect), English technical |
 
 ---
