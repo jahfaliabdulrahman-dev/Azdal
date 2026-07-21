@@ -115,6 +115,50 @@
 
 ---
 
+## LL-012: Behavior-Preserving Refactor — Move, Don't Delete
+
+- **Discovered:** 2026-07-20 — Phase 0 Foundation, IntentRouter extraction
+- **Lesson:** When extracting logic from a monolithic widget into a dedicated service class, move code verbatim — don't rewrite. The IntentRouter extraction from `chat_screen.dart` moved all 6 regexes character-for-character, and the behavior-preservation was independently verified by both QA Tester (t_d6f9fcf5) and SCSI Guardian (t_9ff4830f): 0 CRITICAL, 0 MEDIUM findings, and each regex confirmed present and unchanged.
+- **Impact:** DEC-036 bug #5 showed exactly what happens when a fix silently drops a key rename (`_form_kind` → `form_kind`) — every commitment/goal/income save broke for hours with zero errors. Behavior-preserving extraction — move, don't rewrite — prevents this entire class of regression. A refactor that passes `git diff --word-diff` with zero logic changes is the target; the only diff should be imports and class wrappers.
+- **Rule:** Any extraction or refactor of existing working logic must move, not rewrite. The diff must show only imports and class wrappers — no character changes to the logic itself. Verify by independent audit (SCSI Guardian + QA Tester), not self-review.
+- **Source:** Phase 0 IntentRouter extraction, SCSI Guardian audit report (t_9ff4830f), QA validation report (t_d6f9fcf5)
+- **Linked Decision ID:** DEC-048
+
+---
+
+## LL-013: Golden Intent Matrix as Router Migration Safety Net
+
+- **Discovered:** 2026-07-20 — Phase 0 Foundation
+- **Lesson:** Before replacing a routing system (regex gates → Gemini function-calling per DEC-050), encode the current router's behavior as an exhaustive ground-truth matrix. The 32 Saudi-dialect rows with 10 `expected_intent` values and 5 `GateDecision` values capture every routing decision the current code makes — including LL-011's hamza-dropped variants (GM-008 vs GM-009) — so the replacement can be verified to agree on every row before hitting a real device. A matrix miss on any row is a guaranteed regression.
+- **Impact:** This becomes the DEC-050 migration's acceptance test. The matrix covers every intent, every gate, the `requires_llm_classify` flag per row, explicit ground-truth payloads, and a `FakeGeminiService` interface spec so the harness can run without a real LLM or internet connection. The 32 rows achieve ≥2 per intent (the coverage rule). Without the matrix, a router migration is blind — you ship, find regressions on a real device, and trace them back one at a time (the exact pattern DEC-036/037/039 established as broken).
+- **Rule:** Any classifier/router/parser migration must start with a golden matrix that encodes current behavior as ground truth. The matrix must explicitly cover every known edge case and regression from the project's own lesson log. No migration ships without the matrix passing against the replacement.
+- **Source:** `23_golden_intent_matrix.md`, DEC-050, LL-011
+- **Linked Decision ID:** DEC-050
+
+---
+
+## LL-014: Hand-Computed Seed Fixtures Close the Fake-Coverage Gap
+
+- **Discovered:** 2026-07-20 — Phase 0 Foundation
+- **Lesson:** DEC-048 proved that tests re-deriving service formulas as local constants catch nothing — the test passes unchanged against a broken implementation because it recomputes the same (buggy) math. The 10 hand-computed seed fixture cases (A through I plus DEC-048 regression) close this gap: every intermediate value in every formula is traced step-by-step from the formula spec, and the expected output is pre-computed independently of running the code.
+- **Impact:** If a test fails, the formula trace tells you exactly which step diverged — no guessing. The fixture covers: DTI boundary at 33% (pass/no), soft-deleted profile rows, active-goal 'wait' verdict, `max(profileEstimate, itemizedSum)` for commitments, `calculateRemainingBudget()`, and the DEC-048 heavy-deletion integrity score case (3 kept / 10 deleted → score=41). Each case documents exact seed rows + hand-computed expected JSON output. The cross-check procedure (§6) enforces: "If mismatch → BLOCK — do not adjust the expected value to match the code. Find which is wrong."
+- **Rule:** Every financial/math service must have hand-computed seed fixtures where each formula step is traced with explicit values, and the expected output is pre-computed from the formula spec — never from running the code. Assert against these pre-computed values; never adjust the expected value to match a buggy implementation.
+- **Source:** `24_test_seed_fixture.md`, DEC-048, LL-010
+- **Linked Decision ID:** DEC-048
+
+---
+
+## LL-037: Live Schema Verification Before Writing Tests
+
+- **Discovered:** 2026-07-20 — Phase 0 Foundation
+- **Lesson:** Before designing test seed fixtures, verify every database column the services reference actually exists on the live schema with the correct type. The Backend/DB Architect queried `information_schema.columns` against the live Supabase instance (`kqhyjngtquutzdvjfbnf`, Frankfurt) for all 4 tables (`financial_profile`, `commitments`, `transactions`, `goals`) and confirmed 0 missing columns — preventing the DEC-036 class of bugs where code inserts into non-existent columns and every write fails silently (100% failure rate on purchase confirmations, discovered only by live device testing + direct Supabase queries).
+- **Impact:** Also verified RLS policies on all 6 public tables (3 policies each on SELECT/INSERT/UPDATE for 5 tables, 2 for `purchase_decisions`), confirmed `transactions` and `goals` have no DELETE policy (correct — soft-delete is application-level via `is_deleted`), and documented that the local `supabase/migrations/` directory contains only 1 migration file while the live database has 6 tables — the other 5 were deployed via Dashboard SQL Editor or earlier migrations not in the repo. Recommended `supabase db pull` to sync before any local schema changes.
+- **Rule:** Before writing any test that depends on a database schema, run a live schema verification: query `information_schema.columns` for every table the test touches, and assert every column referenced in the service code exists with the correct name and type. Zero-tolerance for assumption-based schema references. Also verify RLS policies are present on all tables (select/insert/update at minimum).
+- **Source:** `24_test_seed_fixture.md` §2, DEC-036
+- **Linked Decision ID:** DEC-048
+
+---
+
 ## Key Decisions (Permanent)
 
 | ID | Decision | Date | Rationale |

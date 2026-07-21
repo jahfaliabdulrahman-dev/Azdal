@@ -1,0 +1,10 @@
+00:00 +0: loading /Users/abdurrahmanjahfali/Projects/Azdal/test/purchase_decision_service_test.dart
+00:00 +0: decideVerdict — pure function (no Supabase) zero income → need_info
+00:00 +1: decideVerdict — pure function (no Supabase) DTI > 33% → hard no
+00:00 +2: decideVerdict — pure function (no Supabase) DTI exactly 33% → allowed (not over cap)
+00:00 +3: decideVerdict — pure function (no Supabase) positive disposable → yes
+00:00 +4: decideVerdict — pure function (no Supabase) negative disposable + active goals → wait
+00:00 +5: decideVerdict — pure function (no Supabase) negative disposable + no goals → no
+00:00 +6: decideVerdict — pure function (no Supabase) disposable exactly zero → yes (not wait)
+00:00 +7: decideVerdict — pure function (no Supabase) DTI with zero income → need_info (not division by zero)
+00:00 +8: All tests passed!

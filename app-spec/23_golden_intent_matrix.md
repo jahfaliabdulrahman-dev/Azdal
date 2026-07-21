@@ -1,9 +1,9 @@
 # Golden Intent Matrix
 
-> **Purpose:** Ground-truth intent classification matrix encoding the *current*
-> router's behavior — every real Saudi-dialect phrasing mapped to its expected
-> intent + gate + classification path. Phase 4 (QA Tester) will convert this to
-> JSONL and run it against the harness.
+> **Phase 4 (QA Tester) completed 2026-07-21:** JSONL fixture delivered at
+> `test/fixtures/golden_intent_matrix.jsonl` (32 rows, 3 reconciled) with
+> harness at `test/golden_intent_matrix_test.dart` — all GREEN. See
+> `app-spec/12_decision_log.md` DEC-051.
 >
 > **This is the Phase 0.5 migration safety net** (DEC-050, timing note). It
 > captures today's regex-gated router behavior so the tool-calling replacement
