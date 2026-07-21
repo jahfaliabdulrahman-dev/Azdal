@@ -16,6 +16,8 @@ import '../features/chat/services/integrity_score_service.dart';
 import '../features/chat/services/purchase_decision_service.dart';
 import '../features/chat/services/transaction_service.dart';
 import '../features/chat/services/voice_service.dart';
+import '../features/router/router.dart';
+import '../features/router/tools.dart';
 
 // ─────────────────────────────────────────────────────────────────────
 // Services
@@ -70,4 +72,33 @@ final integrityScoreServiceProvider = Provider<IntegrityScoreService>(
 /// Singleton provider for auth (anonymous → permanent upgrade, login).
 final authServiceProvider = Provider<AuthService>(
   (ref) => AuthService(Supabase.instance.client),
+);
+
+// ─────────────────────────────────────────────────────────────────────
+// Router (Phase 0.5 — DEC-050)
+// ─────────────────────────────────────────────────────────────────────
+
+/// Compile-time Gemini API key (same source as GeminiService).
+const _apiKey = String.fromEnvironment('GEMINI_API_KEY');
+
+/// Singleton provider for the tool-calling router LLM backend.
+/// Uses googleai_dart (DEC-050 SDK decision, flipped 2026-07-21 — pure
+/// Dart, no Firebase dependency, no App Check gate needed for this path).
+final routerLlmProvider = Provider<RouterLlm>(
+  (ref) => GeminiRouterLlm(apiKey: _apiKey),
+);
+
+/// Singleton provider for the tool registry — all routable tools
+/// wired to the live Supabase client.
+final toolRegistryProvider = Provider<ToolRegistry>(
+  (ref) {
+    final tools = createAllTools(Supabase.instance.client);
+    return ToolRegistry(tools);
+  },
+);
+
+/// Singleton provider for the tool-call trace service (DEC-050 §5).
+/// Writes one row per routing decision to `tool_calls`.
+final toolCallTraceServiceProvider = Provider<ToolCallTraceService>(
+  (ref) => ToolCallTraceService(Supabase.instance.client),
 );

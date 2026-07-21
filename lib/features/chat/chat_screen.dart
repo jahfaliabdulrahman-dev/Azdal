@@ -23,12 +23,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/providers.dart';
+import '../../core/utils/arabic_numerals.dart';
 import '../../main.dart';
 import 'models/chat_message.dart';
 import 'providers/chat_provider.dart';
-import 'routing/intent_router.dart';
 import 'widgets/chat_widgets.dart';
 import 'widgets/widget_catalog.dart';
+import '../router/router.dart';
 
 // ─────────────────────────────────────────────────────────────────────
 // Design token constants (from 04_ui_design_system.md)
@@ -60,6 +61,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _coldStartDone = false;
   bool _isUndoing = false;
   final Map<String, Map<String, dynamic>> _storedClassifications = {};
+  RouterState _routerState = const RouterState();
 
   @override
   void initState() {
@@ -176,9 +178,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final commitments = values['monthly_commitments'] ?? '0';
     final weeklySpend = values['weekly_spend'] ?? '0';
 
-    final monthlyIncome = double.tryParse(_arabicToWestern(income.toString())) ?? 0;
-    final monthlyCommitments = double.tryParse(_arabicToWestern(commitments.toString())) ?? 0;
-    final monthlySpend = (double.tryParse(_arabicToWestern(weeklySpend.toString())) ?? 0) * 4;
+    final monthlyIncome = double.tryParse(normalizeArabicNumerals(income.toString())) ?? 0;
+    final monthlyCommitments = double.tryParse(normalizeArabicNumerals(commitments.toString())) ?? 0;
+    final monthlySpend = (double.tryParse(normalizeArabicNumerals(weeklySpend.toString())) ?? 0) * 4;
 
     final disposableAfterCommitments = monthlyIncome - monthlyCommitments;
     final spendRatio = disposableAfterCommitments > 0
@@ -191,7 +193,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       await profileService.upsert(
         monthlyIncome: monthlyIncome,
         monthlyCommitmentsEstimate: monthlyCommitments,
-        weeklySpendEstimate: (double.tryParse(_arabicToWestern(weeklySpend.toString())) ?? 0),
+        weeklySpendEstimate: (double.tryParse(normalizeArabicNumerals(weeklySpend.toString())) ?? 0),
       );
     } catch (e) {
       print('=== AZDAL DEBUG: financial_profile upsert FAILED — $e');
@@ -237,7 +239,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return 'وضعك المالي معقول حالياً. تبي نبدأ نسجل أول عملية؟ اكتب أو استخدم الصوت 🎤';
   }
 
-  // ── Message send (router-first — DEC-021, additive setup-intent pre-check) ──
+  // ── Message send (tool-calling router — DEC-050, Phase 0.5) ──
 
   Future<void> _sendMessage() async {
     final text = _textController.text.trim();
@@ -254,185 +256,221 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _focusNode.unfocus();
 
     final chatNotifier = ref.read(chatProvider.notifier);
-    final geminiService = ref.read(geminiServiceProvider);
-    final hasDigit = RegExp(r'[0-9٠-٩]').hasMatch(text);
+    final routerLlm = ref.read(routerLlmProvider);
+    final registry = ref.read(toolRegistryProvider);
+    final tracer = ref.read(toolCallTraceServiceProvider);
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id ?? '';
 
     final userMsgId = chatNotifier.addUserMessage(text);
     _storedClassifications[userMsgId] = <String, dynamic>{};
 
-    // ── Commitment/goal setup-intent pre-check (additive — DEC-033) ──
-    if (IntentRouter.looksLikeSetupIntent(text)) {
-      final setupResult = await geminiService.classifySetupIntent(text);
-      final setupKind = setupResult.widget?['kind'] as String?;
-      if (setupKind != null && setupKind != 'none') {
-        await _handleSetupIntent(setupKind, setupResult.widget!, chatNotifier);
-        return;
-      }
-    }
-
-    // ── Buy-intent pre-check (additive — Stage 4) ──
-    if (IntentRouter.looksLikeBuyIntent(text)) {
-      final buyResult = await geminiService.classifyBuyIntent(text);
-      final buyKind = buyResult.widget?['kind'] as String?;
-      if (buyKind != null && buyKind != 'none') {
-        await _handleBuyIntent(buyKind, buyResult.widget!, chatNotifier);
-        return;
-      }
-    }
-
-    // ── Integrity-score query pre-check (additive — Stage 4) ──
-    if (IntentRouter.looksLikeIntegrityQuery(text)) {
-      await _showIntegrityScore(chatNotifier);
-      return;
-    }
-
-    // ── Remaining-budget query pre-check (additive) ──
-    if (IntentRouter.looksLikeBudgetQuery(text)) {
-      await _showRemainingBudget(chatNotifier);
-      return;
-    }
-
-    final allMessages = ref.read(chatProvider).messages;
-    // Widget-bearing bot messages (verdict cards, forms, lists, integrity/
-    // budget summaries) are outputs of isolated intent flows, not
-    // conversational replies. Their own triggering user message is already
-    // excluded below via _storedClassifications, but the bot reply itself
-    // was never excluded — leaving an orphaned, question-less reply in the
-    // history the general coach sees, which is exactly what produced
-    // confused/off-topic answers that dragged in an unrelated earlier
-    // topic. Only plain-text bot replies (normal coach chat) stay in
-    // history; widget-bearing ones never do.
-    final filteredHistory = allMessages.where((m) {
-      if (!m.isUser) return !m.hasWidget;
-      if (m.id == userMsgId) return true;
-      return !_storedClassifications.containsKey(m.id);
-    }).toList();
-
     try {
-      if (!hasDigit) {
-        final response = await geminiService.sendMessage(text, history: filteredHistory);
-        if (!mounted) return;
-        if (response.hasError) { chatNotifier.setError(response.error!); _storedClassifications.remove(userMsgId); return; }
-        if (response.widget != null) {
-          final wt = response.widget!['widget'] as String?;
-          if (wt != 'compound_split_card' && wt != 'action_buttons') {
-            chatNotifier.addBotMessage(response.text, widget: response.widget);
-            _storedClassifications.remove(userMsgId);
-            return;
-          }
-        }
-        chatNotifier.addBotMessage(response.text);
+      final result = await route(
+        routerLlm: routerLlm,
+        registry: registry,
+        userText: text,
+        userId: userId,
+        tracer: tracer,
+        state: _routerState,
+      );
+
+      if (!mounted) return;
+
+      if (result.isError) {
+        chatNotifier.setError(result.errorText!);
         _storedClassifications.remove(userMsgId);
         return;
       }
 
-      final classifyResponse = await geminiService.classifyTransaction(text);
-      if (!mounted) return;
-      final data = classifyResponse.widget;
-      final kind = data?['kind'] as String?;
-      switch (kind) {
-        case 'transaction':
-          final amount = data!['amount'];
-          final amountNum = amount is int ? amount : (amount is String ? int.tryParse(amount) : null) ?? 0;
-          final reply = data['reply'] as String?;
-          await _saveAndAnnounceTransaction(chatNotifier,
-            txResult: {'type': 'simple', 'amount': amountNum, 'category': data['category'] as String? ?? 'متنوع', 'tone': data['tone'] as String? ?? 'gray'},
-            replyText: (reply != null && reply.isNotEmpty) ? reply : 'تم تسجيل $amountNum ريال — ${data['category']}',
-          );
-          break;
-        case 'compound':
-          final reply = data!['reply'] as String?;
-          final splits = data['splits'] as List<dynamic>? ?? [];
-          chatNotifier.addBotMessage((reply != null && reply.isNotEmpty) ? reply : 'قسمت مصروفك 👇',
-            widget: {'widget': 'compound_split_card', 'splits': splits},
-          );
-          break;
-        case 'clarify':
-          final reply = data!['reply'] as String?;
-          chatNotifier.addBotMessage((reply != null && reply.isNotEmpty) ? reply : 'وش تقصد بالضبط؟');
+      if (result.isGeneralChat) {
+        // Delegate to the coach LLM (existing GeminiService.sendMessage)
+        final geminiService = ref.read(geminiServiceProvider);
+        final allMessages = ref.read(chatProvider).messages;
+        // Filter: exclude widget-bearing bot replies from coach history
+        final filteredHistory = allMessages.where((m) {
+          if (!m.isUser) return !m.hasWidget;
+          if (m.id == userMsgId) return true;
+          return !_storedClassifications.containsKey(m.id);
+        }).toList();
+
+        final response = await geminiService.sendMessage(text, history: filteredHistory);
+        if (!mounted) return;
+        if (response.hasError) {
+          chatNotifier.setError(response.error!);
           _storedClassifications.remove(userMsgId);
-          break;
-        case 'chat':
-        default:
-          _storedClassifications.remove(userMsgId);
-          // Safety net (not a regex-gated fast path): classifyTransaction
-          // deliberately punts buy-intent phrasing to 'chat', and the local
-          // _looksLikeBuyIntent keyword list can never enumerate every real
-          // phrasing. Any digit-bearing message that reaches here gets one
-          // more check against the real classifier before we fall back to
-          // generic coach chat — this is the only thing standing between
-          // an unlisted phrasing and the app silently pretending to answer
-          // "Can I Buy?" without ever running the real analysis.
-          if (hasDigit) {
-            final safetyNetBuy = await geminiService.classifyBuyIntent(text);
-            final safetyNetKind = safetyNetBuy.widget?['kind'] as String?;
-            if (safetyNetKind != null && safetyNetKind != 'none') {
-              await _handleBuyIntent(safetyNetKind, safetyNetBuy.widget!, chatNotifier);
-              return;
-            }
+          return;
+        }
+        chatNotifier.addBotMessage(response.text, widget: response.widget);
+        _storedClassifications.remove(userMsgId);
+        return;
+      }
+
+      final outcome = result.outcome!;
+      switch (outcome) {
+        case RenderOutcome(:final widget):
+          final widgetJson = widget.toJson();
+          // Purchase decision needs follow-up confirm button
+          if (widget.widget == 'summary_card' &&
+              widget.title?.startsWith('نتيجة التحليل') == true) {
+            chatNotifier.addBotMessage('', widget: widgetJson);
+            // The confirm/defer buttons are handled by the purchase flow
+          } else {
+            chatNotifier.addBotMessage('', widget: widgetJson);
           }
-          final response = await geminiService.sendMessage(text, history: filteredHistory);
-          if (!mounted) return;
-          if (response.hasError) { chatNotifier.setError(response.error!); return; }
-          chatNotifier.addBotMessage(response.text, widget: response.widget);
+          _storedClassifications.remove(userMsgId);
+          // Reset router state
+          _routerState = const RouterState();
+          break;
+
+        case ClarifyOutcome(:final question):
+          chatNotifier.addBotMessage(question);
+          _storedClassifications.remove(userMsgId);
+          _routerState = const RouterState();
+          break;
+
+        case StagedProposal(:final toolName, :final draft, :final previewText):
+          await _handleStagedProposal(
+            chatNotifier, toolName, draft, previewText, userMsgId,
+          );
           break;
       }
     } catch (e) {
       if (!mounted) return;
       chatNotifier.setError(e.toString());
+      _storedClassifications.remove(userMsgId);
     }
   }
 
-  Future<void> _saveAndAnnounceTransaction(ChatProvider chatNotifier, {required Map<String, dynamic> txResult, required String replyText}) async {
-    try {
-      final txService = ref.read(transactionServiceProvider);
-      final saved = await txService.saveTransaction(amount: (txResult['amount'] as num).toDouble(), category: txResult['category'] as String? ?? 'متنوع', tone: txResult['tone'] as String? ?? 'gray');
-      final txId = saved['id'] as String;
-      chatNotifier.addBotMessage('', widget: {'widget': 'action_buttons', 'question': replyText, 'buttons': [{'label': '↩️ تراجع', 'value': 'undo_transaction', 'type': 'secondary'}], 'tx_id': txId, 'tx_type': 'simple'});
-    } catch (e) {
-      if (mounted) chatNotifier.setError('فشل حفظ المعاملة: $e');
-    }
-  }
-
-  // ── Setup intent dispatcher (DEC-033) ──
-
-  Future<void> _handleSetupIntent(String kind, Map<String, dynamic> data, ChatProvider chatNotifier) async {
-    final draft = data['draft'] as Map<String, dynamic>?;
-    final reply = data['reply'] as String?;
-    final nameHint = data['name_hint'] as String?;
-    switch (kind) {
-      case 'commitment_add': await _showCommitmentAddForm(draft, reply, chatNotifier); break;
-      case 'commitment_view': await _showCommitmentList(chatNotifier); break;
-      case 'commitment_edit': await _showCommitmentEditPicker(nameHint, chatNotifier); break;
-      case 'goal_add': await _showGoalAddForm(draft, reply, chatNotifier); break;
-      case 'goal_view': await _showGoalList(chatNotifier); break;
-      case 'goal_edit': await _showGoalEditPicker(nameHint, chatNotifier); break;
-    }
-  }
-
-  // ── Buy intent dispatcher (Stage 4) ──
-
-  Future<void> _handleBuyIntent(String kind, Map<String, dynamic> data, ChatProvider chatNotifier) async {
-    switch (kind) {
-      case 'buy_intent':
-        final item = data['item'] as String? ?? '';
-        final amountRaw = data['amount'];
-        final amount = amountRaw is int
-            ? amountRaw.toDouble()
-            : amountRaw is double
-                ? amountRaw
-                : (amountRaw is String ? double.tryParse(amountRaw) : null);
-        await _runPurchaseDecision(item, amount, chatNotifier);
+  /// Handle a [StagedProposal] from the router — execute the write
+  /// (auto-save or confirm-card) per the tool's [WriteTier].
+  Future<void> _handleStagedProposal(
+    ChatProvider chatNotifier,
+    String toolName,
+    Map<String, dynamic> draft,
+    String previewText,
+    String userMsgId,
+  ) async {
+    switch (toolName) {
+      case 'log_expense':
+        // DEC-020: autoSaveWithUndo — save immediately, show undo button
+        try {
+          final txService = ref.read(transactionServiceProvider);
+          final saved = await txService.saveTransaction(
+            amount: (draft['amount'] as num).toDouble(),
+            category: draft['category'] as String,
+            tone: draft['tone'] as String? ?? 'gray',
+          );
+          final txId = saved['id'] as String;
+          chatNotifier.addBotMessage('', widget: {
+            'widget': 'action_buttons',
+            'question': previewText,
+            'buttons': [
+              {'label': '↩️ تراجع', 'value': 'undo_transaction', 'type': 'secondary'},
+            ],
+            'tx_id': txId,
+            'tx_type': 'simple',
+          });
+        } catch (e) {
+          if (mounted) chatNotifier.setError('فشل حفظ المعاملة: $e');
+        }
+        _storedClassifications.remove(userMsgId);
         break;
-      case 'buy_query':
+
+      case 'log_compound_expense':
+        // DEC-020: confirmCard — show confirm/edit card
+        final splits = (draft['splits'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
         chatNotifier.addBotMessage(
-          'هذي الميزة قادمة قريب — حالياً أقدر أحلل لك أي عملية شراء '
-          'تكتبها بالمبلغ. جرّب تكتب "أبي أشتري [الشيء] بـ [المبلغ]" 🔍',
+          previewText,
+          widget: {
+            'widget': 'compound_split_card',
+            'splits': splits,
+          },
         );
+        _storedClassifications.remove(userMsgId);
         break;
+
+      case 'add_commitment':
+        // DEC-020: confirmCard — show quick_input_form for review
+        chatNotifier.addBotMessage(
+          previewText,
+          widget: {
+            'widget': 'quick_input_form',
+            'title': 'إضافة التزام — ${draft['name']}',
+            'fields': [
+              {
+                'label': 'اسم الالتزام',
+                'key': 'name',
+                'type': 'text',
+                'value': draft['name'] ?? '',
+              },
+              {
+                'label': 'الجهة',
+                'key': 'provider',
+                'type': 'text',
+                'value': draft['provider'] ?? '',
+              },
+              {
+                'label': 'المبلغ الشهري',
+                'key': 'amount_monthly',
+                'type': 'number',
+                'value': draft['amount_monthly']?.toString() ?? '',
+              },
+              {
+                'label': 'المبلغ الإجمالي',
+                'key': 'amount_total',
+                'type': 'number',
+                'value': draft['amount_total']?.toString() ?? '',
+              },
+            ],
+            'submit_label': 'حفظ الالتزام',
+            '_form_kind': 'commitment_add',
+          },
+        );
+        _storedClassifications.remove(userMsgId);
+        break;
+
+      case 'add_goal':
+        // DEC-020: confirmCard — show quick_input_form for review
+        chatNotifier.addBotMessage(
+          previewText,
+          widget: {
+            'widget': 'quick_input_form',
+            'title': 'إضافة هدف — ${draft['name']}',
+            'fields': [
+              {
+                'label': 'اسم الهدف',
+                'key': 'name',
+                'type': 'text',
+                'value': draft['name'] ?? '',
+              },
+              {
+                'label': 'المبلغ الإجمالي',
+                'key': 'amount_total',
+                'type': 'number',
+                'value': draft['amount_total']?.toString() ?? '',
+              },
+              {
+                'label': 'التوفير الشهري',
+                'key': 'amount_monthly',
+                'type': 'number',
+                'value': draft['amount_monthly']?.toString() ?? '',
+              },
+            ],
+            'submit_label': 'حفظ الهدف',
+            '_form_kind': 'goal_add',
+          },
+        );
+        _storedClassifications.remove(userMsgId);
+        break;
+
       default:
-        break;
+        chatNotifier.addBotMessage(previewText);
+        _storedClassifications.remove(userMsgId);
     }
+
+    // Reset router state after staged proposal
+    _routerState = const RouterState();
   }
 
   Future<void> _runPurchaseDecision(
@@ -563,26 +601,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
-  /// Convert Arabic-Indic numerals (٠-٩) to Western (0-9) so double.tryParse
-  /// can read them. Dart's number parsing only understands ASCII digits.
-  static String _arabicToWestern(String input) {
-    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    const western = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-    var result = input;
-    for (var i = 0; i < 10; i++) {
-      result = result.replaceAll(arabic[i], western[i]);
-    }
-    return result;
-  }
-
   Future<void> _submitCommitmentAdd(Map<String, dynamic> values, ChatProvider chatNotifier) async {
     final name = (values['name'] as String?)?.trim();
-    final monthly = double.tryParse(_arabicToWestern(values['monthly_amount'] as String? ?? ''));
+    final monthly = double.tryParse(normalizeArabicNumerals(values['monthly_amount'] as String? ?? ''));
     if (name == null || name.isEmpty || monthly == null || monthly <= 0) {
       chatNotifier.addBotMessage('محتاج اسم الالتزام والقسط الشهري على الأقل عشان أسجله.');
       return;
     }
-    final total = double.tryParse(_arabicToWestern(values['total_amount'] as String? ?? '')) ?? monthly;
+    final total = double.tryParse(normalizeArabicNumerals(values['total_amount'] as String? ?? '')) ?? monthly;
     try {
       final commitmentService = ref.read(commitmentServiceProvider);
       final saved = await commitmentService.addCommitment(name: name, totalAmount: total, remaining: total, monthlyAmount: monthly, type: _inferCommitmentType(name));
@@ -601,46 +627,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (RegExp('قرض|تمويل').hasMatch(name)) return 'loan';
     if (RegExp('اشتراك|نتفلكس|شاهد').hasMatch(name)) return 'subscription';
     return 'bnpl';
-  }
-
-  Future<void> _showCommitmentList(ChatProvider chatNotifier) async {
-    final commitmentService = ref.read(commitmentServiceProvider);
-    final commitments = await commitmentService.listActive();
-    if (commitments.isEmpty) {
-      chatNotifier.addBotMessage('ما عندك التزامات مسجلة حالياً. تبي تضيف واحد؟ قول مثلاً "عندي قسط تمارا 200 الشهر".');
-      return;
-    }
-    chatNotifier.addBotMessage('التزاماتك الحالية:', widget: {
-      'widget': 'summary_card', 'title': 'الالتزامات',
-      'rows': commitments.map((c) {
-        final remaining = (c['remaining'] as num).toInt();
-        final total = (c['total_amount'] as num).toInt();
-        final monthly = (c['monthly_amount'] as num).toInt();
-        final value = total == monthly
-            ? '$monthly ريال شهرياً'
-            : '$remaining / $total ريال\nشهرياً $monthly ريال';
-        return {'label': c['name'], 'value': value, 'tone': remaining <= 0 ? 'success' : 'neutral'};
-      }).toList(),
-    });
-  }
-
-  Future<void> _showCommitmentEditPicker(String? nameHint, ChatProvider chatNotifier) async {
-    final commitmentService = ref.read(commitmentServiceProvider);
-    final commitments = await commitmentService.listActive();
-    if (commitments.isEmpty) { chatNotifier.addBotMessage('ما عندك التزامات مسجلة بعد.'); return; }
-    var matches = commitments;
-    if (nameHint != null && nameHint.trim().isNotEmpty) {
-      final filtered = commitments.where((c) => (c['name'] as String).contains(nameHint) || ((c['provider'] as String?)?.contains(nameHint) ?? false)).toList();
-      if (filtered.isNotEmpty) matches = filtered;
-    }
-    if (matches.length == 1) {
-      await _showCommitmentCompletePrompt(matches.first, chatNotifier);
-    } else {
-      chatNotifier.addBotMessage('', widget: {
-        'widget': 'action_buttons', 'question': 'أي التزام تقصد؟',
-        'buttons': matches.take(4).map((c) => {'label': c['name'], 'value': 'commitment_edit_pick_${c['id']}', 'type': 'secondary'}).toList(),
-      });
-    }
   }
 
   Future<void> _showCommitmentCompletePrompt(Map<String, dynamic> c, ChatProvider chatNotifier) async {
@@ -675,7 +661,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _submitCommitmentAdjust(Map<String, dynamic> action, Map<String, dynamic> values, ChatProvider chatNotifier) async {
-    final remaining = double.tryParse(_arabicToWestern(values['remaining'] as String? ?? ''));
+    final remaining = double.tryParse(normalizeArabicNumerals(values['remaining'] as String? ?? ''));
     final id = action['commitment_id'] as String?;
     if (remaining == null || id == null) {
       chatNotifier.addBotMessage('محتاج رقم صحيح للمبلغ المتبقي.');
@@ -710,8 +696,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _submitGoalAdd(Map<String, dynamic> values, ChatProvider chatNotifier) async {
     final name = (values['name'] as String?)?.trim();
-    final target = double.tryParse(_arabicToWestern(values['target_amount'] as String? ?? ''));
-    final monthly = double.tryParse(_arabicToWestern(values['monthly_contribution'] as String? ?? ''));
+    final target = double.tryParse(normalizeArabicNumerals(values['target_amount'] as String? ?? ''));
+    final monthly = double.tryParse(normalizeArabicNumerals(values['monthly_contribution'] as String? ?? ''));
     if (name == null || name.isEmpty || target == null || target <= 0) {
       chatNotifier.addBotMessage('محتاج اسم الهدف والمبلغ المستهدف على الأقل عشان أسجله.');
       return;
@@ -726,40 +712,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         'goal_id': id,
       });
     } catch (e) { chatNotifier.setError('فشل حفظ الهدف: $e'); }
-  }
-
-  Future<void> _showGoalList(ChatProvider chatNotifier) async {
-    final goalService = ref.read(goalServiceProvider);
-    final goals = await goalService.listActive();
-    if (goals.isEmpty) { chatNotifier.addBotMessage('ما عندك أهداف مسجلة حالياً. تبي تضيف واحد؟ قول مثلاً "أبي أوفر 5000 لهدف السفر".'); return; }
-    chatNotifier.addBotMessage('أهدافك الحالية:', widget: {
-      'widget': 'summary_card', 'title': 'الأهداف',
-      'rows': goals.map((g) {
-        final current = (g['current_amount'] as num).toInt();
-        final target = (g['target_amount'] as num).toInt();
-        final monthly = (g['monthly_contribution'] as num).toInt();
-        return {'label': g['name'], 'value': '$current / $target ريال (شهرياً $monthly)', 'tone': current >= target ? 'success' : 'neutral'};
-      }).toList(),
-    });
-  }
-
-  Future<void> _showGoalEditPicker(String? nameHint, ChatProvider chatNotifier) async {
-    final goalService = ref.read(goalServiceProvider);
-    final goals = await goalService.listActive();
-    if (goals.isEmpty) { chatNotifier.addBotMessage('ما عندك أهداف مسجلة بعد.'); return; }
-    var matches = goals;
-    if (nameHint != null && nameHint.trim().isNotEmpty) {
-      final filtered = goals.where((g) => (g['name'] as String).contains(nameHint)).toList();
-      if (filtered.isNotEmpty) matches = filtered;
-    }
-    if (matches.length == 1) {
-      await _showGoalAchievedPrompt(matches.first, chatNotifier);
-    } else {
-      chatNotifier.addBotMessage('', widget: {
-        'widget': 'action_buttons', 'question': 'أي هدف تقصد؟',
-        'buttons': matches.take(4).map((g) => {'label': g['name'], 'value': 'goal_edit_pick_${g['id']}', 'type': 'secondary'}).toList(),
-      });
-    }
   }
 
   Future<void> _showGoalAchievedPrompt(Map<String, dynamic> g, ChatProvider chatNotifier) async {
@@ -791,7 +743,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _submitGoalAdjust(Map<String, dynamic> action, Map<String, dynamic> values, ChatProvider chatNotifier) async {
-    final amount = double.tryParse(_arabicToWestern(values['current_amount'] as String? ?? ''));
+    final amount = double.tryParse(normalizeArabicNumerals(values['current_amount'] as String? ?? ''));
     final id = action['goal_id'] as String?;
     if (amount == null || id == null) {
       chatNotifier.addBotMessage('محتاج رقم صحيح للمبلغ المدخر.');
@@ -879,7 +831,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           case 'commitment_edit_amount': await _submitCommitmentAdjust(action, values, chatNotifier); break;
           case 'goal_edit_amount': await _submitGoalAdjust(action, values, chatNotifier); break;
           case 'buy_verdict_clarification':
-            final income = double.tryParse(_arabicToWestern(values['income'] as String? ?? ''));
+            final income = double.tryParse(normalizeArabicNumerals(values['income'] as String? ?? ''));
             if (income != null && income > 0) {
               final profileService = ref.read(financialProfileServiceProvider);
               final existing = await profileService.getProfile();
@@ -905,7 +857,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             }
             break;
           case 'budget_query_clarification':
-            final budgetIncome = double.tryParse(_arabicToWestern(values['income'] as String? ?? ''));
+            final budgetIncome = double.tryParse(normalizeArabicNumerals(values['income'] as String? ?? ''));
             if (budgetIncome != null && budgetIncome > 0) {
               final profileService = ref.read(financialProfileServiceProvider);
               final existing = await profileService.getProfile();
@@ -1002,35 +954,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  // ── Integrity score query (Stage 4) ──
-
-  Future<void> _showIntegrityScore(ChatProvider chatNotifier) async {
-    try {
-      final integrityService = ref.read(integrityScoreServiceProvider);
-      final result = await integrityService.calculate();
-      final score = result['score'] as int;
-      final loggingConsistency = result['logging_consistency'] as int;
-      final receiptUploadRate = result['receipt_upload_rate'] as int;
-      final noDeletionRate = result['no_deletion_rate'] as int;
-
-      chatNotifier.addBotMessage('', widget: {
-        'widget': 'summary_card',
-        'title': 'نقاط نزاهتك',
-        'tone': score >= 70 ? 'success' : (score >= 40 ? 'neutral' : 'warning'),
-        'rows': [
-          {'label': 'النتيجة', 'value': '$score / 100', 'tone': score >= 70 ? 'success' : (score >= 40 ? 'neutral' : 'warning'), 'style': 'large'},
-          {'label': 'تناسق التسجيل', 'value': '$loggingConsistency%', 'tone': 'neutral'},
-          {'label': 'معدل رفع الإيصالات', 'value': '$receiptUploadRate%', 'tone': 'neutral'},
-          {'label': 'معدل عدم الحذف', 'value': '$noDeletionRate%', 'tone': 'neutral'},
-          {'label': 'دقة مطابقة البيانات', 'value': 'قادم مع الربط البنكي 🔒', 'tone': 'muted'},
-          {'label': 'سرعة الاستجابة', 'value': 'قادم مع الربط البنكي 🔒', 'tone': 'muted'},
-        ],
-      });
-    } catch (e) {
-      chatNotifier.setError('فشل حساب نقاط النزاهة: $e');
-    }
-  }
-
   // ── Remaining-budget query — deterministic, no LLM (DEC-003) ──
 
   Future<void> _showRemainingBudget(ChatProvider chatNotifier) async {
@@ -1119,7 +1042,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final amountStr = action['amount'] as String?;
     final category = action['category'] as String? ?? 'متنوع';
     if (amountStr == null || amountStr.isEmpty) return;
-    final amount = double.tryParse(_arabicToWestern(amountStr)) ?? 0;
+    final amount = double.tryParse(normalizeArabicNumerals(amountStr)) ?? 0;
     if (amount <= 0) return;
     try {
       final txService = ref.read(transactionServiceProvider);

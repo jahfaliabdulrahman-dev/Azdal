@@ -1,7 +1,9 @@
 /// Gemini AI service for Azdal.
 ///
-/// Wraps the google_generative_ai package for round-trip communication
-/// with Google's Gemini models.
+/// Wraps the googleai_dart package (DEC-050 SDK decision, flipped
+/// 2026-07-21 — pure Dart, no Firebase dependency, no App Check gate
+/// needed for sideloaded APKs) for round-trip communication with Google's
+/// Gemini models.
 ///
 /// The API key is injected at **compile time** via
 /// `--dart-define-from-file=.env`  — never read from the OS process
@@ -11,7 +13,7 @@ library;
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:googleai_dart/googleai_dart.dart';
 
 import '../../features/chat/models/chat_message.dart';
 
@@ -25,8 +27,8 @@ const _apiKey = String.fromEnvironment('GEMINI_API_KEY');
 /// System prompt for Azdal's financial AI coach in Saudi Arabic dialect.
 ///
 /// IMPORTANT: This prompt is used ONLY for conversational (non-digit)
-/// messages.  The router (`_classifySystemPrompt`) handles all messages
-/// that contain a digit.  This prompt must never emit `action_buttons`
+/// messages routed through the tool-calling router's general_chat path.
+/// It must never emit `action_buttons`
 /// or `compound_split_card` — those are Dart-built from classification.
 const _systemPrompt = '''
 أنت أزدل — مدرّب مالي سعودي ودود وذكي. تتكلم باللهجة السعودية فقط، بأسلوب مشجّع ومختصر وطبيعي — مو آلي، ومو رسمي.
@@ -46,55 +48,10 @@ const _systemPrompt = '''
 ''';
 
 // ─────────────────────────────────────────────────────────────────────
-// Router prompt — the single history-free call for digit messages
+// Shared JSON helper
 // ─────────────────────────────────────────────────────────────────────
 
-/// Classification / routing system prompt.
-///
-/// Used ONLY by [classifyTransaction] for messages containing a digit.
-/// Receives ZERO conversation history — structurally preventing
-/// cross-message rebundling.
-///
-/// Returns a single JSON object with a `kind` field:
-/// - `transaction`: single clear expense → auto-saved immediately
-/// - `compound`: multi-item split → confirm/edit card shown
-/// - `clarify`: ambiguous → a single clear question asked
-/// - `chat`: not an expense → falls through to coach prompt
-const _classifySystemPrompt = '''
-أنت محرّك تصنيف وصياغة لتطبيق "أزدل" المالي. مهمتك: تحليل رسالة المستخدم الحالية وإخراج JSON واحد فقط — بدون أي نص أو شرح خارج الـ JSON، وبدون أسيجة ```.
-
-قاعدة أساسية: أي رقم مذكور مع سياق صرف (أكل، شرب، مقاضي، بنزين، اسم منتج أو خدمة) هو مبلغ بالريال السعودي — حتى لو ما كُتبت كلمة "ريال".
-أمثلة:
-- "50 بيض"  ⟶  50 ريال على البيض.
-- "20 قهوة"  ⟶  20 ريال على القهوة.
-- "سجل 150 عشاء"  ⟶  150 ريال على العشاء.
-
-اختر نوعاً واحداً فقط (kind):
-
-1) "transaction" — الرسالة فيها عملية صرف واحدة واضحة (مبلغ + الشي اللي انصرف عليه). هذي العملية تُسجَّل تلقائياً فور تصنيفها — ما فيه خطوة تأكيد بعدها، فـ reply يجب أن يقول إن العملية تسجّلت فعلاً (مو يسأل "صح؟" ولا ينتظر تأكيد):
-{"kind":"transaction","amount":الرقم,"category":"الفئة","subcategory":"وصف مختصر","tone":"green|gray|red","reply":"جملة قصيرة تفيد إن العملية تسجّلت فعلاً، بلهجة سعودية دافئة ومتنوعة، تذكر المبلغ والفئة مع إيموجي مناسب — مثل 'تم تسجيل 50 ريال — بيض 🥚' أو 'سجّلت لك 50 ريال على البيض 🥚'"}
-
-2) "compound" — الرسالة الواحدة فيها أكثر من بند صرف (مثل "150 مقهى + 175 خضار + 150 مطعم"). هذي لسه تحتاج تأكيد المستخدم قبل الحفظ (فيه بطاقة تعديل)، فـ reply يوصف الاستخراج بدون أي إشارة إنه "تسجّل":
-{"kind":"compound","reply":"جملة قصيرة ودّية بدون أي مجموع ولا جمع أرقام، تصف إنك قسّمت المبلغ ولسه بانتظار تأكيده","splits":[{"category":"...","amount":الرقم}]}
-
-3) "clarify" — فيها رقم لكن ناقص معلومة أساسية (ما فيه شي انصرف عليه، أو المقصد غير واضح). ما صار أي تسجيل، فـ reply سؤال حقيقي:
-{"kind":"clarify","reply":"سؤال واحد قصير وواضح باللهجة السعودية"}
-
-4) "chat" — ليست عملية صرف: سلام، سؤال، طلب نصيحة، أو سؤال عن ملخص/تقرير مصاريف، أو رغبة شراء مستقبلية ("أبي أشتري"):
-{"kind":"chat"}
-
-قواعد ثابتة:
-- amount رقم فقط (بدون نص وبدون كلمة ريال).
-- استخدم الأرقام الإنجليزية في نص reply (50 مو ٥٠).
-- لا تحسب أي مجموع ولا ناتج جمع إطلاقاً — التطبيق هو اللي يحسب.
-- tone: green لمصروف اعتيادي بسيط، gray لمصروف عادي، red لمصروف كبير أو غير ضروري.
-- reply باللهجة السعودية، دافئة ومختصرة وطبيعية، بدون تكلّف ولا لغة رسمية جافة، وبدون تكرار نفس الصياغة كل مرة.
-- أخرج JSON واحد فقط.
-''';
-
-// ─────────────────────────────────────────────────────────────────────
-// Cold Start reaction prompt — history-free, numbers-only
-// ─────────────────────────────────────────────────────────────────────
+/// Extract and decode a JSON object from raw LLM text.
 
 const _coldStartReactionPrompt = '''
 أنت أزدل — تصيغ جملة تفاعل واحدة على نتيجة "البداية السريعة" لمستخدم جديد، بناءً على رقمين حسبهما التطبيق مسبقاً فقط. ما عندك أي معلومة ثانية عن المستخدم.
@@ -133,6 +90,14 @@ final class GeminiService {
   /// Gemini Flash is natively multimodal — no separate vision model needed.
   static const _modelName = 'gemini-flash-latest';
 
+  /// Shared client for all Gemini calls (same pattern as
+  /// `GeminiRouterLlm` in `router_llm.dart` — already device-verified).
+  /// Safe to construct even with an empty compile-time key; every method
+  /// below guards `_apiKey.isEmpty` before making a real request.
+  final GoogleAIClient _client = GoogleAIClient(
+    config: GoogleAIConfig.googleAI(authProvider: ApiKeyProvider(_apiKey)),
+  );
+
   /// Whether a valid API key was injected at compile time.
   bool get isConfigured => _apiKey.isNotEmpty;
 
@@ -148,17 +113,16 @@ final class GeminiService {
     }
 
     try {
-      final model = GenerativeModel(
+      final response = await _client.models.generateContent(
         model: _modelName,
-        apiKey: _apiKey,
-      );
-      final response = await model.generateContent(
-        [Content.text('Reply with just: pong')],
+        request: GenerateContentRequest(
+          contents: [Content.text('Reply with just: pong')],
+        ),
       );
       // ignore: avoid_print
       print('=== AZDAL DEBUG: Gemini ping response: ${response.text}');
       return response.text?.trim().toLowerCase() == 'pong';
-    } on GenerativeAIException catch (e) {
+    } on GoogleAIException catch (e) {
       // ignore: avoid_print
       print('=== AZDAL DEBUG: Gemini ping FAILED — $e');
       return false;
@@ -195,16 +159,16 @@ final class GeminiService {
         '"${userText.length > 50 ? '${userText.substring(0, 50)}...' : userText}"');
 
     try {
-      final model = GenerativeModel(
-        model: _modelName,
-        apiKey: _apiKey,
-        systemInstruction: Content.system(_systemPrompt),
-      );
-
       // Build conversation history
       final contents = _buildContents(userText, history);
 
-      final response = await model.generateContent(contents);
+      final response = await _client.models.generateContent(
+        model: _modelName,
+        request: GenerateContentRequest(
+          contents: contents,
+          systemInstruction: Content.text(_systemPrompt),
+        ),
+      );
 
       final rawText = response.text ?? '';
       // ignore: avoid_print
@@ -218,7 +182,7 @@ final class GeminiService {
         text: cleanText.isNotEmpty ? cleanText : rawText,
         widget: widget,
       );
-    } on GenerativeAIException catch (e) {
+    } on GoogleAIException catch (e) {
       // ignore: avoid_print
       print('=== AZDAL DEBUG: Gemini sendMessage FAILED — $e');
       return GeminiResponse(
@@ -279,54 +243,6 @@ final class GeminiService {
     }
   }
 
-  // ── Classification (router — the single history-free call) ──
-
-  /// Classify a single user message as a transaction, compound split,
-  /// clarification-needed, or chat.
-  ///
-  /// Uses [_classifySystemPrompt] — NOT [_systemPrompt] — so Gemini
-  /// receives explicit JSON-formatting instructions without conflicting
-  /// with the coach prompt.
-  ///
-  /// No conversation history is sent — each classification is isolated
-  /// to the current message, preventing prior transactions from leaking.
-  Future<GeminiResponse> classifyTransaction(String userText) async {
-    assert(_apiKey.isNotEmpty, 'GEMINI_API_KEY is empty.');
-
-    if (_apiKey.isEmpty) {
-      return const GeminiResponse(text: '{}');
-    }
-
-    // ignore: avoid_print
-    print('=== AZDAL DEBUG: classifyTransaction — '
-        '"${userText.length > 50 ? '${userText.substring(0, 50)}...' : userText}"');
-
-    try {
-      final model = GenerativeModel(
-        model: _modelName,
-        apiKey: _apiKey,
-        systemInstruction: Content.system(_classifySystemPrompt),
-      );
-
-      final response = await model.generateContent([
-        Content.text(userText),
-      ]);
-
-      final rawText = response.text ?? '';
-      final map = _extractJsonObject(rawText);
-
-      return GeminiResponse(text: rawText, widget: map);
-    } on GenerativeAIException catch (e) {
-      // ignore: avoid_print
-      print('=== AZDAL DEBUG: classifyTransaction FAILED — $e');
-      return GeminiResponse(text: '{}', error: e.toString());
-    } catch (e) {
-      // ignore: avoid_print
-      print('=== AZDAL DEBUG: classifyTransaction FAILED (unexpected) — $e');
-      return GeminiResponse(text: '{}', error: e.toString());
-    }
-  }
-
   // ── Cold Start reaction ─────────────────────────────────────────
 
   /// Cold Start insight reaction.
@@ -344,18 +260,18 @@ final class GeminiService {
     }
 
     try {
-      final model = GenerativeModel(
-        model: _modelName,
-        apiKey: _apiKey,
-        systemInstruction: Content.system(_coldStartReactionPrompt),
-      );
-
       final input = jsonEncode({
         'spend_ratio_percent': spendRatio,
         'disposable_after_commitments': disposableAfterCommitments.round(),
       });
 
-      final response = await model.generateContent([Content.text(input)]);
+      final response = await _client.models.generateContent(
+        model: _modelName,
+        request: GenerateContentRequest(
+          contents: [Content.text(input)],
+          systemInstruction: Content.text(_coldStartReactionPrompt),
+        ),
+      );
       final rawText = response.text ?? '';
       final map = _extractJsonObject(rawText);
       final reply = (map?['reply'] as String?)?.trim() ?? '';
@@ -369,155 +285,6 @@ final class GeminiService {
   }
 
   // ── Setup-intent detection (commitments/goals) ──────────────────
-
-  /// System prompt for commitment/goal setup-intent detection.
-  ///
-  /// Separate from both the coach and router prompts. Only invoked when
-  /// the local keyword heuristic matches — cheaper than a round-trip
-  /// on every message. Any failure resolves to `{"kind":"none"}` so
-  /// this feature can never be the reason an ordinary message fails.
-  static const _setupIntentSystemPrompt = '''
-أنت محرّك اكتشاف نية "الإعداد" لتطبيق "أزدل" المالي — منفصل تماماً عن محرّك تصنيف المصاريف. مهمتك: تحدد هل رسالة المستخدم الحالية نية لتسجيل أو عرض أو تعديل التزام مالي متكرر (قسط، اشتراك، إيجار، قرض) أو هدف ادخار. أخرج JSON واحد فقط، بدون أي نص خارجه وبدون أسيجة ```.
-
-تنبيه مهم: مصروف عادي لمرة وحدة (مثل "150 عشاء" أو "50 بيض") ليس من اختصاصك إطلاقاً — أرجع "none" له دائماً.
-
-اختر kind واحد فقط:
-
-1) "commitment_add" — إعلان عن التزام مالي متكرر جديد (قسط تقسيط، اشتراك شهري، إيجار، قرض) يبيه المستخدم يسجله:
-{"kind":"commitment_add","draft":{"name":"اسم مختصر أو نص فاضي إذا ما ذُكر","provider":"اسم الجهة إن ذُكر (تمارا، تابي...) أو نص فاضي","amount_monthly":الرقم أو null,"amount_total":الرقم أو null},"reply":"جملة قصيرة تصف الالتزام اللي فهمته بدون أي تأكيد حفظ"}
-
-2) "commitment_view" — سؤال عن الالتزامات الحالية أو عن التزام معين:
-{"kind":"commitment_view","name_hint":"اسم أو مزوّد إن ذُكر أو نص فاضي"}
-
-3) "commitment_edit" — إعلان إن التزام انسدد/انتهى، أو رغبة تعديل مبلغه المتبقي:
-{"kind":"commitment_edit","name_hint":"اسم أو مزوّد الالتزام المقصود أو نص فاضي"}
-
-4) "goal_add" — إعلان عن هدف ادخار جديد يبيه المستخدم يسجله:
-{"kind":"goal_add","draft":{"name":"اسم الهدف أو نص فاضي","amount_monthly":الرقم أو null,"amount_total":الرقم أو null},"reply":"جملة قصيرة تصف الهدف اللي فهمته بدون أي تأكيد حفظ"}
-
-5) "goal_view" — سؤال عن الأهداف الحالية أو التقدم فيها:
-{"kind":"goal_view","name_hint":"اسم الهدف إن ذُكر أو نص فاضي"}
-
-6) "goal_edit" — إعلان إن هدف تحقق، أو رغبة تعديل تفاصيله:
-{"kind":"goal_edit","name_hint":"اسم الهدف إن ذُكر أو نص فاضي"}
-
-7) "none" — أي شيء غير ما سبق (مصروف عادي، سؤال عام، دردشة، شكوى):
-{"kind":"none"}
-
-قواعد ثابتة:
-- لا تخترع أي رقم لم يُذكر صراحة — إذا ما وصلك رقم استخدم null.
-- لا تحسب أي مجموع أو ناتج جمع إطلاقاً — التطبيق هو اللي يحسب.
-- reply مطلوب فقط لـ commitment_add و goal_add: جملة أو جملتين بالكثير، لهجة سعودية دافئة، بدون تكرار حرفي، وبدون ذكر أي رقم لم يصلك بالضبط.
-- لبقية الأنواع لا تضف حقل reply إطلاقاً.
-- أخرج JSON واحد فقط.
-
-أمثلة:
-- "عندي قسط تمارا ١٠٠٠ ياخذون ٢٠٠ كل شهر" ⟶ {"kind":"commitment_add","draft":{"name":"تمارا","provider":"تمارا","amount_monthly":200,"amount_total":1000},"reply":"تمام، فهمت — قسط تمارا الشهري 200 ريال من إجمالي 1000. راجع التفاصيل قبل الحفظ 👇"}
-- "أبي أسجل إيجار الشقة 3000 الشهر" ⟶ {"kind":"commitment_add","draft":{"name":"إيجار الشقة","provider":"","amount_monthly":3000,"amount_total":null},"reply":"سجّلت مسودة إيجار الشقة — كمّل الباقي وأكد 🏠"}
-- "كم باقي علي في تمارا؟" ⟶ {"kind":"commitment_view","name_hint":"تمارا"}
-- "خلصت قسط السيارة" ⟶ {"kind":"commitment_edit","name_hint":"السيارة"}
-- "أبي أوفر 5000 لهدف الزواج، أقدر أحط 500 بالشهر" ⟶ {"kind":"goal_add","draft":{"name":"الزواج","amount_monthly":500,"amount_total":5000},"reply":"حلو! هدف الزواج بـ 5000 ريال وتوفير 500 شهرياً — راجع وأكد 👇"}
-- "وش أهدافي الحالية؟" ⟶ {"kind":"goal_view","name_hint":""}
-- "150 عشاء" ⟶ {"kind":"none"}
-- "وفرت 200 ريال هالأسبوع" ⟶ {"kind":"none"}
-''';
-
-  // ── Buy-intent detection (Stage 4) ───────────────────────────
-
-  /// System prompt for buy-intent detection.
-  ///
-  /// Separate from the coach, router, and setup-intent prompts.
-  /// Only invoked when the local keyword heuristic matches
-  /// [_looksLikeBuyIntent]. Any failure resolves to `{"kind":"none"}`
-  /// (DEC-029: BRP — Dart fallback).
-  static const _buyIntentSystemPrompt = '''
-أنت محرّك اكتشاف نية "الشراء" لتطبيق "أزدل" المالي — منفصل تماماً عن محرّك تصنيف المصاريف. مهمتك: تحدد هل رسالة المستخدم الحالية رغبة شراء شيء معيّن (item ± amount) أو مجرد استفسار عن سعر بدون أي نية شراء فعلية. أخرج JSON واحد فقط، بدون أي نص خارجه وبدون أسيجة ```.
-
-اختر kind واحد فقط:
-
-1) "buy_intent" — أي رسالة يُذكر فيها اسم شيء معيّن يبي المستخدم يشتريه أو يعرف هل يقدر يشتريه، بأي صيغة كانت (تقريرية أو سؤال: "أبي أشتري"، "ودي أشتري"، "هل أقدر أشتري"، "أقدر أشتري"، "ينفع أشتري"، "نفسي أشتري"...). صيغة السؤال ("هل أقدر") لا تغيّر التصنيف — المهم وجود اسم الشيء:
-{"kind":"buy_intent","item":"اسم الشيء","amount":الرقم أو null}
-
-2) "buy_query" — استفسار عن سعر شيء بدون أي إشارة لنية شراء أو قرار شراء (يبي يعرف السعر بس، مو "أقدر أشتريه أو لا"):
-{"kind":"buy_query","query":"نص الاستفسار"}
-
-3) "none" — أي شيء غير ما سبق (مصروف عادي، سؤال عام، دردشة):
-{"kind":"none"}
-
-قواعد ثابتة:
-- لا تخترع أي رقم لم يُذكر صراحة — إذا ما وصلك مبلغ استخدم null.
-- لا تحسب أي مجموع أو ناتج جمع إطلاقاً — التطبيق هو اللي يحسب.
-- أي رسالة فيها اسم شيء + مبلغ هي buy_intent دائماً، حتى لو الصيغة سؤال ("هل أقدر...؟") — buy_query فقط لاستفسار سعر مجرّد بدون أي مبلغ أو قرار شراء.
-- أخرج JSON واحد فقط.
-
-أمثلة:
-- "أبي أشتري جوال بـ 3000" ⟶ {"kind":"buy_intent","item":"جوال","amount":3000}
-- "ودي اشتري ساعة" ⟶ {"kind":"buy_intent","item":"ساعة","amount":null}
-- "هل أقدر أشتري طابعة بـ 1000 ريال" ⟶ {"kind":"buy_intent","item":"طابعة","amount":1000}
-- "أقدر أشتري لابتوب؟" ⟶ {"kind":"buy_intent","item":"لابتوب","amount":null}
-- "كم سعر الايفون" ⟶ {"kind":"buy_query","query":"سعر الايفون"}
-- "عندي 150 ريال اشتري فيها" ⟶ {"kind":"none"}
-''';
-
-  /// Detect a buy intent.
-  ///
-  /// Isolated from [classifyTransaction] and [classifySetupIntent] —
-  /// different prompt, different call, never shares history or state.
-  /// Only invoked when [_looksLikeBuyIntent] matches
-  /// (chat_screen.dart pre-filter). Any failure resolves to
-  /// `{"kind":"none"}` so this feature can never be the reason an
-  /// ordinary message fails to process.
-  Future<GeminiResponse> classifyBuyIntent(String userText) async {
-    assert(_apiKey.isNotEmpty, 'GEMINI_API_KEY is empty.');
-    if (_apiKey.isEmpty) return const GeminiResponse(text: '{"kind":"none"}');
-
-    try {
-      final model = GenerativeModel(
-        model: _modelName,
-        apiKey: _apiKey,
-        systemInstruction: Content.system(_buyIntentSystemPrompt),
-      );
-      final response = await model.generateContent([Content.text(userText)]);
-      final rawText = response.text ?? '';
-      final map = _extractJsonObject(rawText) ?? const {'kind': 'none'};
-      return GeminiResponse(text: rawText, widget: map);
-    } catch (e) {
-      // ignore: avoid_print
-      print('=== AZDAL DEBUG: classifyBuyIntent FAILED — $e');
-      return const GeminiResponse(text: '{"kind":"none"}', error: 'buy_intent_failed');
-    }
-  }
-
-  // ── Setup-intent detection (commitments/goals) ──────────────────
-
-  /// Detect a commitment/goal setup intent.
-  ///
-  /// Isolated from [classifyTransaction] — different prompt, different
-  /// call, never shares history or state. Only invoked when
-  /// [_looksLikeSetupIntent] matches (chat_screen.dart pre-filter),
-  /// to avoid a round-trip on every message. Any failure resolves to
-  /// `{"kind":"none"}` so this feature can never be the reason an
-  /// ordinary message fails to process.
-  Future<GeminiResponse> classifySetupIntent(String userText) async {
-    assert(_apiKey.isNotEmpty, 'GEMINI_API_KEY is empty.');
-    if (_apiKey.isEmpty) return const GeminiResponse(text: '{"kind":"none"}');
-
-    try {
-      final model = GenerativeModel(
-        model: _modelName,
-        apiKey: _apiKey,
-        systemInstruction: Content.system(_setupIntentSystemPrompt),
-      );
-      final response = await model.generateContent([Content.text(userText)]);
-      final rawText = response.text ?? '';
-      final map = _extractJsonObject(rawText) ?? const {'kind': 'none'};
-      return GeminiResponse(text: rawText, widget: map);
-    } catch (e) {
-      // ignore: avoid_print
-      print('=== AZDAL DEBUG: classifySetupIntent FAILED — $e');
-      return const GeminiResponse(text: '{"kind":"none"}', error: 'setup_intent_failed');
-    }
-  }
 
   // ── Legacy helpers ──────────────────────────────────────────────
 
@@ -573,11 +340,6 @@ final class GeminiService {
         'image size=${imageBytes.length} bytes');
 
     try {
-      final model = GenerativeModel(
-        model: _modelName,
-        apiKey: _apiKey,
-      );
-
       const prompt =
           'استخرج جميع بنود هذا الإيصال. '
           'لكل بند: اسم المنتج/الخدمة، السعر. '
@@ -591,14 +353,19 @@ final class GeminiService {
           '- إيصال مطعم فيه أطباق وشراب ⟶ "عشاء اليوم كان في مطعم — سجلتلك كل طبق لحاله 🍽️"\n'
           '- إيصال محطة بنزين ⟶ "تعبئة بنزين — سجلتها لك ⛽"';
 
-      final imagePart = DataPart('image/jpeg', imageBytes);
+      final imagePart = InlineDataPart(Blob.fromBytes('image/jpeg', imageBytes));
 
       // ignore: avoid_print
       print('=== AZDAL DEBUG: OCR — sending to $_modelName...');
 
-      final response = await model.generateContent([
-        Content.multi([imagePart, TextPart(prompt)]),
-      ]);
+      final response = await _client.models.generateContent(
+        model: _modelName,
+        request: GenerateContentRequest(
+          contents: [
+            Content.user([imagePart, TextPart(prompt)]),
+          ],
+        ),
+      );
 
       final rawText = response.text ?? '';
       // ignore: avoid_print
@@ -639,7 +406,7 @@ final class GeminiService {
           'detail': e.toString(),
         };
       }
-    } on GenerativeAIException catch (e) {
+    } on GoogleAIException catch (e) {
       // ignore: avoid_print
       print('=== AZDAL DEBUG: OCR Gemini FAILED — $e');
       return {'error': 'gemini_error', 'detail': e.toString()};

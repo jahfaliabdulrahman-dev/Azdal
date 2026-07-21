@@ -20,8 +20,14 @@ dependencies:
 
   # ── Pre-Approved Packages (00_project_overrides.md) ──
   # AI
-  google_generative_ai: ^0.4.0          # Gemini API (Flash + Pro + Vision)
-  
+  # DEC-050 SDK decision (flipped 2026-07-21): googleai_dart is the sole
+  # Gemini SDK — pure Dart, no Firebase dependency, no App Check gate
+  # needed for sideloaded APKs. google_generative_ai (deprecated, frozen
+  # since 2025-04) fully removed 2026-07-21 once gemini_service.dart
+  # (coach chat, OCR, cold-start) was migrated onto this same package,
+  # closing the temporary dual-SDK window opened by the router migration.
+  googleai_dart: ^9.0.0                  # Gemini API — chat, tool calling, vision/OCR
+
   # Backend
   supabase_flutter: ^2.3.0              # Supabase PostgreSQL
   
@@ -45,7 +51,6 @@ dependencies:
   # isar: ^3.1.0                        # Isar — deferred DEC-015
   path_provider: ^2.1.0
   receive_sharing_intent: 1.8.0
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
