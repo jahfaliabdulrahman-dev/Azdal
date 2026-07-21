@@ -68,3 +68,12 @@ android/.kotlin/
 
 # DB backups — only the age-encrypted output may be committed, never the raw dump
 backups/*.sql
+
+# Local QA scratch (device screenshots pulled during manual verification)
+.qa_tmp/
+
+# Codebase-graph analysis tool output (regeneratable, not source)
+graphify-out/
+
+# Test-scaffold logs
+testsprite_tests/
