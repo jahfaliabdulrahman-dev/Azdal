@@ -1,0 +1,76 @@
+# =============================================================================
+# Supply Chain Security Scan — osv-scanner
+# =============================================================================
+# Scans ALL Dart/Flutter dependencies (pubspec.lock → full transitive tree)
+# against Google's OSV vulnerability database on every push to main.
+#
+# Purpose:
+#   - Catches newly-disclosed vulnerabilities in any transitive dependency
+#     (you depend on 100+ packages, not just the ones in pubspec.yaml)
+#   - Fails the check (non-blocking annotation) when a known CVE is present
+#   - Trains the habit: security scanning is a STANDARD CI step, not an afterthought
+#
+# Note: this job is advisory + visible. It does NOT block the build pipeline
+# by design (so a disclosed CVE never bricks your release cadence silently);
+# it alerts loudly in the Actions UI. To make it blocking, remove `|| true`.
+# =============================================================================
+
+name: Supply Chain Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # Weekly re-scan even with no code changes — new CVEs drop constantly
+    - cron: '0 6 * * 1'   # Mondays 06:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  osv-scan:
+    name: OSV Dependency Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Resolve dependencies (generate pubspec.lock)
+        run: flutter pub get
+
+      - name: Install osv-scanner (binary + SHA256 verify)
+        run: |
+          OSV_VERSION="v2.4.0"
+          # v2.4.0 publishes raw binaries (no .zip) — download + verify checksum
+          curl -sSL -o /tmp/osv-scanner \
+            "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64"
+          chmod +x /tmp/osv-scanner
+          # Verify against published SHA256SUMS
+          curl -sSL -o /tmp/osv-SHA256SUMS \
+            "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_SHA256SUMS"
+          EXPECTED=$(grep 'osv-scanner_linux_amd64$' /tmp/osv-SHA256SUMS | awk '{print $1}')
+          ACTUAL=$(shasum -a 256 /tmp/osv-scanner | awk '{print $1}')
+          echo "expected: $EXPECTED"
+          echo "actual:   $ACTUAL"
+          if [ "$EXPECTED" != "$ACTUAL" ]; then
+            echo "::error::osv-scanner checksum mismatch — aborting scan"
+            exit 1
+          fi
+          /tmp/osv-scanner --version
+
+      - name: Run OSV scan on all lockfiles
+        run: |
+          echo "=== Scanning pubspec.lock ==="
+          /tmp/osv-scanner --lockfile pubspec.lock || echo "::warning::OSV scan found vulnerabilities — review the report above"
