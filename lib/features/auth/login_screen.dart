@@ -46,46 +46,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     final auth = ref.read(authServiceProvider);
-
-    // Data-safety guard: logging in REPLACES the anonymous session, so
-    // this device's guest data becomes unreachable. Warn first.
-    if (auth.isAnonymous) {
-      final proceed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('تنبيه'),
-          content: const Text(
-            'تسجيل الدخول بحساب آخر سيفصل هذا الجهاز عن بيانات الضيف الحالية.\n'
-            'إذا كنت تريد الاحتفاظ ببياناتك الحالية، أنشئ حساباً جديداً بدلاً من ذلك.',
-            style: TextStyle(height: 1.6),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('رجوع'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text(
-                'متابعة الدخول',
-                style: TextStyle(color: Brand.danger),
-              ),
-            ),
-          ],
-        ),
-      );
-      if (proceed != true) return;
-    }
-
     setState(() => _loading = true);
     try {
       await auth.signInWithEmail(
         email: _identifier.text.trim(),
         password: _password.text,
       );
-      if (!mounted) return;
-      _snack('أهلاً بعودتك!');
-      context.pop();
+      // On success the auth-state change refreshes the router's gate, which
+      // moves /login → /home automatically (DEC-051). No manual navigation.
+      if (mounted) _snack('أهلاً بعودتك!');
     } catch (e) {
       if (mounted) _snack(arabicAuthError(e), error: true);
     } finally {
@@ -180,7 +149,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton(
+                onPressed: () => context.push('/forgot-password'),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  'نسيت كلمة المرور؟',
+                  style: TextStyle(
+                    color: Brand.green,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
             AuthSubmitButton(
               label: 'تسجيل الدخول',
               loading: _loading,

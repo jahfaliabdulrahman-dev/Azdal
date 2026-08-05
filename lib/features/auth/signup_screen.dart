@@ -7,7 +7,8 @@ import 'package:azdal/app/providers.dart';
 import 'package:azdal/features/auth/auth_service.dart';
 import 'package:azdal/features/auth/auth_ui.dart';
 
-/// REAL signup = anonymous → permanent upgrade (same UUID, DEC-017).
+/// Signup = create a new permanent account (DEC-051). No anonymous session to
+/// upgrade — login is required from first launch.
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
 
@@ -55,21 +56,24 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
       return;
     }
     final auth = ref.read(authServiceProvider);
-    if (!auth.isAnonymous) {
-      _snack('لديك حساب دائم بالفعل على هذا الجهاز');
-      return;
-    }
     setState(() => _loading = true);
     try {
-      await auth.upgradeAnonymousToEmail(
+      final res = await auth.registerWithEmail(
         fullName: _name.text.trim(),
         phone: _phone.text.trim(),
         email: _email.text.trim(),
         password: _password.text,
       );
       if (!mounted) return;
-      _snack('تم إنشاء حسابك بنجاح — كل بياناتك السابقة محفوظة معك ✨');
-      context.pop();
+      if (res.session != null) {
+        // Confirm-email OFF: signed in immediately. The router's auth gate
+        // takes it to /home; no manual navigation needed.
+        _snack('تم إنشاء حسابك بنجاح — أهلاً بك في أزدل ✨');
+      } else {
+        // Confirm-email ON: account created, awaiting email confirmation.
+        _snack('تم إنشاء الحساب — تحقق من بريدك لتأكيد الحساب ثم سجّل الدخول');
+        if (mounted) context.go('/login');
+      }
     } catch (e) {
       if (mounted) _snack(arabicAuthError(e), error: true);
     } finally {

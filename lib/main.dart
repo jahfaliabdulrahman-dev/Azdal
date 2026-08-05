@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app_router.dart';
-import 'app/launch_flags.dart';
 import 'app/theme.dart';
 
 // ── Compile-time credentials (injected via --dart-define-from-file=.env) ──
@@ -40,31 +39,18 @@ Future<void> main() async {
     publishableKey: _supabaseKey,
   );
 
-  // ── Guest-first RLS (DEC-017): Anonymous sign-in ──
-  // Creates a real auth.users row with is_anonymous=true. This gives every
-  // guest a real UUID → auth.uid() works → all 14 RLS policies work unchanged.
-  // Session persists on-device — guest data survives app restarts.
-  final supabase = Supabase.instance.client;
-  // First-launch flag for onboarding routing — must be read BEFORE
-  // signInAnonymously() creates a session. No session at process start
-  // ⇔ fresh install ⇔ show onboarding once.
-  azdalFirstLaunch = supabase.auth.currentSession == null;
-  if (supabase.auth.currentSession == null) {
-    try {
-      await supabase.auth.signInAnonymously();
-      // ignore: avoid_print
-      print('=== AZDAL DEBUG: Anonymous sign-in successful — '
-          'user_id: ${supabase.auth.currentUser?.id}');
-    } catch (e) {
-      // ignore: avoid_print
-      print('=== AZDAL DEBUG: Anonymous sign-in FAILED — $e');
-      // Non-fatal: app still renders, but writes to Supabase will fail
-      // until the user is authenticated.
-    }
-  } else {
-    // ignore: avoid_print
-    print('=== AZDAL DEBUG: Existing session found — '
-        'user_id: ${supabase.auth.currentUser?.id}');
+  // ── DEC-051: no anonymous/guest sign-in ──
+  // The app requires email/password login from first launch, so every account
+  // is permanent from message one. The router's auth gate (app_router.dart)
+  // sends any unauthenticated launch to /login and restores an existing
+  // permanent session automatically (supabase_flutter persists it on-device).
+  //
+  // Transition safety: a device upgrading from the pre-DEC-051 build may still
+  // hold a persisted ANONYMOUS session. Sign it out so the gate requires a real
+  // login rather than silently continuing on throwaway guest data.
+  final auth = Supabase.instance.client.auth;
+  if (auth.currentUser?.isAnonymous ?? false) {
+    await auth.signOut();
   }
 
   // ── System Share Sheet (Stage 3 OCR) ── DISABLED

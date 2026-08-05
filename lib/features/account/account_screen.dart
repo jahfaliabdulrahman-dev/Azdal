@@ -5,11 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:azdal/app/brand.dart';
-import 'package:azdal/app/launch_flags.dart';
 
 /// حسابي tab — hosts bank linking (per the designer's settings-style
-/// reference page), the journey/vision screen, and the OPTIONAL account
-/// upgrade (DEC-017: anonymous experience is never gated behind login).
+/// reference page), the journey/vision screen, and sign-out. Under DEC-051
+/// every user is a permanent, signed-in account — there is no guest state.
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
 
@@ -23,7 +22,7 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   void initState() {
     super.initState();
-    // Re-render when the anonymous session upgrades to a real account.
+    // Re-render on sign-out (the router's auth gate handles the navigation).
     _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((_) {
       if (mounted) setState(() {});
     });
@@ -35,20 +34,15 @@ class _AccountScreenState extends State<AccountScreen> {
     super.dispose();
   }
 
-  /// Ends the current session (guest or real) and starts a brand-new
-  /// anonymous one, replaying splash → onboarding → Cold Start from zero.
-  /// Needed because a guest session persists on-device (DEC-017) — without
-  /// this, a second person picking up the same phone continues on the
-  /// previous person's data instead of a fresh first-run experience.
-  Future<void> _startAsNewGuest(BuildContext context) async {
+  /// Sign out. The router's auth gate (DEC-051) then falls back to /login.
+  Future<void> _signOut(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('بدء تجربة جديدة؟'),
+        title: const Text('تسجيل الخروج؟'),
         content: const Text(
-          'راح يبدأ التطبيق من الصفر كزائر جديد — شاشة الترحيب والبداية '
-          'السريعة من جديد. بيانات حسابك الحالي لن تُحذف، لكنها لن تظهر '
-          'على هذا الجهاز إلا إذا رجعت وسجّلت الدخول بنفس الحساب.',
+          'بياناتك محفوظة في حسابك — تقدر ترجع في أي وقت بتسجيل الدخول '
+          'بنفس البريد وكلمة المرور.',
         ),
         actions: [
           TextButton(
@@ -56,25 +50,20 @@ class _AccountScreenState extends State<AccountScreen> {
             child: const Text('إلغاء'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Brand.danger),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('ابدأ من جديد'),
+            child: const Text('تسجيل الخروج'),
           ),
         ],
       ),
     );
-    if (confirmed != true || !context.mounted) return;
-
-    final client = Supabase.instance.client;
-    await client.auth.signOut();
-    await client.auth.signInAnonymously();
-    azdalFirstLaunch = true;
-    if (context.mounted) context.go('/');
+    if (confirmed != true) return;
+    await Supabase.instance.client.auth.signOut();
   }
 
   @override
   Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
-    final isAnon = user?.isAnonymous ?? true;
     final fullName = (user?.userMetadata?['full_name'] as String?)?.trim();
 
     return Scaffold(
@@ -83,7 +72,7 @@ class _AccountScreenState extends State<AccountScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _IdentityCard(isAnon: isAnon, name: fullName, email: user?.email),
+          _IdentityCard(name: fullName, email: user?.email),
           const SizedBox(height: 24),
           const _SectionLabel('رؤية أزدل'),
           Card(
@@ -115,33 +104,18 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
           const SizedBox(height: 24),
           const _SectionLabel('الحساب'),
-          if (isAnon) ...[
-            _SettingsRow(
-              icon: Icons.person_add_alt_outlined,
-              title: 'أنشئ حسابك في أزدل',
-              subtitle: 'حساب دائم — كل بياناتك الحالية تنتقل معك',
-              onTap: () => context.push('/signup'),
-            ),
-            const SizedBox(height: 12),
-            _SettingsRow(
-              icon: Icons.login_outlined,
-              title: 'تسجيل الدخول',
-              subtitle: 'لديك حساب بالفعل؟ سجّل دخولك',
-              onTap: () => context.push('/login'),
-            ),
-          ] else
-            _SettingsRow(
-              icon: Icons.verified_outlined,
-              title: 'حسابك دائم وموثق',
-              subtitle: user?.email ?? '',
-              onTap: null,
-            ),
+          _SettingsRow(
+            icon: Icons.verified_outlined,
+            title: 'حسابك دائم وموثق',
+            subtitle: user?.email ?? '',
+            onTap: null,
+          ),
           const SizedBox(height: 12),
           _SettingsRow(
-            icon: Icons.restart_alt,
-            title: 'ابدأ من جديد كزائر',
-            subtitle: 'لتجربة التطبيق من الصفر على هذا الجهاز',
-            onTap: () => _startAsNewGuest(context),
+            icon: Icons.logout,
+            title: 'تسجيل الخروج',
+            subtitle: 'ترجع في أي وقت بنفس البريد وكلمة المرور',
+            onTap: () => _signOut(context),
           ),
           const SizedBox(height: 32),
           const Center(
@@ -157,9 +131,8 @@ class _AccountScreenState extends State<AccountScreen> {
 }
 
 class _IdentityCard extends StatelessWidget {
-  const _IdentityCard({required this.isAnon, this.name, this.email});
+  const _IdentityCard({this.name, this.email});
 
-  final bool isAnon;
   final String? name;
   final String? email;
 
@@ -181,9 +154,7 @@ class _IdentityCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isAnon
-                      ? 'ضيف أزدل'
-                      : (name?.isNotEmpty == true ? name! : 'حسابي'),
+                  name?.isNotEmpty == true ? name! : 'حسابي',
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
@@ -192,30 +163,27 @@ class _IdentityCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  isAnon
-                      ? 'حسابك مؤقت على هذا الجهاز — أنشئ حساباً دائماً لحفظه'
-                      : (email ?? ''),
+                  email ?? '',
                   style: const TextStyle(fontSize: 12, color: Brand.muted),
                 ),
               ],
             ),
           ),
-          if (!isAnon)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Brand.greenTint,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                'موثق',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Brand.green,
-                  fontWeight: FontWeight.w700,
-                ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Brand.greenTint,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'موثق',
+              style: TextStyle(
+                fontSize: 11,
+                color: Brand.green,
+                fontWeight: FontWeight.w700,
               ),
             ),
+          ),
         ],
       ),
     );

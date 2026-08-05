@@ -53,8 +53,11 @@ None at Stage 4. All decisions below are closed.
 
 | Field | Value |
 |-------|-------|
-| **Date** | 2026-07-19 |
-| **Status** | 🔵 Adopted (personal build) |
+| **Date** | 2026-07-19 (implemented 2026-07-22) |
+| **Status** | ✅ Implemented + device-verified |
+| **Implementation** | `main.dart` drops `signInAnonymously()` and signs out any leftover anonymous session on launch; `app_router.dart` adds an auth-gate `redirect` + `refreshListenable` on `onAuthStateChange` (unauthenticated → `/login`, signed-in bounced off `/login`,`/signup` → `/home`); `AuthService.upgradeAnonymousToEmail` replaced with `registerWithEmail` (`signUp`) + `signOut`; `SignUpScreen` creates a fresh account (handles Confirm-email ON vs OFF via `res.session`); `LoginScreen` drops the obsolete anonymous-orphan warning; `AccountScreen` drops the guest-reset (DEC-047) and adds sign-out. Device-verified: permanent user → chat; sign-out → redirects to login; no path to chat while unauthenticated. **Not done (founder's call, by design):** the destructive clean-slate of the throwaway anonymous rows (DEC-010-sensitive — left to the founder), and the dashboard Confirm-email posture. |
+| **Follow-up — recovery gap closed (2026-07-22)** | Login-required without a reset path meant a forgotten password = permanent lockout (it happened once). Added in-app **password recovery** (OTP, 6-digit): `AuthService.sendPasswordReset` (`resetPasswordForEmail`) + `confirmPasswordReset` (`verifyOTP(type: recovery)` → `updateUser(password:)`), a `ForgotPasswordScreen`, a "نسيت كلمة المرور؟" link on login, and the `/forgot-password` route. Chosen OTP over magic-link because no deep-link scheme is configured. **Dashboard prerequisite:** the "Reset Password" email template must include the code token `{{ .Token }}` (default is link-only). Screens + navigation device-verified; the email→code→new-password round-trip is founder-driven (credentials). See DEC-056 for the planned biometric/PIN unlock on top of this. |
+| **Deferred dependency — a verified sending domain (2026-07-22)** | The code + the `{{ .Token }}` template are correct and done. But **both** the OTP recovery **and** Confirm-email only reach arbitrary recipients once a **verified sending domain** exists at the SMTP provider. Current state: custom SMTP is Resend with the **test sender** `onboarding@resend.dev`, which — in Resend's no-verified-domain test mode — delivers **only to the Resend account's own email** (`jahfaliabdulrahman@gmail.com`). So recovery/confirm emails to any other address (e.g. the founder's `almohalhel1408@gmail.com` Azdal account) fail. **Not a code bug — email infrastructure.** Fine for the personal build today (single user, already-confirmed account, password known). **The fix, deferred by the founder to "later":** get a domain → verify it in Resend (SPF/DKIM) → set the Supabase sender to `no-reply@<domain>`. That single step unblocks recovery **and** confirm-email for all users. Built-in Supabase SMTP was rejected as the fallback because it locks template editing (kills the `{{ .Token }}` code flow) and is rate-capped (~2–4/hr, not for production). |
 | **Summary** | The personal build **removes anonymous/guest sign-in entirely**. The app requires a simple email/password login from first launch, so every account is **permanent from message one**. Deletes the "start as new guest" reset (DEC-047, demo-only) and **supersedes anonymous-first (DEC-017) for the personal build.** |
 | **Rationale** | The founder's explicit call: the app has no users but himself, and the pre-existing anonymous test data is throwaway (delete it — clean slate). This **dissolves the hardest part of Phase 0** — the anonymous→permanent conversion analysed in `22_research_account_durability.md`: with login-from-launch there is no in-place upgrade, no same-UUID conversion, no data-orphaning risk. The account is durable by construction. |
 | **What still applies from doc 22** | Backups (nightly `pg_dump` via GitHub Actions, `age`-encrypted, private repo, **including `-s auth`**) and the migration baseline (`supabase db pull`) still matter the moment real data accrues. |
@@ -121,6 +124,20 @@ None at Stage 4. All decisions below are closed.
 | **Rationale** | Founder's explicit decision, made via Cowork: Sonnet 5 runs the full swarm — the 10 profiles between them cover every needed specialization (product, design, backend, implementation, QA, audit, DevOps, docs, guardian, orchestration) — while Claude (this session, the Executive Controller) remains the guarantor who verifies the swarm's reported work rather than trusting a DONE status at face value. Claude Opus 4.8 is deliberately *not* wired into this config — it's reserved as a manual escalation the founder invokes himself only if a small Route A task fails to resolve after repeated attempts, not an automatic routing rule. |
 | **Verification note** | The `claude-sonnet-5` string follows the file's existing bare-slug convention (`deepseek-v4-pro`, no provider prefix or date suffix) and is the canonical identifier for Claude Sonnet 5. Not yet confirmed against Hermes' actual model-routing gateway — if `lead_delegate`/`lead_ultra_check` calls fail or misroute after this change, check whether the gateway expects a different exact string and correct here. |
 | **Related** | `.hermes/swarm.yaml`, `app-spec/00_swarm_operating_playbook.md`, DEC-050 (tool-calling router — a separate, unrelated change) |
+
+---
+
+### DEC-056: Biometric + PIN Unlock (Planned — Future)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-07-22 |
+| **Status** | 🔵 Planned (design only — not built) |
+| **Summary** | Add fingerprint/face unlock with a PIN fallback, so the founder doesn't re-type his password on every launch. Founder-requested, explicitly for "later" (مستقبلاً). Sits on top of DEC-051 (login-required) and the DEC-051 password-recovery follow-up. |
+| **Design (the honest architecture)** | Biometric does **not** authenticate with Supabase — the email/password + session stays the source of truth, and `supabase_flutter` already persists the session on-device (that persistence is why a logged-in user stays logged in). Biometric/PIN is a **local lock on top**: on cold start, if a persisted session exists, require biometric (PIN fallback when biometric is unavailable or fails) to unlock before showing content; sign-out clears the local lock. First-ever login still needs the real password. **Hardening (later refinement):** encrypt the persisted session/refresh token behind a biometric-derived key rather than only gating the UI. |
+| **New deps** | `local_auth` (biometric), `flutter_secure_storage` (PIN hash +, later, the encrypted session key). |
+| **Not a replacement** | This is convenience, not a new auth authority. A stolen unlocked device is out of scope for the MVP; the encrypted-session hardening is the answer when stakes rise. |
+| **Related** | DEC-051 (login-required + password recovery this builds on), `21_personal_build_plan.md` (sequenced as a later item) |
 
 ---
 
@@ -680,6 +697,8 @@ None at Stage 4. All decisions below are closed.
 
 | ID | Decision | Date | Status |
 |----|----------|------|--------|
+| DEC-056 | Biometric + PIN unlock (local lock on top of the Supabase session) | 2026-07-22 | 🔵 Planned |
+| DEC-051 (auth) | Remove guest sign-in, require login from first launch + in-app password recovery (OTP) | 2026-07-19 (impl. 07-22) | ✅ |
 | DEC-051 | Phase 4 EPIC Closeout — Golden Matrix + Fake Test Deletion + Mutation Check | 2026-07-21 | ✅ |
 | DEC-050 | Tool-calling router — replace regex intent-gates with Gemini function-calling (personal-build Phase 0.5) | 2026-07-17 | 🟡 Adopted, implementation + device verification complete; Guardian sign-off outstanding |
 | DEC-049 | Personal build — chat-only, founder as first real user (post-hackathon direction) | 2026-07-17 | 🔵 Adopted |

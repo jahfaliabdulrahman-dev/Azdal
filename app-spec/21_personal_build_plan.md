@@ -186,6 +186,12 @@ into the substitution/unit engines; **W3** `get_market_info` (DEC-054).
 - **W4 (conditional)** SerpApi behind `WorldPriceProvider`, only if telemetry
   shows a real price-precision gap (DEC-054).
 
+**Auth polish (later, not phase-blocking):** biometric + PIN unlock (DEC-056) —
+a local lock on top of the persisted Supabase session so the founder doesn't
+re-type his password each launch. Slots in after the core loop feels good;
+password login + the OTP recovery flow already cover correctness, so this is
+pure convenience. `local_auth` + `flutter_secure_storage`.
+
 **Guardrail (from DEC-050's timing note):** timebox each phase; if one overruns,
 ship the value you have and return — his real financial life is the point, not
 architectural purity.
